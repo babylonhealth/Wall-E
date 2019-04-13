@@ -1,15 +1,14 @@
+import Bot
 import Vapor
 
-/// Register your application's routes here.
-public func routes(_ router: Router) throws {
-    // Basic "It works" example
-    router.get { req in
-        return "It works!"
-    }
-    
-    // Basic "Hello, world!" example
-    router.get("hello") { req in
-        return "Hello, world!"
-    }
+public func routes(_ router: Router, gitHubService: GitHubService) throws {
 
+    router.post("github") { request -> HTTPResponse in
+        switch gitHubService.handleEvent(from: request) {
+        case .success:
+            return HTTPResponse(status: .ok)
+        case .failure:
+            return HTTPResponse(status: .badRequest)
+        }
+    }
 }
