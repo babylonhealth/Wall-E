@@ -25,7 +25,10 @@ class GitHubEventsTests: XCTestCase {
             )
         )
 
-        let request = StubbedRequest(headers: ["X-GitHub-Event" : "pull_request"], body: pullRequestEvent)
+        let request = StubbedRequest(
+            headers: [GitHubService.HTTPHeader.event.rawValue: GitHubService.APIEvent.pullRequest.rawValue],
+            body: pullRequestEvent
+        )
 
         var observedEvents: [Event] = []
 
@@ -45,7 +48,10 @@ class GitHubEventsTests: XCTestCase {
         let service = GitHubService()
         let scheduler = TestScheduler()
 
-        let request = StubbedRequest(headers: ["X-GitHub-Event" : "ping"], body: nil)
+        let request = StubbedRequest(
+            headers: [GitHubService.HTTPHeader.event.rawValue: GitHubService.APIEvent.ping.rawValue],
+            body: nil
+        )
 
         var observedEvents: [Event] = []
 
@@ -64,7 +70,10 @@ class GitHubEventsTests: XCTestCase {
     func test_handling_unknown_event() {
         let service = GitHubService()
 
-        let request = StubbedRequest(headers: ["X-GitHub-Event" : "unknown"], body: nil)
+        let request = StubbedRequest(
+            headers: [GitHubService.HTTPHeader.event.rawValue : "anything_really"],
+            body: nil
+        )
 
         let result = service.handleEvent(from: request)
 

@@ -3,6 +3,16 @@ import ReactiveSwift
 import Result
 
 public final class GitHubService {
+
+    internal enum HTTPHeader: String {
+        case event = "X-GitHub-Event"
+    }
+
+    internal enum APIEvent: String {
+        case pullRequest = "pull_request"
+        case ping
+    }
+
     private let eventsObserver: Signal<Event, NoError>.Observer
     public let events: Signal<Event, NoError>
 
@@ -22,16 +32,16 @@ public final class GitHubService {
     }
 
     private func parseEvent(from request: RequestProtocol) -> Result<Event, EventHandlingError> {
-        guard let event = request.header(named: "X-GitHub-Event")
+        guard let rawEvent = request.header(.event)
             else { return .failure(.invalid) }
 
-        switch event {
-        case "pull_request":
+        switch APIEvent(rawValue: rawEvent) {
+        case .pullRequest?:
             return Result(request.decodeBody(PullRequestEvent.self), failWith: .invalid)
                 .map(Event.pullRequest)
-        case "ping":
+        case .ping?:
             return .success(.ping)
-        default:
+        case .none:
             return .failure(.unknown)
         }
     }
@@ -41,5 +51,11 @@ extension GitHubService {
     public enum EventHandlingError: Error {
         case invalid
         case unknown
+    }
+}
+
+private extension RequestProtocol {
+    func header(_ header: GitHubService.HTTPHeader) -> String? {
+        return self.header(named: header.rawValue)
     }
 }
