@@ -74,7 +74,7 @@ class GitHubEventsTests: XCTestCase {
 
 extension GitHubEventsTests {
     fileprivate struct StubbedRequest: RequestProtocol {
-        let headers: [String : String]
+        let headers: [String: String]
         let body: Any?
 
         func header(named name: String) -> String? {
