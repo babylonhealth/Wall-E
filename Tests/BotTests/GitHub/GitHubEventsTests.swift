@@ -27,18 +27,18 @@ class GitHubEventsTests: XCTestCase {
 
         let request = StubbedRequest(headers: ["X-GitHub-Event" : "pull_request"], body: pullRequestEvent)
 
-        var observedEvent: Event? = nil
+        var observedEvents: [Event] = []
 
         service.events
             .observe(on: scheduler)
-            .observeValues { event in observedEvent = event }
+            .observeValues { event in observedEvents.append(event) }
 
         let result = service.handleEvent(from: request)
 
         scheduler.advance()
 
         expect(result.error).to(beNil())
-        expect(observedEvent) == Event.pullRequest(pullRequestEvent)
+        expect(observedEvents) == [Event.pullRequest(pullRequestEvent)]
     }
 
     func test_handling_ping_event() {
@@ -47,18 +47,18 @@ class GitHubEventsTests: XCTestCase {
 
         let request = StubbedRequest(headers: ["X-GitHub-Event" : "ping"], body: nil)
 
-        var observedEvent: Event? = nil
+        var observedEvents: [Event] = []
 
         service.events
             .observe(on: scheduler)
-            .observeValues { event in observedEvent = event }
+            .observeValues { event in observedEvents.append(event) }
 
         let result = service.handleEvent(from: request)
 
         scheduler.advance()
 
         expect(result.error).to(beNil())
-        expect(observedEvent) == Event.ping
+        expect(observedEvents) == [Event.ping]
     }
 
     func test_handling_unknown_event() {
