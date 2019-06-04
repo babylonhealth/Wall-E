@@ -8,7 +8,7 @@ extension Vapor.Request: RequestProtocol {
     }
 
     public func decodeBody<T>(_ type: T.Type) -> T? where T: Decodable {
-        return try? content.syncDecode(type)
+        return try? content.decode(type).wait()
     }
 }
 
