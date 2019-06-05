@@ -55,6 +55,8 @@ public final class GitHubService {
         with token: Token
     ) -> (RequestProtocol) -> Result<RequestProtocol, EventHandlingError> {
 
+        // This was implemented following this reference: https://developer.github.com/webhooks/securing/
+
         return { request in
             guard
                 let signature = request.header(.signature),
