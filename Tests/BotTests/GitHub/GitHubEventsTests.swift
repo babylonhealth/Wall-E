@@ -1,5 +1,6 @@
 import XCTest
 import Nimble
+import Result
 import ReactiveSwift
 @testable import Bot
 
@@ -36,11 +37,11 @@ class GitHubEventsTests: XCTestCase {
             .observe(on: scheduler)
             .observeValues { event in observedEvents.append(event) }
 
-        let result = service.handleEvent(from: request)
+        let result = service.handleEvent(from: request).first()
 
         scheduler.advance()
 
-        expect(result.error).to(beNil())
+        expect(result?.error).to(beNil())
         expect(observedEvents) == [Event.pullRequest(pullRequestEvent)]
     }
 
@@ -59,11 +60,11 @@ class GitHubEventsTests: XCTestCase {
             .observe(on: scheduler)
             .observeValues { event in observedEvents.append(event) }
 
-        let result = service.handleEvent(from: request)
+        let result = service.handleEvent(from: request).first()
 
         scheduler.advance()
 
-        expect(result.error).to(beNil())
+        expect(result?.error).to(beNil())
         expect(observedEvents) == [Event.ping]
     }
 
@@ -75,13 +76,17 @@ class GitHubEventsTests: XCTestCase {
             body: nil
         )
 
-        let result = service.handleEvent(from: request)
+        let result = service.handleEvent(from: request).first()
 
-        expect(result.error) == .unknown
+        expect(result?.error) == .unknown
     }
 }
 
 extension GitHubEventsTests {
+    enum DecodeError: Error {
+        case invalid
+    }
+
     fileprivate struct StubbedRequest: RequestProtocol {
         let headers: [String: String]
         let body: Any?
@@ -90,8 +95,16 @@ extension GitHubEventsTests {
             return headers[name]
         }
 
-        func decodeBody<T>(_ type: T.Type) -> T? where T : Decodable {
-            return body as? T
+        public func decodeBody<T>(
+            _ type: T.Type,
+            using scheduler: QueueScheduler
+        ) -> SignalProducer<T, AnyError> where T: Decodable {
+            switch body as? T {
+            case let .some(value):
+                return SignalProducer(value: value)
+            case .none:
+                return SignalProducer(error: AnyError(DecodeError.invalid))
+            }
         }
     }
 }

@@ -13,36 +13,34 @@ public final class GitHubService {
         case ping
     }
 
+    private let scheduler: QueueScheduler
     private let eventsObserver: Signal<Event, NoError>.Observer
     public let events: Signal<Event, NoError>
 
-    public init() {
+    public init(scheduler: QueueScheduler = QueueScheduler()) {
+        self.scheduler = scheduler
         (events, eventsObserver) = Signal.pipe()
     }
 
-    public func handleEvent(from request: RequestProtocol) -> Result<Void, EventHandlingError> {
+    public func handleEvent(from request: RequestProtocol) -> SignalProducer<Void, EventHandlingError> {
         return parseEvent(from: request)
-            .analysis(
-                ifSuccess: { event in
-                    eventsObserver.send(value: event)
-                    return .success(())
-                },
-                ifFailure: Result.failure
-            )
+            .on(value: eventsObserver.send(value:))
+            .map { _ in }
     }
 
-    private func parseEvent(from request: RequestProtocol) -> Result<Event, EventHandlingError> {
+    private func parseEvent(from request: RequestProtocol) -> SignalProducer<Event, EventHandlingError> {
         guard let rawEvent = request.header(.event)
-            else { return .failure(.invalid) }
+            else { return SignalProducer(error: .invalid) }
 
         switch APIEvent(rawValue: rawEvent) {
         case .pullRequest?:
-            return Result(request.decodeBody(PullRequestEvent.self), failWith: .invalid)
+            return request.decodeBody(PullRequestEvent.self, using: scheduler)
+                .mapError { _ in EventHandlingError.invalid }
                 .map(Event.pullRequest)
         case .ping?:
-            return .success(.ping)
+            return SignalProducer(value: .ping)
         case .none:
-            return .failure(.unknown)
+            return SignalProducer(error: .unknown)
         }
     }
 }
