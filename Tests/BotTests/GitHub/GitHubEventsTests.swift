@@ -17,13 +17,10 @@ class GitHubEventsTests: XCTestCase {
                     payload: GitHubPullRequestEvent.data(using: .utf8)
                 )
 
-                let result = service.handleEvent(from: req).first()
-
-                scheduler.advance()
-
-                expect(result?.error).to(beNil())
+                return service.handleEvent(from: req).first()
             },
-            assert: { events in
+            assert: { result, events in
+                expect(result?.error).to(beNil())
                 expect(events) == [Event.pullRequest(stubbedPullRequestEvent)]
             }
         )
@@ -40,13 +37,10 @@ class GitHubEventsTests: XCTestCase {
                     payload: "{}"
                 )
 
-                let result = service.handleEvent(from: req).first()
-
-                scheduler.advance()
-
-                expect(result?.error).to(beNil())
+                return service.handleEvent(from: req).first()
             },
-            assert: { events in
+            assert: { result, events in
+                expect(result?.error).to(beNil())
                 expect(events) == [Event.ping]
             }
         )
@@ -62,11 +56,10 @@ class GitHubEventsTests: XCTestCase {
                     payload: "{}"
                 )
 
-                let result = service.handleEvent(from: req).first()
-
-                expect(result?.error) == .unknown
+                return service.handleEvent(from: req).first()
             },
-            assert: { events in
+            assert: { result, events in
+                expect(result?.error) == .unknown
                 expect(events) == []
             }
         )
@@ -82,11 +75,10 @@ class GitHubEventsTests: XCTestCase {
                     payload: "{}"
                 )
 
-                let result = service.handleEvent(from: req).first()
-
-                expect(result?.error) == .untrustworthy
+                return service.handleEvent(from: req).first()
             },
-            assert: { events in
+            assert: { result, events in
+                expect(result?.error) == .untrustworthy
                 expect(events) == []
             }
         )
@@ -117,9 +109,9 @@ extension GitHubEventsTests {
 
     private func perform(
         stub: (TestScheduler) -> GitHubService = stubService,
-        when: (GitHubService, TestScheduler) -> Void,
-        assert: ([Event]) -> Void
-        ) {
+        when: (GitHubService, TestScheduler) -> Result<Void, GitHubService.EventHandlingError>?,
+        assert: (Result<Void, GitHubService.EventHandlingError>?, [Event]) -> Void
+    ) {
 
         let scheduler = TestScheduler()
 
@@ -131,9 +123,11 @@ extension GitHubEventsTests {
             .observe(on: scheduler)
             .observeValues { event in observedEvents.append(event) }
 
-        when(service, scheduler)
+        let result = when(service, scheduler)
 
-        assert(observedEvents)
+        scheduler.advance()
+
+        assert(result, observedEvents)
     }
 
     private static func stubService(_ scheduler: TestScheduler) -> GitHubService {
