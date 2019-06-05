@@ -23,7 +23,7 @@ public final class GitHubService {
     public let events: Signal<Event, NoError>
 
     public init(signatureToken: Token, scheduler: Scheduler = QueueScheduler()) {
-        self.signatureVerifier = GitHubService.signatureVerifier()(signatureToken)
+        self.signatureVerifier = GitHubService.signatureVerifier(with: signatureToken)
         self.scheduler = scheduler
         (events, eventsObserver) = Signal.pipe()
     }
@@ -52,28 +52,27 @@ public final class GitHubService {
     }
 
     private static func signatureVerifier(
-    ) -> (Token) -> (RequestProtocol) -> Result<RequestProtocol, EventHandlingError> {
+        with token: Token
+    ) -> (RequestProtocol) -> Result<RequestProtocol, EventHandlingError> {
 
-        return { token in
-            return { request in
-                guard
-                    let signature = request.header(.signature),
-                    let digest = signature.range(of: "sha1=")
-                        .map({ signature[$0.upperBound..<signature.endIndex] })
-                        .map(String.init)
-                        .map(Array.init(hex:))
-                    else { return .failure(.untrustworthy) }
+        return { request in
+            guard
+                let signature = request.header(.signature),
+                let digest = signature.range(of: "sha1=")
+                    .map({ signature[$0.upperBound..<signature.endIndex] })
+                    .map(String.init)
+                    .map(Array.init(hex:))
+                else { return .failure(.untrustworthy) }
 
-                guard
-                    let bodyData = request.body.data,
-                    let computedDigest = try? HMAC(key: token, variant: .sha1).authenticate(bodyData.bytes)
-                    else { return .failure(.untrustworthy) }
+            guard
+                let bodyData = request.body.data,
+                let computedDigest = try? HMAC(key: token, variant: .sha1).authenticate(bodyData.bytes)
+                else { return .failure(.untrustworthy) }
 
-                guard computedDigest == digest
-                    else { return .failure(.untrustworthy) }
+            guard computedDigest == digest
+                else { return .failure(.untrustworthy) }
 
-                return .success(request)
-            }
+            return .success(request)
         }
     }
 }
