@@ -2,14 +2,14 @@ import Bot
 import Vapor
 
 enum ConfigurationError: Error {
-    case missingCOnfiguration(message: String)
+    case missingConfiguration(message: String)
 }
 
 /// Called before your application initializes.
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
 
     guard let githubWebhookSecret = Environment.githubWebhookSecret
-        else { throw ConfigurationError.missingCOnfiguration(message: "💥 GitHub Webhook Secret is missing")}
+        else { throw ConfigurationError.missingConfiguration(message: "💥 GitHub Webhook Secret is missing")}
 
     let gitHubService = GitHubService(signatureToken: githubWebhookSecret)
 
