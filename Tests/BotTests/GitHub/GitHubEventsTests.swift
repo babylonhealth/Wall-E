@@ -190,15 +190,13 @@ extension GitHubEventsTests {
             _ type: T.Type,
             using scheduler: Scheduler
         ) -> SignalProducer<T, AnyError> where T: Decodable {
-            switch data {
-            case let .some(data):
+            guard let data = data
+                else { return SignalProducer(error: AnyError(DecodeError.invalid)) }
+
+            do {
                 let decoder = JSONDecoder()
-                do {
-                    return SignalProducer(value: try decoder.decode(T.self, from: data))
-                } catch {
-                    return SignalProducer(error: AnyError(DecodeError.invalid))
-                }
-            case .none:
+                return SignalProducer(value: try decoder.decode(T.self, from: data))
+            } catch {
                 return SignalProducer(error: AnyError(DecodeError.invalid))
             }
         }
