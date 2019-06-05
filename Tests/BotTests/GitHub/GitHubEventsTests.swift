@@ -97,12 +97,6 @@ extension GitHubEventsTests {
     
     static let signatureToken = "Wall-E"
 
-    private func signature(for data: Data) -> String {
-        return try! HMAC(key: GitHubEventsTests.signatureToken, variant: .sha1)
-            .authenticate(data.bytes)
-            .toHexString()
-    }
-
     private var stubbedPullRequestEvent: PullRequestEvent {
         return PullRequestEvent(
             action: .closed,
