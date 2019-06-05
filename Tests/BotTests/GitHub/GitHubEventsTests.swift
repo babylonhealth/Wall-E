@@ -13,7 +13,7 @@ class GitHubEventsTests: XCTestCase {
 
                 let req = request(
                     with: .pullRequest,
-                    signature: signature(for: GitHubPullRequestEvent.data(using: .utf8)!),
+                    signature: "00faadd5dc1395b616a546ac6f67796409b4f839",
                     payload: GitHubPullRequestEvent.data(using: .utf8)
                 )
 
@@ -36,7 +36,7 @@ class GitHubEventsTests: XCTestCase {
                 // NOTE: I'm unsure about the payload of this specific event
                 let req = request(
                     with: .ping,
-                    signature: signature(for: "{}".data(using: .utf8)!),
+                    signature: "9f64868b5cd91faa4c63589acff7286b16d289ae",
                     payload: "{}"
                 )
 
@@ -56,17 +56,13 @@ class GitHubEventsTests: XCTestCase {
         perform(
             when: { service, scheduler in
 
-                let payload = "{}".data(using: .utf8)!
-
-                let request = StubbedRequest(
-                    headers: [
-                        GitHubService.HTTPHeader.event.rawValue : "anything_really",
-                        GitHubService.HTTPHeader.signature.rawValue: signature(for: payload)
-                    ],
-                    data: payload
+                let req = request(
+                    withRawEvent: "anything_really",
+                    signature: "9f64868b5cd91faa4c63589acff7286b16d289ae",
+                    payload: "{}"
                 )
 
-                let result = service.handleEvent(from: request).first()
+                let result = service.handleEvent(from: req).first()
 
                 expect(result?.error) == .unknown
             },
@@ -80,12 +76,13 @@ class GitHubEventsTests: XCTestCase {
         perform(
             when: { service, scheduler in
 
-                let request = StubbedRequest(
-                    headers: [GitHubService.HTTPHeader.event.rawValue : "anything_really"],
-                    data: nil
+                let req = request(
+                    withRawEvent: "anything_really",
+                    signature: "00faadd5dc1395b616a546ac6f67796409b4f839",
+                    payload: "{}"
                 )
 
-                let result = service.handleEvent(from: request).first()
+                let result = service.handleEvent(from: req).first()
 
                 expect(result?.error) == .untrustworthy
             },
@@ -101,11 +98,9 @@ extension GitHubEventsTests {
     static let signatureToken = "Wall-E"
 
     private func signature(for data: Data) -> String {
-        let signature = try! HMAC(key: GitHubEventsTests.signatureToken, variant: .sha1)
+        return try! HMAC(key: GitHubEventsTests.signatureToken, variant: .sha1)
             .authenticate(data.bytes)
             .toHexString()
-
-        return "sha1=\(signature)"
     }
 
     private var stubbedPullRequestEvent: PullRequestEvent {
@@ -151,15 +146,23 @@ extension GitHubEventsTests {
         return GitHubService(signatureToken: signatureToken, scheduler: scheduler)
     }
 
-    private func request(with event:GitHubService.APIEvent, signature: String, payload: String) -> StubbedRequest {
+    private func request(with event: GitHubService.APIEvent, signature: String, payload: String) -> StubbedRequest {
         return request(with: event, signature: signature, payload: payload.data(using: .utf8))
     }
 
-    private func request(with event:GitHubService.APIEvent, signature: String, payload: Data?) -> StubbedRequest {
+    private func request(withRawEvent rawEvent: String, signature: String, payload: String) -> StubbedRequest {
+        return request(withRawEvent: rawEvent, signature: signature, payload: payload.data(using: .utf8))
+    }
+
+    private func request(with event: GitHubService.APIEvent, signature: String, payload: Data?) -> StubbedRequest {
+        return request(withRawEvent: event.rawValue, signature: signature, payload: payload)
+    }
+
+    private func request(withRawEvent rawEvent: String, signature: String, payload: Data?) -> StubbedRequest {
         return StubbedRequest(
             headers: [
-                GitHubService.HTTPHeader.event.rawValue: event.rawValue,
-                GitHubService.HTTPHeader.signature.rawValue: signature
+                GitHubService.HTTPHeader.event.rawValue: rawEvent,
+                GitHubService.HTTPHeader.signature.rawValue: "sha1=\(signature)"
             ],
             data: payload
         )
