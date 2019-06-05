@@ -4,7 +4,14 @@ import Vapor
 import Result
 import ReactiveSwift
 
+extension Vapor.HTTPBody: HTTPBodyProtocol {}
+
 extension Vapor.Request: RequestProtocol {
+
+    public var body: HTTPBodyProtocol {
+        return self.http.body
+    }
+
     public func header(named name: String) -> String? {
         return http.headers[name].first
     }
