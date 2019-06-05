@@ -18,7 +18,7 @@ extension Vapor.Request: RequestProtocol {
 
     public func decodeBody<T>(
         _ type: T.Type,
-        using scheduler: QueueScheduler
+        using scheduler: Scheduler
     ) -> SignalProducer<T, AnyError> where T: Decodable {
         return SignalProducer { [content] observer, disposable in
             guard disposable.hasEnded == false else { return }

@@ -17,12 +17,12 @@ public final class GitHubService {
 
     public typealias Token = String
 
-    private let scheduler: QueueScheduler
+    private let scheduler: Scheduler
     private let signatureVerifier: (RequestProtocol) -> Result<RequestProtocol, EventHandlingError>
     private let eventsObserver: Signal<Event, NoError>.Observer
     public let events: Signal<Event, NoError>
 
-    public init(signatureToken: Token, scheduler: QueueScheduler = QueueScheduler()) {
+    public init(signatureToken: Token, scheduler: Scheduler = QueueScheduler()) {
         self.signatureVerifier = GitHubService.signatureVerifier()(signatureToken)
         self.scheduler = scheduler
         (events, eventsObserver) = Signal.pipe()
