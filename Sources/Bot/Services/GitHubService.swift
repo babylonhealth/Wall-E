@@ -1,11 +1,13 @@
 import Foundation
 import ReactiveSwift
 import Result
+import CryptoSwift
 
 public final class GitHubService {
 
     internal enum HTTPHeader: String {
         case event = "X-GitHub-Event"
+        case signature = "X-Hub-Signature"
     }
 
     internal enum APIEvent: String {
@@ -13,17 +15,22 @@ public final class GitHubService {
         case ping
     }
 
-    private let scheduler: QueueScheduler
+    public typealias Token = String
+
+    private let scheduler: Scheduler
+    private let signatureVerifier: (RequestProtocol) -> Result<RequestProtocol, EventHandlingError>
     private let eventsObserver: Signal<Event, NoError>.Observer
     public let events: Signal<Event, NoError>
 
-    public init(scheduler: QueueScheduler = QueueScheduler()) {
+    public init(signatureToken: Token, scheduler: Scheduler = QueueScheduler()) {
+        self.signatureVerifier = GitHubService.signatureVerifier(with: signatureToken)
         self.scheduler = scheduler
         (events, eventsObserver) = Signal.pipe()
     }
 
     public func handleEvent(from request: RequestProtocol) -> SignalProducer<Void, EventHandlingError> {
-        return parseEvent(from: request)
+        return SignalProducer { [signatureVerifier] in signatureVerifier(request) }
+            .flatMap(.latest, parseEvent)
             .on(value: eventsObserver.send(value:))
             .map { _ in }
     }
@@ -43,10 +50,38 @@ public final class GitHubService {
             return SignalProducer(error: .unknown)
         }
     }
+
+    private static func signatureVerifier(
+        with token: Token
+    ) -> (RequestProtocol) -> Result<RequestProtocol, EventHandlingError> {
+
+        // This was implemented following this reference: https://developer.github.com/webhooks/securing/
+
+        return { request in
+            guard
+                let signature = request.header(.signature),
+                let digest = signature.range(of: "sha1=")
+                    .map({ signature[$0.upperBound..<signature.endIndex] })
+                    .map(String.init)
+                    .map(Array.init(hex:))
+                else { return .failure(.untrustworthy) }
+
+            guard
+                let bodyData = request.body.data,
+                let computedDigest = try? HMAC(key: token, variant: .sha1).authenticate(bodyData.bytes)
+                else { return .failure(.untrustworthy) }
+
+            guard computedDigest == digest
+                else { return .failure(.untrustworthy) }
+
+            return .success(request)
+        }
+    }
 }
 
 extension GitHubService {
     public enum EventHandlingError: Error {
+        case untrustworthy
         case invalid
         case unknown
     }
