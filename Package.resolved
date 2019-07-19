@@ -83,6 +83,15 @@
         }
       },
       {
+        "package": "ReactiveFeedback",
+        "repositoryURL": "https://github.com/Babylonpartners/ReactiveFeedback",
+        "state": {
+          "branch": null,
+          "revision": "2b3ae69cd5d980e7022975fe3d4822cedb7f89f0",
+          "version": "0.6.0"
+        }
+      },
+      {
         "package": "ReactiveSwift",
         "repositoryURL": "https://github.com/ReactiveCocoa/ReactiveSwift.git",
         "state": {
