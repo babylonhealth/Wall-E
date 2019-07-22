@@ -12,14 +12,21 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     logger.log("👟 Starting up...")
 
-    guard let githubWebhookSecret = Environment.githubWebhookSecret
-        else { throw ConfigurationError.missingConfiguration(message: "💥 GitHub Webhook Secret is missing")}
+    services.register(logger, as: LoggerProtocol.self)
 
-    let gitHubService = GitHubService(signatureToken: githubWebhookSecret)
+    services.register(GitHubService.self) { container -> GitHubService in
+
+        logger.log("⏳ Initializing `GitHubService`...")
+
+        guard let githubWebhookSecret = Environment.githubWebhookSecret
+            else { throw ConfigurationError.missingConfiguration(message: "💥 GitHub Webhook Secret is missing")}
+
+        return GitHubService(signatureToken: githubWebhookSecret)
+    }
 
     // Register routes to the router
     let router = EngineRouter.default()
-    try routes(router, logger: logger, gitHubService: gitHubService)
+    try routes(router)
     services.register(router, as: Router.self)
 
     // Register middleware
@@ -30,3 +37,10 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     logger.log("🏁 Ready")
 }
+
+extension Environment {
+    static let githubWebhookSecret = Environment.get("GITHUB_WEBHOOK_SECRET")
+}
+
+extension GitHubService: Service {}
+extension PrintLogger: Service {}

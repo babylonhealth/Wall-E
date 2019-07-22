@@ -10,7 +10,3 @@ public func app(_ env: Environment) throws -> Application {
     try boot(app)
     return app
 }
-
-extension Environment {
-    static let githubWebhookSecret = Environment.get("GITHUB_WEBHOOK_SECRET")
-}
