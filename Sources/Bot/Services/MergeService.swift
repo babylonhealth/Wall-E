@@ -22,7 +22,7 @@ public final class MergeService {
         logger: LoggerProtocol,
         github: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
-        ) {
+    ) {
 
         self.logger = logger
         self.github = github
@@ -51,7 +51,7 @@ public final class MergeService {
             .combinePrevious()
             .startWithValues { old, new in
                 logger.log("♻️ [Merge Service] Did change state\n - 📜 \(old) \n - 📄 \(new)")
-        }
+            }
     }
 
     func pullRequestDidChange(metadata: PullRequestMetadata, action: PullRequest.Action) {
@@ -91,7 +91,11 @@ public final class MergeService {
 extension MergeService {
     fileprivate typealias Feedbacks = MergeService
 
-    fileprivate static func whenAddingPullRequests(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
+    fileprivate static func whenAddingPullRequests(
+        github: GitHubAPIProtocol,
+        scheduler: Scheduler
+    ) -> Feedback<State, Event> {
+
         return Feedback(
             deriving: { state in state.combinePrevious() },
             effects: { previous, current -> SignalProducer<Event, NoError> in
@@ -153,7 +157,11 @@ extension MergeService {
         }
     }
 
-    fileprivate static func whenIntegrating(github: GitHubAPIProtocol, pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>, scheduler: DateScheduler) -> Feedback<State, Event> {
+    fileprivate static func whenIntegrating(
+        github: GitHubAPIProtocol,
+        pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
+        scheduler: DateScheduler
+    ) -> Feedback<State, Event> {
 
         enum IntegrationError: Error {
             case stateCouldNotBeDetermined
@@ -181,13 +189,19 @@ extension MergeService {
                         switch result {
                         case .success:
                             return pullRequestChanges.filter { changedMetadata, action in
-                                return action == .synchronize && changedMetadata.reference.source.ref == metadata.reference.source.ref
+                                    action == .synchronize
+                                        && changedMetadata.reference.source.ref == metadata.reference.source.ref
                                 }
                                 .producer
                                 .take(first: 1)
-                                .map { changedMetadata, _ in Event.integrationDidChangeStatus(.updating, changedMetadata) }
+                                .map { changedMetadata, _ in
+                                    Event.integrationDidChangeStatus(.updating, changedMetadata)
+                                }
                                 .promoteError()
-                                .timeout(after: 60.0, raising: AnyError(IntegrationError.synchronizationFailed), on: scheduler)
+                                .timeout(
+                                    after: 60.0,
+                                    raising: AnyError(IntegrationError.synchronizationFailed), on: scheduler
+                                )
                         case .upToDate:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .conflict:
@@ -238,7 +252,7 @@ extension MergeService {
                             case .failure:
                                 observer.send(error: IntegrationError.stateCouldNotBeDetermined)
                             }
-                    }
+                        }
                     }
                     .retry(upTo: 4, interval: 30.0, on: scheduler)
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.unknown), metadata)) }
@@ -252,7 +266,7 @@ extension MergeService {
         logger: LoggerProtocol,
         statusChecksCompletion: Signal<StatusChange, NoError>,
         scheduler: DateScheduler
-        ) -> Feedback<State, Event> {
+    ) -> Feedback<State, Event> {
 
         struct Context: Equatable {
             let pullRequestMetadata: PullRequestMetadata
@@ -306,7 +320,7 @@ extension MergeService {
                     switch error {
                     case .timedOut: return .value(.statusChecksDidComplete(.failed(context.pullRequestMetadata)))
                     }
-            }
+                }
         }
     }
 
@@ -314,7 +328,7 @@ extension MergeService {
         github: GitHubAPIProtocol,
         logger: LoggerProtocol,
         scheduler: Scheduler
-        ) -> Feedback<State, Event> {
+    ) -> Feedback<State, Event> {
 
         struct IntegrationHandler: Equatable {
             let pullRequestNumber: UInt
@@ -346,14 +360,13 @@ extension MergeService {
                 .flatMapError { _ in .empty }
                 .then(SignalProducer(value: Event.integrationFailureHandled))
                 .observe(on: scheduler)
-
         }
     }
 
     fileprivate static func pullRequestChanges(
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: Scheduler
-        ) -> Feedback<State, Event> {
+    ) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status != .starting }) { state in
             return pullRequestChanges
                 .observe(on: scheduler)

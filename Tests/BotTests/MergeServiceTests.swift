@@ -261,7 +261,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
                 service.pullRequestDidChange(metadata: targetLabeled, action: .labeled)
                 scheduler.advance()
-        },
+            },
             assert: {
                 expect($0) == [
                     makeState(status: .starting, pullRequests: []),
@@ -766,7 +766,7 @@ class MergeServiceTests: XCTestCase {
                     makeState(status: .ready, pullRequests: []),
                     makeState(status: .idle, pullRequests: [])
                 ]
-        }
+            }
         )
     }
 
