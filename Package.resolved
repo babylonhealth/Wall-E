@@ -200,15 +200,6 @@
         }
       },
       {
-        "package": "Vinyl",
-        "repositoryURL": "https://github.com/Velhotes/Vinyl.git",
-        "state": {
-          "branch": "david/fix-tooling-version",
-          "revision": "43c07e35cc75b8784bc34fd95e87d9bae6d02933",
-          "version": null
-        }
-      },
-      {
         "package": "WebSocket",
         "repositoryURL": "https://github.com/vapor/websocket.git",
         "state": {
