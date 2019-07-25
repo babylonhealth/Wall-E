@@ -248,8 +248,8 @@
         "package": "Vinyl",
         "repositoryURL": "https://github.com/Velhotes/Vinyl.git",
         "state": {
-          "branch": "master",
-          "revision": "ebcec23c80087dc6539b8fb262316b4cfd8e772d",
+          "branch": "david/fix-tooling-version",
+          "revision": "c53b9ccdb1ab6281023f8472f9d6aa86b7cb093a",
           "version": null
         }
       },
