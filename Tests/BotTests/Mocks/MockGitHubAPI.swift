@@ -9,10 +9,10 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     enum Stubs {
         case getPullRequests(() -> [PullRequest])
         case getPullRequest((UInt) -> PullRequestMetadata)
-        case getCommitStatus((PullRequest) -> CommitStatus)
+        case getCommitStatus((PullRequest) -> CommitState)
         case mergePullRequest((PullRequest) -> Void)
         case mergeIntoBranch((String, String) -> MergeResult)
-        case deleteBranch((String) -> Void)
+        case deleteBranch((PullRequest.Branch) -> Void)
         case postComment((String, UInt) -> Void)
         case removeLabel((String, UInt) -> Void)
     }
@@ -55,7 +55,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitStatus, AnyError> {
+    func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError> {
 
         let index = iteration.modify { iteration -> Int in
             iteration = iteration + 1
@@ -100,7 +100,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func deleteBranch(named branch: String) -> SignalProducer<(), AnyError> {
+    func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
 
         let index = iteration.modify { iteration -> Int in
             iteration = iteration + 1
