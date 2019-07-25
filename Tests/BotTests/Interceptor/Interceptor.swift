@@ -1,47 +1,11 @@
 import Foundation
 
-final class Coordinator {
-    fileprivate var stubs: [Interceptor.Stub] = []
-    fileprivate var recordingContext: RecordingContext? = nil
-
-    func loadOrRecordStubs(into url: URL) {
-
-        if FileManager.default.fileExists(atPath: url.absoluteString) {
-
-            guard
-                let data = FileManager.default.contents(atPath: url.absoluteString),
-                let loadedStubs = try? JSONDecoder().decode([Interceptor.Stub].self, from: data)
-                else { fatalError("Failed to decode the existent stubs at `\(url)`") }
-
-            stubs.append(contentsOf: loadedStubs)
-
-        } else {
-            recordingContext = RecordingContext(destination: url)
-        }
-    }
-
-    func stopRecording() {
-        guard let context = recordingContext else { return }
-
-        guard
-            let data = try? JSONEncoder().encode(context.recordedStubs),
-            FileManager.default.createFile(atPath: context.destination.absoluteString, contents: data, attributes: nil)
-            else { fatalError("Failed to record stubs at `\(context.destination)`") }
-
-        recordingContext = nil
-    }
-
-    deinit {
-        Interceptor.stopRecording()
-    }
-}
-
 private let coordinator = Coordinator()
 
 final class Interceptor: URLProtocol {
 
     class func load(stubs newStubs: [Stub]) {
-        coordinator.stubs.append(contentsOf: newStubs)
+        coordinator.load(stubs: newStubs)
     }
 
     class func loadOrRecordStubs(into url: URL) {
@@ -53,40 +17,24 @@ final class Interceptor: URLProtocol {
     }
 
     private func stub(for request: URLRequest) -> Stub? {
-        guard coordinator.stubs.isEmpty == false else { return nil }
-
-        return coordinator.stubs.remove(at: 0)
+        return coordinator.stub(for: request)
     }
 
-    override open class func canInit(with request: URLRequest) -> Bool {
+    override class func canInit(with request: URLRequest) -> Bool {
         return true
     }
 
-    override open class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
         return request
     }
 
     override func startLoading() {
         if let availableStub = stub(for: request) {
             return send(response: availableStub.response)
-        } else if let recordingContext = coordinator.recordingContext {
-            recordingContext.session.dataTask(with: request) { data, response, error in
-
-                guard
-                    let response = response as? HTTPURLResponse,
-                    let url = response.url,
-                    let headers  = response.allHeaderFields as? [String : String]
-                    else { fatalError() }
-
-                let stub = Stub(
-                    response: Stub.Response(url: url, statusCode: response.statusCode, headers: headers, body: data)
-                )
-
-                recordingContext.recordedStubs.append(stub)
-
+        } else if coordinator.isRecordingEnabled {
+            coordinator.record(request: request) { stub in
                 self.send(response: stub.response)
-
-            }.resume()
+            }
         } else {
             fatalError("No stub found for \(request) and recording is not enabled")
         }
