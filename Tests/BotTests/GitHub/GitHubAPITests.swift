@@ -11,6 +11,17 @@ class GitHubAPITests: XCTestCase {
             .appendingPathComponent("Fixtures")
     }
 
+    var target: PullRequest {
+        return PullRequest(
+            number: 33248,
+            title: "runtime: fix gdb pretty print for slices",
+            author: .init(login: "elbeardmorez"),
+            source: .init(ref: "gdb_print_slice_fix", sha: "6e12bd85f5d71569cbfe574612210d3c925881b7"),
+            target: .init(ref: "master", sha: "e8c7e639ea6f4e2c66d8b17ca9283dba53667c9d"),
+            labels: [.init(name: "cla: yes")]
+        )
+    }
+
     func test_fetch_pull_requests() {
 
         perform(
@@ -67,15 +78,6 @@ class GitHubAPITests: XCTestCase {
 
             let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
 
-            let target = PullRequest(
-                number: 33248,
-                title: "runtime: fix gdb pretty print for slices",
-                author: .init(login: "elbeardmorez"),
-                source: .init(ref: "gdb_print_slice_fix", sha: "6e12bd85f5d71569cbfe574612210d3c925881b7"),
-                target: .init(ref: "master", sha: "e8c7e639ea6f4e2c66d8b17ca9283dba53667c9d"),
-                labels: [.init(name: "cla: yes")]
-            )
-
             let result = api.fetchCommitStatus(for: target).first()?.value
 
             expect(result).toNot(beNil())
@@ -109,15 +111,6 @@ class GitHubAPITests: XCTestCase {
 
             let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
 
-            let target = PullRequest(
-                number: 33248,
-                title: "runtime: fix gdb pretty print for slices",
-                author: .init(login: "elbeardmorez"),
-                source: .init(ref: "gdb_print_slice_fix", sha: "6e12bd85f5d71569cbfe574612210d3c925881b7"),
-                target: .init(ref: "master", sha: "e8c7e639ea6f4e2c66d8b17ca9283dba53667c9d"),
-                labels: [.init(name: "cla: yes")]
-            )
-
             let result: Void? = api.deleteBranch(named: target.source).first()?.value
 
             expect(result).toNot(beNil())
@@ -140,15 +133,6 @@ class GitHubAPITests: XCTestCase {
         ) { client in
 
             let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
-
-            let target = PullRequest(
-                number: 33248,
-                title: "runtime: fix gdb pretty print for slices",
-                author: .init(login: "elbeardmorez"),
-                source: .init(ref: "gdb_print_slice_fix", sha: "6e12bd85f5d71569cbfe574612210d3c925881b7"),
-                target: .init(ref: "master", sha: "e8c7e639ea6f4e2c66d8b17ca9283dba53667c9d"),
-                labels: [.init(name: "cla: yes")]
-            )
 
             let result: Void? = api.removeLabel(target.labels.first!, from: target).first()?.value
 
