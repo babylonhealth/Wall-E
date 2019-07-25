@@ -1,6 +1,5 @@
 import XCTest
 import Nimble
-import Vinyl
 @testable import Bot
 
 class GitHubAPITests: XCTestCase {
@@ -125,11 +124,6 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
-    enum Strategy {
-        case vinylNamed(String)
-        case preLoadedVinyl(Vinyl)
-    }
-
     private func perform(
         stub: @autoclosure () -> Void,
         execute: (GitHubClient) -> Void
@@ -146,22 +140,5 @@ class GitHubAPITests: XCTestCase {
         execute(client)
         
         Interceptor.stopRecording()
-    }
-
-    private static func defaultRepositoryAPI() -> (URLSession) -> RepositoryAPI {
-        return { session in
-            return RepositoryAPI(
-                client: GitHubClient(session: session, token: ""),
-                repository: .init(owner: "golang", name: "go"))
-        }
-    }
-
-    private func loadVinyl(from path: String) -> Vinyl {
-        guard
-            let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-            let plastic = try? JSONSerialization.jsonObject(with: data) as? Plastic
-            else { return Vinyl(tracks: []) }
-
-        return Vinyl(plastic: plastic ?? [])
     }
 }
