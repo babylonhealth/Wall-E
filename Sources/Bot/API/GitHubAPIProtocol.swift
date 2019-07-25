@@ -18,5 +18,5 @@ public protocol GitHubAPIProtocol {
 
     func postComment(_ comment: String, inPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError>
 
-    func removeLabel(_ label: String, fromPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError>
+    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError>
 }

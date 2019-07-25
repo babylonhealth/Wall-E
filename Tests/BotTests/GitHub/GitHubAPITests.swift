@@ -124,6 +124,38 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
+    func test_remove_label() {
+
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/golang/go/issues/33248/labels/cla:%20yes")!,
+                            statusCode: 200,
+                            body: Data()
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let target = PullRequest(
+                number: 33248,
+                title: "runtime: fix gdb pretty print for slices",
+                author: .init(login: "elbeardmorez"),
+                source: .init(ref: "gdb_print_slice_fix", sha: "6e12bd85f5d71569cbfe574612210d3c925881b7"),
+                target: .init(ref: "master", sha: "e8c7e639ea6f4e2c66d8b17ca9283dba53667c9d"),
+                labels: [.init(name: "cla: yes")]
+            )
+
+            let result: Void? = api.removeLabel(target.labels.first!, from: target).first()?.value
+
+            expect(result).toNot(beNil())
+        }
+    }
+
     private func perform(
         stub: @autoclosure () -> Void,
         execute: (GitHubClient) -> Void

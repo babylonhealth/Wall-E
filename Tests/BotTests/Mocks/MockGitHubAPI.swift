@@ -14,7 +14,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         case mergeIntoBranch((String, String) -> MergeResult)
         case deleteBranch((PullRequest.Branch) -> Void)
         case postComment((String, UInt) -> Void)
-        case removeLabel((String, UInt) -> Void)
+        case removeLabel((PullRequest.Label, PullRequest) -> Void)
     }
 
     let stubs: [Stubs]
@@ -130,7 +130,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func removeLabel(_ label: String, fromPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError> {
+    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
 
         let index = iteration.modify { iteration -> Int in
             iteration = iteration + 1
@@ -139,7 +139,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
 
         switch stubs[index] {
         case let .removeLabel(handler):
-            return SignalProducer(value: handler(label, pullRequestNumber))
+            return SignalProducer(value: handler(label, pullRequest))
         default:
             fatalError("Stub not found")
         }

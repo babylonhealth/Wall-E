@@ -50,6 +50,13 @@ extension Repository {
             path: path(for: "git/refs/heads/\(branch.ref)")
         )
     }
+
+    func removeLabel(label: PullRequest.Label, from pullRequest: PullRequest) -> Resource<NoContent> {
+        return Resource(
+            method: .DELETE,
+            path: path(for: "issues/\(pullRequest.number)/labels/\(label.name)")
+        )
+    }
 }
 
 public struct RepositoryAPI: GitHubAPIProtocol {
@@ -96,7 +103,9 @@ public struct RepositoryAPI: GitHubAPIProtocol {
         fatalError()
     }
 
-    public func removeLabel(_ label: String, fromPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError> {
-        fatalError()
+    public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+        return client.request(repository.removeLabel(label: label, from: pullRequest))
+            .map { _ in }
+            .mapError(AnyError.init)
     }
 }
