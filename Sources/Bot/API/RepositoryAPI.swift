@@ -88,6 +88,15 @@ extension Repository {
         )
     }
 
+    func merge(pullRequest: PullRequest) -> Resource<NoContent> {
+        return Resource(
+            method: .PUT,
+            path: "pulls/\(pullRequest.number)/merge",
+            body: encode(MergePullRequestRequest(with: pullRequest)),
+            decoder: defaultDecoder
+        )
+    }
+
     private func defaultDecoder<T: Decodable>(_ response: Response) -> Result<T, GitHubClient.Error> {
         switch response.statusCode {
         case 200...299:
@@ -139,7 +148,8 @@ public struct RepositoryAPI: GitHubAPIProtocol {
     }
 
     public func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
-        fatalError()
+        return client.request(repository.merge(pullRequest: pullRequest))
+            .mapError(AnyError.init)
     }
 
     public func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {

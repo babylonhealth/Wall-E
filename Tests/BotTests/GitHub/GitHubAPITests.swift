@@ -241,6 +241,31 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
+    func test_merge_pull_request() {
+
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/golang/go/pulls/123/merge")!,
+                            statusCode: 200,
+                            body: Data()
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let result: Void? = api.mergePullRequest(target).first()?.value
+
+            expect(result).toNot(beNil())
+        }
+    }
+
+    // MARK: - Template
+
     private func perform(
         stub: @autoclosure () -> Void,
         execute: (GitHubClient) -> Void
