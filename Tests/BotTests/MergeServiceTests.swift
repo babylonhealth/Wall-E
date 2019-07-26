@@ -10,14 +10,14 @@ struct MockLogger: LoggerProtocol {
     }
 }
 
-let IntegrationLabel = PullRequest.Label(name: "Please Merge 🙏")
+let integrationLabel = PullRequest.Label(name: "Please Merge 🙏")
 
 let defaultBranch = "some-branch"
 
 let defaultTarget = PullRequestMetadata.stub(
     number: 1,
     headRef: defaultBranch,
-    labels: [IntegrationLabel],
+    labels: [integrationLabel],
     mergeState: .behind
 )
 
@@ -92,7 +92,7 @@ class MergeServiceTests: XCTestCase {
 
         let pullRequests = (1...3)
             .map {
-                PullRequestMetadata.stub(number: $0, labels: [IntegrationLabel])
+                PullRequestMetadata.stub(number: $0, labels: [integrationLabel])
                     .with(mergeState: .clean)
             }
 
@@ -247,7 +247,7 @@ class MergeServiceTests: XCTestCase {
     func test_resuming_after_labelling_a_pull_request() {
 
         let target = PullRequestMetadata.stub(number: 1, headRef: defaultBranch, labels: [], mergeState: .clean)
-        let targetLabeled = target.with(labels: [IntegrationLabel])
+        let targetLabeled = target.with(labels: [integrationLabel])
 
         perform(
             stubs: [
@@ -278,7 +278,7 @@ class MergeServiceTests: XCTestCase {
     func test_adding_a_new_pull_request_while_running_an_integrating() {
 
         let first = defaultTarget.with(mergeState: .behind)
-        let second = PullRequestMetadata.stub(number: 2, labels: [IntegrationLabel], mergeState: .clean)
+        let second = PullRequestMetadata.stub(number: 2, labels: [integrationLabel], mergeState: .clean)
 
         perform(
             stubs: [
@@ -591,7 +591,7 @@ class MergeServiceTests: XCTestCase {
     func test_excluding_pull_request_in_the_queue() {
 
         let first = defaultTarget.with(mergeState: .behind)
-        let second = PullRequestMetadata.stub(number: 2, labels: [IntegrationLabel], mergeState: .clean)
+        let second = PullRequestMetadata.stub(number: 2, labels: [integrationLabel], mergeState: .clean)
 
         perform(
             stubs: [
@@ -648,7 +648,7 @@ class MergeServiceTests: XCTestCase {
 
         let pullRequests = (1...3)
             .map {
-                PullRequestMetadata.stub(number: $0, labels: [IntegrationLabel])
+                PullRequestMetadata.stub(number: $0, labels: [integrationLabel])
                     .with(mergeState: .clean)
         }
 
@@ -780,7 +780,7 @@ class MergeServiceTests: XCTestCase {
 
         let scheduler = TestScheduler()
         let github2 = MockGitHubAPI(stubs: stubs)
-        let service = MergeService(integrationLabel: IntegrationLabel, logger: MockLogger(), github: github2, scheduler: scheduler)
+        let service = MergeService(integrationLabel: integrationLabel, logger: MockLogger(), github: github2, scheduler: scheduler)
 
         var states: [MergeService.State] = []
 
@@ -798,7 +798,7 @@ class MergeServiceTests: XCTestCase {
         statusChecksTimeout: TimeInterval = defaultStatusChecksTimeout
         ) -> MergeService.State {
         return MergeService.State(
-            integrationLabel: IntegrationLabel,
+            integrationLabel: integrationLabel,
             statusChecksTimeout: statusChecksTimeout,
             pullRequests: pullRequests,
             status: status
