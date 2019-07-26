@@ -30,44 +30,44 @@ extension Repository {
             queryItems: [
                 URLQueryItem(name: "state", value: "open")
             ],
-            decoder: defaultDecoder
+            decoder: decode
         )
     }
 
     func pullRequest(number: UInt) -> Resource<PullRequestMetadata> {
-        return Resource(method: .GET, path: path(for: "pulls/\(number)"), decoder: defaultDecoder)
+        return Resource(method: .GET, path: path(for: "pulls/\(number)"), decoder: decode)
     }
 
     func commitStatus(for pullRequest: PullRequest) -> Resource<CommitState> {
         return Resource(
             method: .GET,
             path: path(for: "commits/\(pullRequest.source.sha)/status"),
-            decoder: defaultDecoder
+            decoder: decode
         )
     }
 
-    func deleteBranch(branch: PullRequest.Branch) -> Resource<NoContent> {
+    func deleteBranch(branch: PullRequest.Branch) -> Resource<Void> {
         return Resource(
             method: .DELETE,
             path: path(for: "git/refs/heads/\(branch.ref)"),
-            decoder: defaultDecoder
+            decoder: decode
         )
     }
 
-    func removeLabel(label: PullRequest.Label, from pullRequest: PullRequest) -> Resource<NoContent> {
+    func removeLabel(label: PullRequest.Label, from pullRequest: PullRequest) -> Resource<Void> {
         return Resource(
             method: .DELETE,
             path: path(for: "issues/\(pullRequest.number)/labels/\(label.name)"),
-            decoder: defaultDecoder
+            decoder: decode
         )
     }
 
-    func publish(comment: String, in pullRequest: PullRequest) -> Resource<NoContent> {
+    func publish(comment: String, in pullRequest: PullRequest) -> Resource<Void> {
         return Resource(
             method: .POST,
             path: path(for: "issues/\(pullRequest.number)/comments"),
             body: encode(PostCommmentRequest(body: comment)),
-            decoder: defaultDecoder
+            decoder: decode
         )
     }
 
@@ -88,23 +88,13 @@ extension Repository {
         )
     }
 
-    func merge(pullRequest: PullRequest) -> Resource<NoContent> {
+    func merge(pullRequest: PullRequest) -> Resource<Void> {
         return Resource(
             method: .PUT,
             path: "pulls/\(pullRequest.number)/merge",
             body: encode(MergePullRequestRequest(with: pullRequest)),
-            decoder: defaultDecoder
+            decoder: decode
         )
-    }
-
-    private func defaultDecoder<T: Decodable>(_ response: Response) -> Result<T, GitHubClient.Error> {
-        switch response.statusCode {
-        case 200...299:
-            return JSONDecoder.iso8601Decoder.decode(response.body)
-                .mapError(GitHubClient.Error.decoding)
-        default:
-            return .failure(.api(response))
-        }
     }
 
     // TODO: This should be moved to be done as part of the handling of resources in `GitHubClient`
@@ -160,13 +150,11 @@ public struct RepositoryAPI: GitHubAPIProtocol {
 
     public func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
         return client.request(repository.publish(comment: comment, in: pullRequest))
-            .map { _ in }
             .mapError(AnyError.init)
     }
 
     public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
         return client.request(repository.removeLabel(label: label, from: pullRequest))
-            .map { _ in }
             .mapError(AnyError.init)
     }
 }

@@ -28,12 +28,6 @@ public struct GitHubClient {
             }
     }
 
-    // TODO: Replace () by Never
-    func request(_ resource: Resource<NoContent>) -> SignalProducer<(), Error> {
-        return request(urlRequest(for: resource))
-            .map { _ in }
-    }
-
     func request<T>(_ resource: Resource<T>) -> SignalProducer<T, Error> {
         return request(urlRequest(for: resource))
             .attemptMap(resource.decoder)
