@@ -6,9 +6,6 @@ jobs:
       - image: swift:4.2
     steps:
       - checkout
-      - run:
-          name: Pull Dependencies
-          command: swift package resolve
       - run: 
           name: Compile code
           command: swift build
