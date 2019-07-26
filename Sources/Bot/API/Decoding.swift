@@ -12,7 +12,7 @@ func decode(_ response: Response) -> Result<Void, GitHubClient.Error> {
 private func decode<T>(
     _ response: Response,
     with handler: (Response) -> Result<T, DecodingError>
-    ) -> Result<T, GitHubClient.Error> {
+) -> Result<T, GitHubClient.Error> {
     switch response.statusCode {
     case 200...299:
         return handler(response)
