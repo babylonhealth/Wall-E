@@ -140,6 +140,29 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
+    func test_publish_comment() {
+
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/golang/go/issues/33248/comments")!,
+                            statusCode: 201,
+                            body: Data()
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let result: Void? = api.postComment("Hello World", in: target).first()?.value
+
+            expect(result).toNot(beNil())
+        }
+    }
+
     private func perform(
         stub: @autoclosure () -> Void,
         execute: (GitHubClient) -> Void

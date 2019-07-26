@@ -111,13 +111,13 @@ extension MergeService {
                         case 0:
                             return github.postComment(
                                 "Your pull request was accepted and is going to be handled right away 🏎",
-                                inPullRequestNumber: pullRequest.number
+                                in: pullRequest
                                 )
                                 .flatMapError { _ in .empty }
                         case 1...:
                             return github.postComment(
                                 "Your pull request was accepted and it's currently `#\(index + 1)` in the queue, hold tight ⏳",
-                                inPullRequestNumber: pullRequest.number
+                                in: pullRequest
                                 )
                                 .flatMapError { _ in .empty }
                         default:
@@ -350,7 +350,7 @@ extension MergeService {
 
         return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, NoError> in
             return SignalProducer.merge(
-                github.postComment(handler.failureMessage, inPullRequestNumber: handler.pullRequest.number)
+                github.postComment(handler.failureMessage, in: handler.pullRequest)
                     .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)") }),
                 github.removeLabel(handler.integrationLabel, from: handler.pullRequest)
                     .on(failed: { error in logger.log("🚨 Failed to remove integration label from PR #\(handler.pullRequest.number) with error: \(error)") })

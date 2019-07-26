@@ -16,7 +16,7 @@ public protocol GitHubAPIProtocol {
 
     func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError>
 
-    func postComment(_ comment: String, inPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError>
+    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError>
 
     func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError>
 }

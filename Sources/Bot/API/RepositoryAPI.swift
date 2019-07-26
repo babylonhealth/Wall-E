@@ -57,6 +57,22 @@ extension Repository {
             path: path(for: "issues/\(pullRequest.number)/labels/\(label.name)")
         )
     }
+
+    func publish(comment: String, in pullRequest: PullRequest) -> Resource<NoContent> {
+        return Resource(
+            method: .POST,
+            path: path(for: "issues/\(pullRequest.number)/comments"),
+            body: encode(PostCommmentRequest(body: comment))
+        )
+    }
+
+    // TODO: This should be moved to be done as part of the handling of resources in `GitHubClient`
+    private func encode<T: Encodable>(_ t: T) -> Data {
+        guard let data = try? JSONEncoder().encode(t)
+            else { fatalError("Unexpected failure while encoding `\(t)`") }
+
+        return data
+    }
 }
 
 public struct RepositoryAPI: GitHubAPIProtocol {
@@ -99,8 +115,10 @@ public struct RepositoryAPI: GitHubAPIProtocol {
             .mapError(AnyError.init)
     }
 
-    public func postComment(_ comment: String, inPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError> {
-        fatalError()
+    public func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+        return client.request(repository.publish(comment: comment, in: pullRequest))
+            .map { _ in }
+            .mapError(AnyError.init)
     }
 
     public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {

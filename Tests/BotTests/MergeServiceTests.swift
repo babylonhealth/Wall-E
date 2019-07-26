@@ -656,17 +656,17 @@ class MergeServiceTests: XCTestCase {
             stubs: [
                 .getPullRequests { pullRequests.map { $0.reference } },
                 .getPullRequest { _ in pullRequests[0] },
-                .postComment { message, number in
+                .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and is going to be handled right away 🏎"
-                    expect(number) == 1
+                    expect(pullRequest.number) == 1
                 },
-                .postComment { message, number in
+                .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and it's currently `#2` in the queue, hold tight ⏳"
-                    expect(number) == 2
+                    expect(pullRequest.number) == 2
                 },
-                .postComment { message, number in
+                .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and it's currently `#3` in the queue, hold tight ⏳"
-                    expect(number) == 3
+                    expect(pullRequest.number) == 3
                 },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },

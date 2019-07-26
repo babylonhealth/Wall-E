@@ -13,7 +13,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         case mergePullRequest((PullRequest) -> Void)
         case mergeIntoBranch((String, String) -> MergeResult)
         case deleteBranch((PullRequest.Branch) -> Void)
-        case postComment((String, UInt) -> Void)
+        case postComment((String, PullRequest) -> Void)
         case removeLabel((PullRequest.Label, PullRequest) -> Void)
     }
 
@@ -115,7 +115,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func postComment(_ comment: String, inPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError> {
+    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
 
         let index = iteration.modify { iteration -> Int in
             iteration = iteration + 1
@@ -124,7 +124,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
 
         switch stubs[index] {
         case let .postComment(handler):
-            return SignalProducer(value: handler(comment, pullRequestNumber))
+            return SignalProducer(value: handler(comment, pullRequest))
         default:
             fatalError("Stub not found")
         }
