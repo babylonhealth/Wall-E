@@ -16,24 +16,15 @@ public struct GitHubClient {
         self.authorizationHeaders = { token.isEmpty ? [:] : ["Authorization": "token \(token)"] }
     }
 
-    private func request(_ request: URLRequest) -> SignalProducer<(Response, Data), Error> {
+    private func request(_ request: URLRequest) -> SignalProducer<Response, Error> {
         return session
             .reactive
             .data(with: request)
             .mapError { .network($0.error) }
-            .flatMap(.concat) { data, response -> SignalProducer<(Response, Data), Error> in
+            .map { data, response -> Response in
                 let response = response as! HTTPURLResponse
                 let headers = response.allHeaderFields as! [String:String]
-
-                return SignalProducer { observer, disposable in
-                    switch response.statusCode {
-                    case 200...299:
-                        observer.send(value: (Response(headerFields: headers), data))
-                        observer.sendCompleted()
-                    default:
-                        observer.send(error: .api(response.statusCode, Response(headerFields: headers), data))
-                    }
-                }
+                return Response(statusCode: response.statusCode, headers: headers, body: data)
             }
     }
 
@@ -45,20 +36,16 @@ public struct GitHubClient {
 
     func request<T: Decodable>(_ resource: Resource<T>) -> SignalProducer<T, Error> {
         return request(urlRequest(for: resource))
-            .attemptMap { response, data -> Result<T, Error> in
-                JSONDecoder.iso8601Decoder.decode(data)
-                    .mapError(Error.decoding)
-            }
+            .attemptMap { response in decode(response, for: resource) }
     }
 
     func request<T: Decodable>(_ resource: Resource<[T]>) -> SignalProducer<[T], Error> {
 
         func requestPage(for resource: Resource<[T]>, pageNumber: Int = 1) -> SignalProducer<[T], Error> {
             return request(urlRequest(for: resource, additionalQueryItems: queryItemsForPage(pageNumber)))
-                .attemptMap { response, data -> Result<(Response, [T]), Error> in
-                    JSONDecoder.iso8601Decoder.decode(data)
+                .attemptMap { response -> Result<(Response, [T]), Error> in
+                    return decode(response, for: resource)
                         .map { (response, $0) }
-                        .mapError(Error.decoding)
                 }
                 .flatMap(.concat) { response, result -> SignalProducer<[T], Error> in
                     let current = SignalProducer<[T], Error>(value: result)
@@ -96,8 +83,18 @@ public struct GitHubClient {
 extension GitHubClient {
     enum Error: Swift.Error {
         case network(Swift.Error)
-        case api(Int, Response, Data)
+        case api(Response)
         case decoding(DecodingError)
+    }
+}
+
+private func decode<T: Decodable>(_ response: Response, for resource: Resource<T>) -> Result<T, GitHubClient.Error> {
+    switch response.statusCode {
+    case 200...299:
+        return JSONDecoder.iso8601Decoder.decode(response.body)
+            .mapError(GitHubClient.Error.decoding)
+    default:
+        return .failure(.api(response))
     }
 }
 
