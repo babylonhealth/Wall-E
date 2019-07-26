@@ -1,24 +1,30 @@
 import Foundation
+import Result
 
-internal struct Resource<T: Decodable>: Hashable {
+internal struct Resource<T> {
+    typealias Decoder = (Response) -> Result<T, GitHubClient.Error>
+
     internal var method: Method
     internal var path: String
     internal var queryItems: [URLQueryItem]
     internal var headers: [String: String]
     internal var body: Data?
+    internal let decoder: Decoder
 
     internal init(
         method: Method,
         path: String,
         queryItems: [URLQueryItem] = [],
         headers: [String: String] = [:],
-        body: Data? = nil
+        body: Data? = nil,
+        decoder: @escaping Decoder
     ) {
         self.method = method
         self.path = path
         self.queryItems = queryItems
         self.headers = headers
         self.body = body
+        self.decoder = decoder
     }
 }
 

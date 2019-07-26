@@ -34,17 +34,17 @@ public struct GitHubClient {
             .map { _ in }
     }
 
-    func request<T: Decodable>(_ resource: Resource<T>) -> SignalProducer<T, Error> {
+    func request<T>(_ resource: Resource<T>) -> SignalProducer<T, Error> {
         return request(urlRequest(for: resource))
-            .attemptMap { response in decode(response, for: resource) }
+            .attemptMap(resource.decoder)
     }
 
-    func request<T: Decodable>(_ resource: Resource<[T]>) -> SignalProducer<[T], Error> {
+    func request<T>(_ resource: Resource<[T]>) -> SignalProducer<[T], Error> {
 
         func requestPage(for resource: Resource<[T]>, pageNumber: Int = 1) -> SignalProducer<[T], Error> {
             return request(urlRequest(for: resource, additionalQueryItems: queryItemsForPage(pageNumber)))
                 .attemptMap { response -> Result<(Response, [T]), Error> in
-                    return decode(response, for: resource)
+                    return resource.decoder(response)
                         .map { (response, $0) }
                 }
                 .flatMap(.concat) { response, result -> SignalProducer<[T], Error> in
@@ -85,16 +85,6 @@ extension GitHubClient {
         case network(Swift.Error)
         case api(Response)
         case decoding(DecodingError)
-    }
-}
-
-private func decode<T: Decodable>(_ response: Response, for resource: Resource<T>) -> Result<T, GitHubClient.Error> {
-    switch response.statusCode {
-    case 200...299:
-        return JSONDecoder.iso8601Decoder.decode(response.body)
-            .mapError(GitHubClient.Error.decoding)
-    default:
-        return .failure(.api(response))
     }
 }
 

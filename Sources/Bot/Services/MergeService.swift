@@ -184,7 +184,7 @@ extension MergeService {
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.mergeFailed), metadata)) }
                     .observe(on: scheduler)
             case .behind:
-                return github.merge(intoBranch: metadata.reference.source.ref, head: metadata.reference.target.ref)
+                return github.performMerge(base: metadata.reference.source, head: metadata.reference.target)
                     .flatMap(.latest) { result -> SignalProducer<Event, AnyError> in
                         switch result {
                         case .success:

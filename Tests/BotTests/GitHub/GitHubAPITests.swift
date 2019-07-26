@@ -163,6 +163,84 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
+    func test_merge_branch_with_success() {
+
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/golang/go/merges")!,
+                            statusCode: 200,
+                            body: Data()
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let result = api.performMerge(
+                base: .init(ref: "master", sha: "1234"),
+                head: .init(ref: "develop", sha: "5678")
+                ).first()?.value
+
+            expect(result) == .success
+        }
+    }
+
+    func test_merge_branch_up_to_date() {
+
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/golang/go/merges")!,
+                            statusCode: 204,
+                            body: Data()
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let result = api.performMerge(
+                base: .init(ref: "master", sha: "1234"),
+                head: .init(ref: "develop", sha: "5678")
+                ).first()?.value
+
+            expect(result) == .upToDate
+        }
+    }
+
+    func test_merge_pull_request_with_conflicts() {
+
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/golang/go/merges")!,
+                            statusCode: 409,
+                            body: Data()
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let result = api.performMerge(
+                base: .init(ref: "master", sha: "1234"),
+                head: .init(ref: "develop", sha: "5678")
+                ).first()?.value
+
+            expect(result) == .conflict
+        }
+    }
+
     private func perform(
         stub: @autoclosure () -> Void,
         execute: (GitHubClient) -> Void

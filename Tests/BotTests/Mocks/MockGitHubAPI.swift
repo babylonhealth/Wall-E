@@ -11,7 +11,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         case getPullRequest((UInt) -> PullRequestMetadata)
         case getCommitStatus((PullRequest) -> CommitState)
         case mergePullRequest((PullRequest) -> Void)
-        case mergeIntoBranch((String, String) -> MergeResult)
+        case mergeIntoBranch((PullRequest.Branch, PullRequest.Branch) -> MergeResult)
         case deleteBranch((PullRequest.Branch) -> Void)
         case postComment((String, PullRequest) -> Void)
         case removeLabel((PullRequest.Label, PullRequest) -> Void)
@@ -70,7 +70,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func merge(intoBranch branch: String, head: String) -> SignalProducer<MergeResult, AnyError> {
+    func performMerge(base: PullRequest.Branch, head: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
 
         let index = iteration.modify { iteration -> Int in
             iteration = iteration + 1
@@ -79,7 +79,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
 
         switch stubs[index] {
         case let .mergeIntoBranch(handler):
-            return SignalProducer(value: handler(branch, head))
+            return SignalProducer(value: handler(base, head))
         default:
             fatalError("Stub not found")
         }

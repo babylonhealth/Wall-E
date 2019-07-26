@@ -10,7 +10,7 @@ public protocol GitHubAPIProtocol {
 
     func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError>
 
-    func merge(intoBranch branch: String, head: String) -> SignalProducer<MergeResult, AnyError>
+    func performMerge(base: PullRequest.Branch, head: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError>
 
     func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError>
 
