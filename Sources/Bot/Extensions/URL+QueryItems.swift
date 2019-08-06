@@ -5,7 +5,7 @@ extension URL {
         guard queryItems.isEmpty == false else { return self }
         
         var components = URLComponents(url: self, resolvingAgainstBaseURL: true)!
-        components.queryItems = components.queryItems.map { $0 + queryItems } ?? queryItems
+        components.queryItems = (components.queryItems ?? []) + queryItems
         return components.url!
     }
 }
