@@ -9,7 +9,7 @@ class ResponseTests: XCTestCase {
         let response =  Response(
             statusCode: 200,
             headers: [
-                "Link": "<https://api.github.com/repositories/23096959/pulls?page=2&per_page=100>; rel=\"next\", <https://api.github.com/repositories/23096959/pulls?page=2&per_page=100>; rel=\"last\""
+                "Link": #"<https://api.github.com/repositories/23096959/pulls?page=2&per_page=100>; rel="next", <https://api.github.com/repositories/23096959/pulls?page=2&per_page=100>; rel="last""#
             ],
             body: Data())
 
@@ -20,7 +20,7 @@ class ResponseTests: XCTestCase {
         let response =  Response(
             statusCode: 200,
             headers: [
-                "Link": "<https://api.github.com/repositories/23096959/pulls?page=1&per_page=100>; rel=\"prev\", <https://api.github.com/repositories/23096959/pulls?page=1&per_page=100>; rel=\"first\""
+                "Link": #"<https://api.github.com/repositories/23096959/pulls?page=1&per_page=100>; rel="prev", <https://api.github.com/repositories/23096959/pulls?page=1&per_page=100>; rel="first""#
             ],
             body: Data())
 
