@@ -16,18 +16,6 @@ public struct GitHubClient {
         self.authorizationHeaders = { token.isEmpty ? [:] : ["Authorization": "token \(token)"] }
     }
 
-    private func request(_ request: URLRequest) -> SignalProducer<Response, Error> {
-        return session
-            .reactive
-            .data(with: request)
-            .mapError { .network($0.error) }
-            .map { data, response -> Response in
-                let response = response as! HTTPURLResponse
-                let headers = response.allHeaderFields as! [String:String]
-                return Response(statusCode: response.statusCode, headers: headers, body: data)
-            }
-    }
-
     func request<T>(_ resource: Resource<T>) -> SignalProducer<T, Error> {
         return request(urlRequest(for: resource))
             .attemptMap(resource.decoder)
@@ -52,6 +40,18 @@ public struct GitHubClient {
         }
 
         return requestPage(for: resource)
+    }
+
+    private func request(_ request: URLRequest) -> SignalProducer<Response, Error> {
+        return session
+            .reactive
+            .data(with: request)
+            .mapError { .network($0.error) }
+            .map { data, response -> Response in
+                let response = response as! HTTPURLResponse
+                let headers = response.allHeaderFields as! [String:String]
+                return Response(statusCode: response.statusCode, headers: headers, body: data)
+        }
     }
 
     private func urlRequest<Value>(
