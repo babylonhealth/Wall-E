@@ -40,7 +40,6 @@ public struct RepositoryAPI: GitHubAPIProtocol {
 
     public func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
         return client.request(repository.deleteBranch(branch: branch))
-            .map { _ in }
             .mapError(AnyError.init)
     }
 
