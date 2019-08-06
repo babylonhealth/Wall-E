@@ -1,19 +1,11 @@
 import Foundation
 import Result
 
-private let iso8601: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier:"en_US_POSIX")
-    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-    formatter.timeZone = TimeZone(abbreviation:"UTC")
-    return formatter
-}()
-
 extension JSONDecoder {
 
-    static var iso8601Decoder: JSONDecoder {
+    static func with(dateDecodingStrategy strategy: DateDecodingStrategy) -> JSONDecoder {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(iso8601)
+        decoder.dateDecodingStrategy = strategy
         return decoder
     }
 
