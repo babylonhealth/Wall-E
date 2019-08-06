@@ -646,7 +646,7 @@ class MergeServiceTests: XCTestCase {
 
     func test_pull_requests_receive_feedback_when_accepted() {
 
-        let pullRequests = (1...3)
+        let pullRequests = [144, 233, 377]
             .map {
                 PullRequestMetadata.stub(number: $0, labels: [integrationLabel])
                     .with(mergeState: .clean)
@@ -658,15 +658,15 @@ class MergeServiceTests: XCTestCase {
                 .getPullRequest { _ in pullRequests[0] },
                 .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and is going to be handled right away 🏎"
-                    expect(pullRequest.number) == 1
+                    expect(pullRequest.number) == 144
                 },
                 .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and it's currently `#2` in the queue, hold tight ⏳"
-                    expect(pullRequest.number) == 2
+                    expect(pullRequest.number) == 233
                 },
                 .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and it's currently `#3` in the queue, hold tight ⏳"
-                    expect(pullRequest.number) == 3
+                    expect(pullRequest.number) == 377
                 },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
