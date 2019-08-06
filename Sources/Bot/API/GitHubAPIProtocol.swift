@@ -10,8 +10,16 @@ public protocol GitHubAPIProtocol {
 
     func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError>
 
-    func performMerge(base: PullRequest.Branch, head: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError>
+    /// Merges one branch into another.
+    ///
+    /// - SeeAlso: https://developer.github.com/v3/repos/merging/
+    func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError>
 
+    /// Merges an open pull request.
+    ///
+    /// - Note: This mimics the `Merge Button` from GitHub UI.
+    ///
+    /// - SeeAlso: https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
     func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError>
 
     func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError>

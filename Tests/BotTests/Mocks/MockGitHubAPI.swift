@@ -70,7 +70,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func performMerge(base: PullRequest.Branch, head: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
+    func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
 
         let index = iteration.modify { iteration -> Int in
             iteration = iteration + 1

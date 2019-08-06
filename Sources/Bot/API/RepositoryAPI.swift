@@ -71,7 +71,7 @@ extension Repository {
         )
     }
 
-    func performMerge(base: PullRequest.Branch, head: PullRequest.Branch) -> Resource<MergeResult> {
+    func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> Resource<MergeResult> {
         return Resource(
             method: .POST,
             path: path(for: "merges"),
@@ -132,8 +132,8 @@ public struct RepositoryAPI: GitHubAPIProtocol {
             .mapError(AnyError.init)
     }
 
-    public func performMerge(base: PullRequest.Branch, head: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
-        return client.request(repository.performMerge(base: base, head: head))
+    public func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
+        return client.request(repository.merge(head: head, into: base))
             .mapError(AnyError.init)
     }
 

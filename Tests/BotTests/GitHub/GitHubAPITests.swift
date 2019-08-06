@@ -180,9 +180,9 @@ class GitHubAPITests: XCTestCase {
 
             let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
 
-            let result = api.performMerge(
-                base: .init(ref: "master", sha: "1234"),
-                head: .init(ref: "develop", sha: "5678")
+            let result = api.merge(
+                head: PullRequest.Branch(ref: "develop", sha: "5678"),
+                into: PullRequest.Branch(ref: "master", sha: "1234")
                 ).first()?.value
 
             expect(result) == .success
@@ -206,9 +206,9 @@ class GitHubAPITests: XCTestCase {
 
             let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
 
-            let result = api.performMerge(
-                base: .init(ref: "master", sha: "1234"),
-                head: .init(ref: "develop", sha: "5678")
+            let result = api.merge(
+                head: PullRequest.Branch(ref: "develop", sha: "5678"),
+                into: PullRequest.Branch(ref: "master", sha: "1234")
                 ).first()?.value
 
             expect(result) == .upToDate
@@ -232,9 +232,9 @@ class GitHubAPITests: XCTestCase {
 
             let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
 
-            let result = api.performMerge(
-                base: .init(ref: "master", sha: "1234"),
-                head: .init(ref: "develop", sha: "5678")
+            let result = api.merge(
+                head: PullRequest.Branch(ref: "develop", sha: "5678"),
+                into: PullRequest.Branch(ref: "master", sha: "1234")
                 ).first()?.value
 
             expect(result) == .conflict
