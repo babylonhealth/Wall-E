@@ -4,6 +4,11 @@ private let coordinator = Coordinator()
 
 final class Interceptor: URLProtocol {
 
+    static var isRecordingAvailable: Bool {
+        get { return coordinator.isRecordingAvailable }
+        set { coordinator.isRecordingAvailable = newValue }
+    }
+
     class func load(stubs newStubs: [Stub]) {
         coordinator.load(stubs: newStubs)
     }
@@ -31,7 +36,7 @@ final class Interceptor: URLProtocol {
     override func startLoading() {
         if let availableStub = stub(for: request) {
             return send(response: availableStub.response)
-        } else if coordinator.isRecordingEnabled {
+        } else if coordinator.isRecording {
             coordinator.record(request: request) { stub in
                 self.send(response: stub.response)
             }

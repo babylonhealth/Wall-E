@@ -20,7 +20,11 @@ final class Coordinator {
     private var stubs: [Interceptor.Stub] = []
     private var recordingContext: RecordingContext? = nil
 
-    var isRecordingEnabled: Bool {
+    var isRecordingAvailable: Bool = false
+
+    var isRecording: Bool {
+        guard isRecordingAvailable else { return false }
+
         return recordingContext != nil
     }
 
