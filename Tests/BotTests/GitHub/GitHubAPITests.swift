@@ -84,7 +84,7 @@ class GitHubAPITests: XCTestCase {
             expect(result) == CommitState(
                 state: .success,
                 statuses: [
-                    CommitState.Statuses(
+                    CommitState.Status(
                         state: .success,
                         description: "All necessary CLAs are signed",
                         context: "cla/google"

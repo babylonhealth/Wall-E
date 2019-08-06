@@ -8,12 +8,12 @@ public struct CommitState: Decodable, Equatable {
         case success
     }
 
-    public struct Statuses: Equatable, Decodable {
+    public struct Status: Equatable, Decodable {
         public let state: State
         public let description: String
         public let context: String
     }
 
     public let state: State
-    public let statuses: [Statuses]
+    public let statuses: [Status]
 }
