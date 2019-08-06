@@ -20,11 +20,11 @@ public protocol GitHubAPIProtocol {
     /// - Note: This mimics the `Merge Button` from GitHub UI.
     ///
     /// - SeeAlso: https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
-    func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError>
+    func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<Void, AnyError>
 
-    func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError>
+    func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<Void, AnyError>
 
-    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError>
+    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<Void, AnyError>
 
-    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError>
+    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<Void, AnyError>
 }

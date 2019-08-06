@@ -33,22 +33,22 @@ public struct RepositoryAPI: GitHubAPIProtocol {
             .mapError(AnyError.init)
     }
 
-    public func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+    public func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<Void, AnyError> {
         return client.request(repository.merge(pullRequest: pullRequest))
             .mapError(AnyError.init)
     }
 
-    public func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
+    public func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<Void, AnyError> {
         return client.request(repository.deleteBranch(branch: branch))
             .mapError(AnyError.init)
     }
 
-    public func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+    public func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<Void, AnyError> {
         return client.request(repository.publish(comment: comment, in: pullRequest))
             .mapError(AnyError.init)
     }
 
-    public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+    public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<Void, AnyError> {
         return client.request(repository.removeLabel(label: label, from: pullRequest))
             .mapError(AnyError.init)
     }
