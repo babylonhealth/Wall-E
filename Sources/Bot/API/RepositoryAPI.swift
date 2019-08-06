@@ -13,6 +13,7 @@ public struct RepositoryAPI: GitHubAPIProtocol {
 
     public func fetchPullRequests() -> SignalProducer<[PullRequest], AnyError> {
         return client.request(repository.pullRequests)
+            // Ensure we group all pages into a single list containing all pull requests
             .flatten()
             .collect()
             .mapError(AnyError.init)
