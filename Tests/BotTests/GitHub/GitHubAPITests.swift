@@ -3,7 +3,6 @@ import Nimble
 @testable import Bot
 
 class GitHubAPITests: XCTestCase {
-    private var isRecoding = false
 
     var directory: URL {
         return URL(string: #file)!
