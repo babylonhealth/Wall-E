@@ -71,7 +71,7 @@ final class Coordinator {
 
     func record(request: URLRequest, completion: @escaping (Interceptor.Stub) -> Void) {
         guard let recordingContext = recordingContext
-            else { fatalError("Trying to record a stub outside of") }
+            else { fatalError("Trying to record a stub outside of a recording session") }
 
         recordingContext.session.dataTask(with: request) { data, response, error in
 
