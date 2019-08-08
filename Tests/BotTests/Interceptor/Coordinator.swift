@@ -62,7 +62,7 @@ final class Coordinator {
 
         recordingContext = nil
 
-        fatalError("Record mode is on. Turn record mode off and re-run your test against the newly-recorded stub.")
+        fail("Record mode is on. Turn record mode off and re-run your test against the newly-recorded stub.")
     }
 
     func stub(for request: URLRequest) -> Interceptor.Stub? {
@@ -99,3 +99,12 @@ final class Coordinator {
         }.resume()
     }
 }
+
+#if canImport(XCTest)
+import XCTest
+func fail(_ message: String, file: StaticString = #file, line: UInt = #line) {
+    XCTFail(message)
+}
+#else
+func fail(_ message: String, file: StaticString = #file, line: UInt = #line) {}
+#endif
