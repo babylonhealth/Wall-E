@@ -770,6 +770,8 @@ class MergeServiceTests: XCTestCase {
         )
     }
 
+    // TODO: [CNSMR-2525] Add test for failure cases
+
     // MARK: - Helpers
 
     private func perform(

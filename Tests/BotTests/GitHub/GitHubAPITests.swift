@@ -263,6 +263,8 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
+    // TODO: [CNSMR-2525] Add test for failure cases
+
     // MARK: - Template
 
     private func perform(
