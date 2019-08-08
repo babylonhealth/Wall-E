@@ -11,7 +11,8 @@ private let iso8601: DateFormatter = {
 
 func decode<T: Decodable>(_ response: Response) -> Result<T, GitHubClient.Error> {
     return decode(response) {
-        JSONDecoder.with(dateDecodingStrategy: .formatted(iso8601))
+        JSONDecoder
+            .with(dateDecodingStrategy: .formatted(iso8601))
             .decode($0.body)
     }
 }
