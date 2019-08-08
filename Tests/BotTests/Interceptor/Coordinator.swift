@@ -61,6 +61,8 @@ final class Coordinator {
             else { fatalError("Failed to record stubs at `\(context.destination)`") }
 
         recordingContext = nil
+
+        fatalError("Record mode is on. Turn record mode off and re-run your test against the newly-recorded stub.")
     }
 
     func stub(for request: URLRequest) -> Interceptor.Stub? {
