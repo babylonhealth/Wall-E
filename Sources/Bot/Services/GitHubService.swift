@@ -12,6 +12,7 @@ public final class GitHubService {
 
     internal enum APIEvent: String {
         case pullRequest = "pull_request"
+        case status
         case ping
     }
 
@@ -41,14 +42,23 @@ public final class GitHubService {
 
         switch APIEvent(rawValue: rawEvent) {
         case .pullRequest?:
-            return request.decodeBody(PullRequestEvent.self, using: scheduler)
-                .mapError { _ in EventHandlingError.invalid }
-                .map(Event.pullRequest)
+            return decode(Event.pullRequest, from: request)
+        case .status?:
+            return decode(Event.status, from: request)
         case .ping?:
             return SignalProducer(value: .ping)
         case .none:
             return SignalProducer(error: .unknown)
         }
+    }
+
+    private func decode<T: Decodable>(
+        _ transform: @escaping (T) -> Event,
+        from request: RequestProtocol
+    ) -> SignalProducer<Event, EventHandlingError> {
+        return request.decodeBody(T.self, using: scheduler)
+            .mapError { _ in EventHandlingError.invalid }
+            .map(transform)
     }
 
     private static func signatureVerifier(
