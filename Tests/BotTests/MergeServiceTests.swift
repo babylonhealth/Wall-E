@@ -180,7 +180,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
@@ -220,7 +220,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
@@ -308,7 +308,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
@@ -420,7 +420,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
@@ -471,12 +471,12 @@ class MergeServiceTests: XCTestCase {
                 for _ in 1...3 {
 
                     service.statusChecksDidChange(
-                        change: StatusChange(
+                        change: StatusEvent(
                             sha: "abcdef",
                             context: "",
                             description: "N/A",
                             state: .success,
-                            branches: [StatusChange.Branch(name: defaultBranch)]
+                            branches: [StatusEvent.Branch(name: defaultBranch)]
                         )
                     )
 
@@ -618,7 +618,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
@@ -722,7 +722,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
@@ -742,7 +742,7 @@ class MergeServiceTests: XCTestCase {
                 // Simulate all checks being successful
 
                 service.statusChecksDidChange(
-                    change: StatusChange(
+                    change: StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",

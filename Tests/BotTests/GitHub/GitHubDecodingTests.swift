@@ -46,15 +46,15 @@ class GitHubDecodingTests: XCTestCase {
         let data = GitHubStatusEvent.data(using: .utf8)!
 
         do {
-            let statusChange = try decoder.decode(StatusChange.self, from: data)
+            let statusChange = try decoder.decode(StatusEvent.self, from: data)
             expect(statusChange.sha) == "a10867b14bb761a232cd80139fbd4c0d33264240"
             expect(statusChange.context) == "default"
             expect(statusChange.description).to(beNil())
             expect(statusChange.state) == .success
             expect(statusChange.branches) == [
-                StatusChange.Branch(name: "master"),
-                StatusChange.Branch(name: "changes"),
-                StatusChange.Branch(name: "gh-pages")
+                StatusEvent.Branch(name: "master"),
+                StatusEvent.Branch(name: "changes"),
+                StatusEvent.Branch(name: "gh-pages")
             ]
         } catch let error {
             fail("Could not parse a pull request with error: \(error)")

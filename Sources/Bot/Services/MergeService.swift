@@ -13,8 +13,8 @@ public final class MergeService {
     private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
     private let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
 
-    private let statusChecksCompletion: Signal<StatusChange, NoError>
-    private let statusChecksCompletionObserver: Signal<StatusChange, NoError>.Observer
+    private let statusChecksCompletion: Signal<StatusEvent, NoError>
+    private let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
     public init(
         integrationLabel: PullRequest.Label,
@@ -59,7 +59,7 @@ public final class MergeService {
         pullRequestChangesObserver.send(value: (metadata, action))
     }
 
-    func statusChecksDidChange(change: StatusChange) {
+    func statusChecksDidChange(change: StatusEvent) {
         statusChecksCompletionObserver.send(value: change)
     }
 
@@ -264,7 +264,7 @@ extension MergeService {
     fileprivate static func whenRunningStatusChecks(
         github: GitHubAPIProtocol,
         logger: LoggerProtocol,
-        statusChecksCompletion: Signal<StatusChange, NoError>,
+        statusChecksCompletion: Signal<StatusEvent, NoError>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
 
