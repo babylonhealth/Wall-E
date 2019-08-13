@@ -9,30 +9,24 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     enum Stubs {
         case getPullRequests(() -> [PullRequest])
         case getPullRequest((UInt) -> PullRequestMetadata)
-        case getCommitStatus((PullRequest) -> CommitStatus)
+        case getCommitStatus((PullRequest) -> CommitState)
         case mergePullRequest((PullRequest) -> Void)
-        case mergeIntoBranch((String, String) -> MergeResult)
-        case deleteBranch((String) -> Void)
-        case postComment((String, UInt) -> Void)
-        case removeLabel((String, UInt) -> Void)
+        case mergeIntoBranch((PullRequest.Branch, PullRequest.Branch) -> MergeResult)
+        case deleteBranch((PullRequest.Branch) -> Void)
+        case postComment((String, PullRequest) -> Void)
+        case removeLabel((PullRequest.Label, PullRequest) -> Void)
     }
 
     let stubs: [Stubs]
 
-    private let iteration = Atomic(0)
+    private let stubCount = Atomic(0)
 
     func assert() -> Bool {
-        return iteration.value == stubs.count
+        return stubCount.value == stubs.count
     }
 
     func fetchPullRequests() -> SignalProducer<[PullRequest], AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+        switch nextStub() {
         case let .getPullRequests(handler):
             return SignalProducer(value: handler())
         default:
@@ -41,13 +35,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     }
 
     func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+        switch nextStub() {
         case let .getPullRequest(handler):
             return SignalProducer(value: handler(number))
         default:
@@ -55,14 +43,8 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitStatus, AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+    func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError> {
+        switch nextStub() {
         case let .getCommitStatus(handler):
             return SignalProducer(value: handler(pullRequest))
         default:
@@ -70,29 +52,17 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func merge(intoBranch branch: String, head: String) -> SignalProducer<MergeResult, AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+    func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
+        switch nextStub() {
         case let .mergeIntoBranch(handler):
-            return SignalProducer(value: handler(branch, head))
+            return SignalProducer(value: handler(base, head))
         default:
             fatalError("Stub not found")
         }
     }
 
     func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+        switch nextStub() {
         case let .mergePullRequest(handler):
             return SignalProducer(value: handler(pullRequest))
         default:
@@ -100,14 +70,8 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func deleteBranch(named branch: String) -> SignalProducer<(), AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+    func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
+        switch nextStub() {
         case let .deleteBranch(handler):
             return SignalProducer(value: handler(branch))
         default:
@@ -115,33 +79,29 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func postComment(_ comment: String, inPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+        switch nextStub() {
         case let .postComment(handler):
-            return SignalProducer(value: handler(comment, pullRequestNumber))
+            return SignalProducer(value: handler(comment, pullRequest))
         default:
             fatalError("Stub not found")
         }
     }
 
-    func removeLabel(_ label: String, fromPullRequestNumber pullRequestNumber: UInt) -> SignalProducer<(), AnyError> {
-
-        let index = iteration.modify { iteration -> Int in
-            iteration = iteration + 1
-            return iteration - 1
-        }
-
-        switch stubs[index] {
+    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+        switch nextStub() {
         case let .removeLabel(handler):
-            return SignalProducer(value: handler(label, pullRequestNumber))
+            return SignalProducer(value: handler(label, pullRequest))
         default:
             fatalError("Stub not found")
+        }
+    }
+
+    private func nextStub() -> Stubs {
+        return stubCount.modify { stubCount -> Stubs in
+            let nextStub = stubs[stubCount]
+            stubCount = stubCount + 1
+            return nextStub
         }
     }
 }

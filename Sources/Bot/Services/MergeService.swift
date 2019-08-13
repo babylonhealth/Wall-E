@@ -17,7 +17,7 @@ public final class MergeService {
     private let statusChecksCompletionObserver: Signal<StatusChange, NoError>.Observer
 
     public init(
-        integrationLabel: String,
+        integrationLabel: PullRequest.Label,
         statusChecksTimeout: TimeInterval = 60.minutes,
         logger: LoggerProtocol,
         github: GitHubAPIProtocol,
@@ -111,13 +111,13 @@ extension MergeService {
                         case 0:
                             return github.postComment(
                                 "Your pull request was accepted and is going to be handled right away 🏎",
-                                inPullRequestNumber: pullRequest.number
+                                in: pullRequest
                                 )
                                 .flatMapError { _ in .empty }
                         case 1...:
                             return github.postComment(
                                 "Your pull request was accepted and it's currently `#\(index + 1)` in the queue, hold tight ⏳",
-                                inPullRequestNumber: pullRequest.number
+                                in: pullRequest
                                 )
                                 .flatMapError { _ in .empty }
                         default:
@@ -177,14 +177,14 @@ extension MergeService {
             case .clean:
                 return github.mergePullRequest(metadata.reference)
                     .flatMap(.latest) { () -> SignalProducer<(), NoError> in
-                        github.deleteBranch(named: metadata.reference.source.ref)
+                        github.deleteBranch(named: metadata.reference.source)
                             .flatMapError { _ in .empty }
                     }
                     .then(SignalProducer<Event, NoError>.value(Event.integrationDidChangeStatus(.done, metadata)))
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.mergeFailed), metadata)) }
                     .observe(on: scheduler)
             case .behind:
-                return github.merge(intoBranch: metadata.reference.source.ref, head: metadata.reference.target.ref)
+                return github.merge(head: metadata.reference.target, into: metadata.reference.source)
                     .flatMap(.latest) { result -> SignalProducer<Event, AnyError> in
                         switch result {
                         case .success:
@@ -214,7 +214,7 @@ extension MergeService {
                  .unstable:
                 return github.fetchCommitStatus(for: metadata.reference)
                     .flatMap(.latest) { commitStatus -> SignalProducer<Event, AnyError> in
-                        switch commitStatus {
+                        switch commitStatus.state {
                         case .pending:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .failure:
@@ -305,7 +305,7 @@ extension MergeService {
                         .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
                         .flatMapError { _ in .empty }
                         .filterMap { commitStatus, pullRequestMetadataRefreshed in
-                            switch commitStatus {
+                            switch commitStatus.state {
                             case .pending:
                                 return nil
                             case .failure:
@@ -331,20 +331,18 @@ extension MergeService {
     ) -> Feedback<State, Event> {
 
         struct IntegrationHandler: Equatable {
-            let pullRequestNumber: UInt
-            let pullRequestAuthor: String
-            let integrationLabel: String
+            let pullRequest: PullRequest
+            let integrationLabel: PullRequest.Label
             let failureReason: FailureReason
 
             var failureMessage: String {
-                return "@\(pullRequestAuthor) unfortunately the integration failed with code: `\(failureReason)`."
+                return "@\(pullRequest.author.login) unfortunately the integration failed with code: `\(failureReason)`."
             }
 
             init?(from state: State) {
                 guard case let .integrationFailed(metadata, reason) = state.status
                     else { return nil }
-                self.pullRequestNumber = metadata.reference.number
-                self.pullRequestAuthor = metadata.reference.author.login
+                self.pullRequest = metadata.reference
                 self.integrationLabel = state.integrationLabel
                 self.failureReason = reason
             }
@@ -352,10 +350,10 @@ extension MergeService {
 
         return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, NoError> in
             return SignalProducer.merge(
-                github.postComment(handler.failureMessage, inPullRequestNumber: handler.pullRequestNumber)
-                    .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequestNumber) with error: \(error)") }),
-                github.removeLabel(handler.integrationLabel, fromPullRequestNumber: handler.pullRequestNumber)
-                    .on(failed: { error in logger.log("🚨 Failed to remove integration label from PR #\(handler.pullRequestNumber) with error: \(error)") })
+                github.postComment(handler.failureMessage, in: handler.pullRequest)
+                    .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)") }),
+                github.removeLabel(handler.integrationLabel, from: handler.pullRequest)
+                    .on(failed: { error in logger.log("🚨 Failed to remove integration label from PR #\(handler.pullRequest.number) with error: \(error)") })
                 )
                 .flatMapError { _ in .empty }
                 .then(SignalProducer(value: Event.integrationFailureHandled))
@@ -433,16 +431,16 @@ extension MergeService {
             }
         }
 
-        let integrationLabel: String
+        let integrationLabel: PullRequest.Label
         let statusChecksTimeout: TimeInterval
         let pullRequests: [PullRequest]
         let status: Status
 
-        static func initial(with integrationLabel: String, statusChecksTimeout: TimeInterval) -> State {
+        static func initial(with integrationLabel: PullRequest.Label, statusChecksTimeout: TimeInterval) -> State {
             return State(integrationLabel: integrationLabel, statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .starting)
         }
 
-        init(integrationLabel: String, statusChecksTimeout: TimeInterval, pullRequests: [PullRequest], status: Status) {
+        init(integrationLabel: PullRequest.Label, statusChecksTimeout: TimeInterval, pullRequests: [PullRequest], status: Status) {
             self.integrationLabel = integrationLabel
             self.statusChecksTimeout = statusChecksTimeout
             self.pullRequests = pullRequests
@@ -596,9 +594,8 @@ extension MergeService.State {
 
 private extension PullRequest {
 
-    func isLabelled(with labelName: String) -> Bool {
-        return labels.map { $0.name }
-            .contains(labelName)
+    func isLabelled(with label: PullRequest.Label) -> Bool {
+        return labels.contains(label)
     }
 }
 

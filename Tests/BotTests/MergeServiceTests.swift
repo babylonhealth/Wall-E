@@ -10,14 +10,14 @@ struct MockLogger: LoggerProtocol {
     }
 }
 
-let IntegrationLabel = "Please Merge 🙏"
+let integrationLabel = PullRequest.Label(name: "Please Merge 🙏")
 
 let defaultBranch = "some-branch"
 
 let defaultTarget = PullRequestMetadata.stub(
     number: 1,
     headRef: defaultBranch,
-    labels: [.init(name: IntegrationLabel)],
+    labels: [integrationLabel],
     mergeState: .behind
 )
 
@@ -92,7 +92,7 @@ class MergeServiceTests: XCTestCase {
 
         let pullRequests = (1...3)
             .map {
-                PullRequestMetadata.stub(number: $0, labels: [.init(name: IntegrationLabel)])
+                PullRequestMetadata.stub(number: $0, labels: [integrationLabel])
                     .with(mergeState: .clean)
             }
 
@@ -167,7 +167,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .clean) },
-                .getCommitStatus { _ in .success },
+                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
             ],
@@ -211,7 +211,7 @@ class MergeServiceTests: XCTestCase {
                 .getPullRequests { [defaultTarget.reference] },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .blocked) },
                 .postComment { _, _ in },
-                .getCommitStatus { _ in .success },
+                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .clean) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
@@ -247,7 +247,7 @@ class MergeServiceTests: XCTestCase {
     func test_resuming_after_labelling_a_pull_request() {
 
         let target = PullRequestMetadata.stub(number: 1, headRef: defaultBranch, labels: [], mergeState: .clean)
-        let targetLabeled = target.with(labels: [.init(name: IntegrationLabel)])
+        let targetLabeled = target.with(labels: [integrationLabel])
 
         perform(
             stubs: [
@@ -278,7 +278,7 @@ class MergeServiceTests: XCTestCase {
     func test_adding_a_new_pull_request_while_running_an_integrating() {
 
         let first = defaultTarget.with(mergeState: .behind)
-        let second = PullRequestMetadata.stub(number: 2, labels: [.init(name: IntegrationLabel)], mergeState: .clean)
+        let second = PullRequestMetadata.stub(number: 2, labels: [integrationLabel], mergeState: .clean)
 
         perform(
             stubs: [
@@ -288,7 +288,7 @@ class MergeServiceTests: XCTestCase {
                 .mergeIntoBranch { _, _ in .success },
                 .postComment { _, _ in },
                 .getPullRequest { _ in first.with(mergeState: .clean) },
-                .getCommitStatus { _ in .success },
+                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
                 .getPullRequest { _ in second },
@@ -408,7 +408,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .blocked) },
-                .getCommitStatus { _ in .failure },
+                .getCommitStatus { _ in CommitState(state: .failure, statuses: []) },
                 .postComment { _, _ in },
                 .removeLabel { _, _ in }
             ],
@@ -453,11 +453,11 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .blocked) },
-                .getCommitStatus { _ in .pending },
+                .getCommitStatus { _ in CommitState(state: .pending, statuses: []) },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .blocked) },
-                .getCommitStatus { _ in .pending },
+                .getCommitStatus { _ in CommitState(state: .pending, statuses: []) },
                 .getPullRequest { _ in defaultTarget.with(mergeState: .clean) },
-                .getCommitStatus { _ in .success },
+                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
             ],
@@ -591,7 +591,7 @@ class MergeServiceTests: XCTestCase {
     func test_excluding_pull_request_in_the_queue() {
 
         let first = defaultTarget.with(mergeState: .behind)
-        let second = PullRequestMetadata.stub(number: 2, labels: [.init(name: IntegrationLabel)], mergeState: .clean)
+        let second = PullRequestMetadata.stub(number: 2, labels: [integrationLabel], mergeState: .clean)
 
         perform(
             stubs: [
@@ -601,7 +601,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in first.with(mergeState: .clean) },
-                .getCommitStatus { _ in .success },
+                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
             ],
@@ -646,9 +646,9 @@ class MergeServiceTests: XCTestCase {
 
     func test_pull_requests_receive_feedback_when_accepted() {
 
-        let pullRequests = (1...3)
+        let pullRequests = [144, 233, 377]
             .map {
-                PullRequestMetadata.stub(number: $0, labels: [.init(name: IntegrationLabel)])
+                PullRequestMetadata.stub(number: $0, labels: [integrationLabel])
                     .with(mergeState: .clean)
         }
 
@@ -656,17 +656,17 @@ class MergeServiceTests: XCTestCase {
             stubs: [
                 .getPullRequests { pullRequests.map { $0.reference } },
                 .getPullRequest { _ in pullRequests[0] },
-                .postComment { message, number in
+                .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and is going to be handled right away 🏎"
-                    expect(number) == 1
+                    expect(pullRequest.number) == 144
                 },
-                .postComment { message, number in
+                .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and it's currently `#2` in the queue, hold tight ⏳"
-                    expect(number) == 2
+                    expect(pullRequest.number) == 233
                 },
-                .postComment { message, number in
+                .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and it's currently `#3` in the queue, hold tight ⏳"
-                    expect(number) == 3
+                    expect(pullRequest.number) == 377
                 },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
@@ -699,7 +699,7 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_does_not_fail_prematurely_if_checks_complete_before_adding_the_following_checks() {
 
         var expectedPullRequest = defaultTarget.with(mergeState: .blocked)
-        var expectedCommitStatus = CommitStatus.success
+        var expectedCommitStatus = CommitState(state: .success, statuses: [])
 
         perform(
             stubs: [
@@ -735,7 +735,7 @@ class MergeServiceTests: XCTestCase {
 
                 // Simulate a new check being added
 
-                expectedCommitStatus = .pending
+                expectedCommitStatus = CommitState(state: .pending, statuses: [])
 
                 scheduler.advance(by: .seconds(30))
 
@@ -752,7 +752,7 @@ class MergeServiceTests: XCTestCase {
                 )
 
                 expectedPullRequest = defaultTarget.with(mergeState: .clean)
-                expectedCommitStatus = .success
+                expectedCommitStatus = CommitState(state: .success, statuses: [])
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -770,6 +770,8 @@ class MergeServiceTests: XCTestCase {
         )
     }
 
+    // TODO: [CNSMR-2525] Add test for failure cases
+
     // MARK: - Helpers
 
     private func perform(
@@ -780,7 +782,7 @@ class MergeServiceTests: XCTestCase {
 
         let scheduler = TestScheduler()
         let github2 = MockGitHubAPI(stubs: stubs)
-        let service = MergeService(integrationLabel: IntegrationLabel, logger: MockLogger(), github: github2, scheduler: scheduler)
+        let service = MergeService(integrationLabel: integrationLabel, logger: MockLogger(), github: github2, scheduler: scheduler)
 
         var states: [MergeService.State] = []
 
@@ -798,7 +800,7 @@ class MergeServiceTests: XCTestCase {
         statusChecksTimeout: TimeInterval = defaultStatusChecksTimeout
         ) -> MergeService.State {
         return MergeService.State(
-            integrationLabel: IntegrationLabel,
+            integrationLabel: integrationLabel,
             statusChecksTimeout: statusChecksTimeout,
             pullRequests: pullRequests,
             status: status
