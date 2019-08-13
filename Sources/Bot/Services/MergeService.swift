@@ -7,7 +7,7 @@ public final class MergeService {
     let state: Property<State>
 
     private let logger: LoggerProtocol
-    private let github: GitHubAPIProtocol
+    private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
     private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
@@ -20,12 +20,12 @@ public final class MergeService {
         integrationLabel: PullRequest.Label,
         statusChecksTimeout: TimeInterval = 60.minutes,
         logger: LoggerProtocol,
-        github: GitHubAPIProtocol,
+        gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
 
         self.logger = logger
-        self.github = github
+        self.gitHubAPI = gitHubAPI
         self.scheduler = scheduler
 
         (statusChecksCompletion, statusChecksCompletionObserver) = Signal.pipe()
@@ -37,13 +37,13 @@ public final class MergeService {
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(github: self.github, scheduler: scheduler),
-                Feedbacks.whenReady(github: self.github, scheduler: scheduler),
-                Feedbacks.whenIntegrating(github: self.github, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
-                Feedbacks.whenRunningStatusChecks(github: self.github, logger: logger, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
-                Feedbacks.whenIntegrationFailed(github: self.github, logger: logger, scheduler: scheduler),
+                Feedbacks.whenStarting(github: self.gitHubAPI, scheduler: scheduler),
+                Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
+                Feedbacks.whenIntegrating(github: self.gitHubAPI, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
+                Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
+                Feedbacks.whenIntegrationFailed(github: self.gitHubAPI, logger: logger, scheduler: scheduler),
                 Feedbacks.pullRequestChanges(pullRequestChanges: pullRequestChanges, scheduler: scheduler),
-                Feedbacks.whenAddingPullRequests(github: self.github, scheduler: scheduler)
+                Feedbacks.whenAddingPullRequests(github: self.gitHubAPI, scheduler: scheduler)
             ]
         )
 

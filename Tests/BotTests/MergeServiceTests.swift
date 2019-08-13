@@ -781,8 +781,8 @@ class MergeServiceTests: XCTestCase {
         ) {
 
         let scheduler = TestScheduler()
-        let github2 = MockGitHubAPI(stubs: stubs)
-        let service = MergeService(integrationLabel: integrationLabel, logger: MockLogger(), github: github2, scheduler: scheduler)
+        let gitHub = MockGitHubAPI(stubs: stubs)
+        let service = MergeService(integrationLabel: integrationLabel, logger: MockLogger(), gitHubAPI: gitHub, scheduler: scheduler)
 
         var states: [MergeService.State] = []
 
@@ -791,14 +791,14 @@ class MergeServiceTests: XCTestCase {
         when(service, scheduler)
         assert(states)
 
-        expect(github2.assert()) == true
+        expect(gitHub.assert()) == true
     }
 
     private func makeState(
         status: MergeService.State.Status,
         pullRequests: [PullRequest],
         statusChecksTimeout: TimeInterval = defaultStatusChecksTimeout
-        ) -> MergeService.State {
+    ) -> MergeService.State {
         return MergeService.State(
             integrationLabel: integrationLabel,
             statusChecksTimeout: statusChecksTimeout,
