@@ -55,6 +55,7 @@ public final class MergeService {
             }
 
         gitHubEvents.events
+            .observe(on: scheduler)
             .observeValues { [weak self] event in
                 switch event {
                 case let .pullRequest(event):
