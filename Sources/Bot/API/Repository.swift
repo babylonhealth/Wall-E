@@ -96,7 +96,7 @@ extension Repository {
     func merge(pullRequest: PullRequest) -> Resource<Void> {
         return Resource(
             method: .PUT,
-            path: "pulls/\(pullRequest.number)/merge",
+            path: path(for: "pulls/\(pullRequest.number)/merge"),
             body: encode(MergePullRequestRequest(with: pullRequest)),
             decoder: decode
         )
