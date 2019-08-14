@@ -21,6 +21,7 @@ public final class MergeService {
         statusChecksTimeout: TimeInterval = 60.minutes,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
+        gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
 
@@ -52,15 +53,27 @@ public final class MergeService {
             .startWithValues { old, new in
                 logger.log("♻️ [Merge Service] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
+
+        gitHubEvents.events
+            .observeValues { [weak self] event in
+                switch event {
+                case let .pullRequest(event):
+                    self?.pullRequestDidChange(event: event)
+                case let .status(event):
+                    self?.statusChecksDidChange(event: event)
+                case .ping:
+                    break
+                }
+            }
     }
 
-    func pullRequestDidChange(metadata: PullRequestMetadata, action: PullRequest.Action) {
-        logger.log("📣 [Merge Service] Pull Request did change \(metadata) with action `\(action)`")
-        pullRequestChangesObserver.send(value: (metadata, action))
+    private func pullRequestDidChange(event: PullRequestEvent) {
+        logger.log("📣 [Merge Service] Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
+        pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
-    func statusChecksDidChange(change: StatusEvent) {
-        statusChecksCompletionObserver.send(value: change)
+    private func statusChecksDidChange(event: StatusEvent) {
+        statusChecksCompletionObserver.send(value: event)
     }
 
     static func reduce(state: State, event: Event) -> State {

@@ -54,3 +54,10 @@ public struct RepositoryAPI: GitHubAPIProtocol {
             .mapError(AnyError.init)
     }
 }
+
+extension GitHubClient {
+
+    public func api(for repository: Repository) -> RepositoryAPI {
+        return RepositoryAPI(client: self, repository: repository)
+    }
+}

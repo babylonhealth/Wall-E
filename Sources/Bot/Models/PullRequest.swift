@@ -18,6 +18,10 @@ extension PullRequest {
 extension PullRequest {
     public struct Label: Equatable, Decodable {
         public let name: String
+
+        public init(name: String) {
+            self.name = name
+        }
     }
 }
 
