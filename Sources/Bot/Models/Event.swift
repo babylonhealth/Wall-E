@@ -2,6 +2,7 @@ import Foundation
 
 public enum Event: Equatable {
     case pullRequest(PullRequestEvent)
+    case status(StatusEvent)
     case ping
 }
 

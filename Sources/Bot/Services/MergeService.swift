@@ -7,25 +7,26 @@ public final class MergeService {
     let state: Property<State>
 
     private let logger: LoggerProtocol
-    private let github: GitHubAPIProtocol
+    private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
     private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
     private let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
 
-    private let statusChecksCompletion: Signal<StatusChange, NoError>
-    private let statusChecksCompletionObserver: Signal<StatusChange, NoError>.Observer
+    private let statusChecksCompletion: Signal<StatusEvent, NoError>
+    private let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
     public init(
         integrationLabel: PullRequest.Label,
         statusChecksTimeout: TimeInterval = 60.minutes,
         logger: LoggerProtocol,
-        github: GitHubAPIProtocol,
+        gitHubAPI: GitHubAPIProtocol,
+        gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
 
         self.logger = logger
-        self.github = github
+        self.gitHubAPI = gitHubAPI
         self.scheduler = scheduler
 
         (statusChecksCompletion, statusChecksCompletionObserver) = Signal.pipe()
@@ -37,13 +38,13 @@ public final class MergeService {
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(github: self.github, scheduler: scheduler),
-                Feedbacks.whenReady(github: self.github, scheduler: scheduler),
-                Feedbacks.whenIntegrating(github: self.github, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
-                Feedbacks.whenRunningStatusChecks(github: self.github, logger: logger, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
-                Feedbacks.whenIntegrationFailed(github: self.github, logger: logger, scheduler: scheduler),
+                Feedbacks.whenStarting(github: self.gitHubAPI, scheduler: scheduler),
+                Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
+                Feedbacks.whenIntegrating(github: self.gitHubAPI, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
+                Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
+                Feedbacks.whenIntegrationFailed(github: self.gitHubAPI, logger: logger, scheduler: scheduler),
                 Feedbacks.pullRequestChanges(pullRequestChanges: pullRequestChanges, scheduler: scheduler),
-                Feedbacks.whenAddingPullRequests(github: self.github, scheduler: scheduler)
+                Feedbacks.whenAddingPullRequests(github: self.gitHubAPI, scheduler: scheduler)
             ]
         )
 
@@ -52,15 +53,27 @@ public final class MergeService {
             .startWithValues { old, new in
                 logger.log("♻️ [Merge Service] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
+
+        gitHubEvents.events
+            .observeValues { [weak self] event in
+                switch event {
+                case let .pullRequest(event):
+                    self?.pullRequestDidChange(event: event)
+                case let .status(event):
+                    self?.statusChecksDidChange(event: event)
+                case .ping:
+                    break
+                }
+            }
     }
 
-    func pullRequestDidChange(metadata: PullRequestMetadata, action: PullRequest.Action) {
-        logger.log("📣 [Merge Service] Pull Request did change \(metadata) with action `\(action)`")
-        pullRequestChangesObserver.send(value: (metadata, action))
+    private func pullRequestDidChange(event: PullRequestEvent) {
+        logger.log("📣 [Merge Service] Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
+        pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
-    func statusChecksDidChange(change: StatusChange) {
-        statusChecksCompletionObserver.send(value: change)
+    private func statusChecksDidChange(event: StatusEvent) {
+        statusChecksCompletionObserver.send(value: event)
     }
 
     static func reduce(state: State, event: Event) -> State {
@@ -264,7 +277,7 @@ extension MergeService {
     fileprivate static func whenRunningStatusChecks(
         github: GitHubAPIProtocol,
         logger: LoggerProtocol,
-        statusChecksCompletion: Signal<StatusChange, NoError>,
+        statusChecksCompletion: Signal<StatusEvent, NoError>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
 

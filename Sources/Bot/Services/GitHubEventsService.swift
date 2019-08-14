@@ -3,7 +3,11 @@ import ReactiveSwift
 import Result
 import CryptoSwift
 
-public final class GitHubService {
+public protocol GitHubEventsServiceProtocol {
+    var events: Signal<Event, NoError> { get }
+}
+
+public final class GitHubEventsService: GitHubEventsServiceProtocol {
 
     internal enum HTTPHeader: String {
         case event = "X-GitHub-Event"
@@ -12,6 +16,7 @@ public final class GitHubService {
 
     internal enum APIEvent: String {
         case pullRequest = "pull_request"
+        case status
         case ping
     }
 
@@ -23,7 +28,7 @@ public final class GitHubService {
     public let events: Signal<Event, NoError>
 
     public init(signatureToken: Token, scheduler: Scheduler = QueueScheduler()) {
-        self.signatureVerifier = GitHubService.signatureVerifier(with: signatureToken)
+        self.signatureVerifier = GitHubEventsService.signatureVerifier(with: signatureToken)
         self.scheduler = scheduler
         (events, eventsObserver) = Signal.pipe()
     }
@@ -41,14 +46,23 @@ public final class GitHubService {
 
         switch APIEvent(rawValue: rawEvent) {
         case .pullRequest?:
-            return request.decodeBody(PullRequestEvent.self, using: scheduler)
-                .mapError { _ in EventHandlingError.invalid }
-                .map(Event.pullRequest)
+            return decode(Event.pullRequest, from: request)
+        case .status?:
+            return decode(Event.status, from: request)
         case .ping?:
             return SignalProducer(value: .ping)
         case .none:
             return SignalProducer(error: .unknown)
         }
+    }
+
+    private func decode<T: Decodable>(
+        _ transform: @escaping (T) -> Event,
+        from request: RequestProtocol
+    ) -> SignalProducer<Event, EventHandlingError> {
+        return request.decodeBody(T.self, using: scheduler)
+            .mapError { _ in EventHandlingError.invalid }
+            .map(transform)
     }
 
     private static func signatureVerifier(
@@ -79,7 +93,7 @@ public final class GitHubService {
     }
 }
 
-extension GitHubService {
+extension GitHubEventsService {
     public enum EventHandlingError: Error {
         case untrustworthy
         case invalid
@@ -88,7 +102,7 @@ extension GitHubService {
 }
 
 private extension RequestProtocol {
-    func header(_ header: GitHubService.HTTPHeader) -> String? {
+    func header(_ header: GitHubEventsService.HTTPHeader) -> String? {
         return self.header(named: header.rawValue)
     }
 }

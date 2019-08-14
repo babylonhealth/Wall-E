@@ -1,6 +1,6 @@
 import Foundation
 
-public struct StatusChange: Equatable, Decodable {
+public struct StatusEvent: Equatable, Decodable {
     let sha: String
     let context: String
     let description: String?

@@ -108,9 +108,9 @@ extension GitHubEventsTests {
     }
 
     private func perform(
-        stub: (TestScheduler) -> GitHubService = stubService,
-        when: (GitHubService, TestScheduler) -> Result<Void, GitHubService.EventHandlingError>?,
-        assert: (Result<Void, GitHubService.EventHandlingError>?, [Event]) -> Void
+        stub: (TestScheduler) -> GitHubEventsService = stubService,
+        when: (GitHubEventsService, TestScheduler) -> Result<Void, GitHubEventsService.EventHandlingError>?,
+        assert: (Result<Void, GitHubEventsService.EventHandlingError>?, [Event]) -> Void
     ) {
 
         let scheduler = TestScheduler()
@@ -130,11 +130,11 @@ extension GitHubEventsTests {
         assert(result, observedEvents)
     }
 
-    private static func stubService(_ scheduler: TestScheduler) -> GitHubService {
-        return GitHubService(signatureToken: signatureToken, scheduler: scheduler)
+    private static func stubService(_ scheduler: TestScheduler) -> GitHubEventsService {
+        return GitHubEventsService(signatureToken: signatureToken, scheduler: scheduler)
     }
 
-    private func request(with event: GitHubService.APIEvent, signature: String, payload: String) -> StubbedRequest {
+    private func request(with event: GitHubEventsService.APIEvent, signature: String, payload: String) -> StubbedRequest {
         return request(with: event, signature: signature, payload: payload.data(using: .utf8))
     }
 
@@ -142,15 +142,15 @@ extension GitHubEventsTests {
         return request(withRawEvent: rawEvent, signature: signature, payload: payload.data(using: .utf8))
     }
 
-    private func request(with event: GitHubService.APIEvent, signature: String, payload: Data?) -> StubbedRequest {
+    private func request(with event: GitHubEventsService.APIEvent, signature: String, payload: Data?) -> StubbedRequest {
         return request(withRawEvent: event.rawValue, signature: signature, payload: payload)
     }
 
     private func request(withRawEvent rawEvent: String, signature: String, payload: Data?) -> StubbedRequest {
         return StubbedRequest(
             headers: [
-                GitHubService.HTTPHeader.event.rawValue: rawEvent,
-                GitHubService.HTTPHeader.signature.rawValue: "sha1=\(signature)"
+                GitHubEventsService.HTTPHeader.event.rawValue: rawEvent,
+                GitHubEventsService.HTTPHeader.signature.rawValue: "sha1=\(signature)"
             ],
             data: payload
         )

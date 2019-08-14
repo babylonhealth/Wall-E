@@ -175,19 +175,21 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .success,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -219,15 +221,15 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .success,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 scheduler.advance()
             },
@@ -259,7 +261,9 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
-                service.pullRequestDidChange(metadata: targetLabeled, action: .labeled)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .labeled, pullRequestMetadata: targetLabeled))
+                )
                 scheduler.advance()
             },
             assert: {
@@ -299,23 +303,27 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: first.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: first.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: second, action: .labeled)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .labeled, pullRequestMetadata: second))
+                )
 
                 scheduler.advance()
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .success,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -347,11 +355,15 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget, action: .closed)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .closed, pullRequestMetadata: defaultTarget))
+                )
 
                 scheduler.advance()
             },
@@ -379,11 +391,15 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(labels: []), action: .unlabeled)
+                service.eventsObserver.send(value:
+                    .pullRequest(.init(action: .unlabeled, pullRequestMetadata: defaultTarget.with(labels: [])))
+                )
 
                 scheduler.advance()
             },
@@ -415,19 +431,21 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .failure,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -464,21 +482,23 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
                 for _ in 1...3 {
 
-                    service.statusChecksDidChange(
-                        change: StatusChange(
+                    service.eventsObserver.send(value: .status(
+                        StatusEvent(
                             sha: "abcdef",
                             context: "",
                             description: "N/A",
                             state: .success,
-                            branches: [StatusChange.Branch(name: defaultBranch)]
+                            branches: [StatusEvent.Branch(name: defaultBranch)]
                         )
-                    )
+                    ))
 
                     scheduler.advance(by: .seconds(60))
                 }
@@ -511,7 +531,9 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value:
+                    .pullRequest(.init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 // 1.5 ensures we trigger the timeout
                 scheduler.advance(by: .minutes(1.5 * defaultStatusChecksTimeout))
@@ -609,23 +631,27 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: first.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value:
+                    .pullRequest(.init(action: .synchronize, pullRequestMetadata: first.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: second.with(labels: []), action: .unlabeled)
+                service.eventsObserver.send(value:
+                    .pullRequest(.init(action: .unlabeled, pullRequestMetadata: second.with(labels: [])))
+                )
 
                 scheduler.advance()
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .failure,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -717,19 +743,21 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.pullRequestDidChange(metadata: defaultTarget.with(mergeState: .blocked), action: .synchronize)
+                service.eventsObserver.send(value: .pullRequest(
+                    .init(action: .synchronize, pullRequestMetadata: defaultTarget.with(mergeState: .blocked)))
+                )
 
                 scheduler.advance()
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .success,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 scheduler.advance(by: .seconds(30))
 
@@ -741,15 +769,15 @@ class MergeServiceTests: XCTestCase {
 
                 // Simulate all checks being successful
 
-                service.statusChecksDidChange(
-                    change: StatusChange(
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
                         sha: "abcdef",
                         context: "",
                         description: "N/A",
                         state: .success,
                         branches: [.init(name: defaultBranch)]
                     )
-                )
+                ))
 
                 expectedPullRequest = defaultTarget.with(mergeState: .clean)
                 expectedCommitStatus = CommitState(state: .success, statuses: [])
@@ -774,31 +802,48 @@ class MergeServiceTests: XCTestCase {
 
     // MARK: - Helpers
 
+    struct MockGitHubEventsService: GitHubEventsServiceProtocol {
+        let eventsObserver: Signal<Event, NoError>.Observer
+        let events: Signal<Event, NoError>
+
+        init() {
+            (events, eventsObserver) = Signal.pipe()
+        }
+    }
+
     private func perform(
         stubs: [MockGitHubAPI.Stubs],
-        when: (MergeService, TestScheduler) -> Void,
+        when: (MockGitHubEventsService, TestScheduler) -> Void,
         assert: ([MergeService.State]) -> Void
         ) {
 
         let scheduler = TestScheduler()
-        let github2 = MockGitHubAPI(stubs: stubs)
-        let service = MergeService(integrationLabel: integrationLabel, logger: MockLogger(), github: github2, scheduler: scheduler)
+        let gitHubAPI = MockGitHubAPI(stubs: stubs)
+        let gitHubEvents = MockGitHubEventsService()
+
+        let service = MergeService(
+            integrationLabel: integrationLabel,
+            logger: MockLogger(),
+            gitHubAPI: gitHubAPI,
+            gitHubEvents: gitHubEvents,
+            scheduler: scheduler
+        )
 
         var states: [MergeService.State] = []
 
         service.state.producer.observe(on: scheduler).startWithValues { states.append($0) }
 
-        when(service, scheduler)
+        when(gitHubEvents, scheduler)
         assert(states)
 
-        expect(github2.assert()) == true
+        expect(gitHubAPI.assert()) == true
     }
 
     private func makeState(
         status: MergeService.State.Status,
         pullRequests: [PullRequest],
         statusChecksTimeout: TimeInterval = defaultStatusChecksTimeout
-        ) -> MergeService.State {
+    ) -> MergeService.State {
         return MergeService.State(
             integrationLabel: integrationLabel,
             statusChecksTimeout: statusChecksTimeout,
