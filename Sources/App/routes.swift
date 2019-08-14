@@ -4,9 +4,6 @@ import Vapor
 public func routes(_ router: Router, logger: LoggerProtocol, gitHubEventsService: GitHubEventsService) throws {
 
     router.post("github") { request -> HTTPResponse in
-
-        logger.log("📨 handling event: \(request)")
-
         switch gitHubEventsService.handleEvent(from: request).first() {
         case .success?:
             return HTTPResponse(status: .ok)
