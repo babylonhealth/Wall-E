@@ -83,7 +83,7 @@ extension Repository {
             body: encode(MergeBranchRequest(base: base, head: head)),
             decoder: { response in
                 switch response.statusCode {
-                case 200: return .success(.success)
+                case 201: return .success(.success)
                 case 204: return .success(.upToDate)
                 case 409: return .success(.conflict)
                 default:
