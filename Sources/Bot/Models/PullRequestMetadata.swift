@@ -43,3 +43,9 @@ extension PullRequestMetadata: Decodable {
         case mergeState = "mergeable_state"
     }
 }
+
+extension PullRequestMetadata: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "\(reference), isMerged: \(isMerged), mergeState: \(mergeState))"
+    }
+}
