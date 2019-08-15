@@ -170,7 +170,7 @@ class GitHubAPITests: XCTestCase {
                     Interceptor.Stub(
                         response: Interceptor.Stub.Response(
                             url: URL(string: "https://api.github.com/repos/golang/go/merges")!,
-                            statusCode: 200,
+                            statusCode: 201,
                             body: Data()
                         )
                     )]

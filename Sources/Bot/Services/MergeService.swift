@@ -55,6 +55,7 @@ public final class MergeService {
             }
 
         gitHubEvents.events
+            .observe(on: scheduler)
             .observeValues { [weak self] event in
                 switch event {
                 case let .pullRequest(event):
@@ -620,8 +621,20 @@ private extension PullRequest {
 
 extension MergeService.State: CustomDebugStringConvertible {
 
+    private var queueDescription: String {
+        guard pullRequests.isEmpty == false else { return "[]" }
+
+        let pullRequestsSeparator = "\n\t\t"
+
+        let pullRequestsRepresentation = pullRequests.enumerated().map { index, pullRequest in
+            return "#\(index + 1): \(pullRequest)"
+        }.joined(separator: pullRequestsSeparator)
+
+        return "\(pullRequestsSeparator)\(pullRequestsRepresentation)"
+    }
+
     var debugDescription: String {
-        return "State(\(status), pullRequests: \(pullRequests))"
+        return "State(\n - status: \(status),\n - queue: \(queueDescription)\n)"
     }
 }
 
@@ -641,4 +654,3 @@ extension Int {
         return Double(self) * 60
     }
 }
-

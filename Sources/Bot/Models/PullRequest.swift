@@ -58,3 +58,15 @@ extension PullRequest: Decodable {
         case labels
     }
 }
+
+extension PullRequest: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "PR(#\(number), base: \(target), head: \"\(source)\")"
+    }
+}
+
+extension PullRequest.Branch: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "Branch(\(ref), \(sha))"
+    }
+}
