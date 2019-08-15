@@ -22,3 +22,21 @@ public struct StatusEvent: Equatable, Decodable {
         let name: String
     }
 }
+
+extension StatusEvent: CustomDebugStringConvertible {
+    public var debugDescription: String {
+         return "StatusEvent(sha: \(sha), context: \"\(context)\", state: \(state), branches: \(branches))"
+    }
+}
+
+extension StatusEvent.State: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return rawValue
+    }
+}
+
+extension StatusEvent.Branch: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return  name
+    }
+}

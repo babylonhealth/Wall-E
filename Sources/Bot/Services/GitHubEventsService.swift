@@ -25,10 +25,12 @@ public final class GitHubEventsService: GitHubEventsServiceProtocol {
     private let scheduler: Scheduler
     private let signatureVerifier: (RequestProtocol) -> Result<RequestProtocol, EventHandlingError>
     private let eventsObserver: Signal<Event, NoError>.Observer
+    private let logger: LoggerProtocol
     public let events: Signal<Event, NoError>
 
-    public init(signatureToken: Token, scheduler: Scheduler = QueueScheduler()) {
+    public init(signatureToken: Token, logger: LoggerProtocol, scheduler: Scheduler = QueueScheduler()) {
         self.signatureVerifier = GitHubEventsService.signatureVerifier(with: signatureToken)
+        self.logger = logger
         self.scheduler = scheduler
         (events, eventsObserver) = Signal.pipe()
     }
@@ -61,6 +63,7 @@ public final class GitHubEventsService: GitHubEventsServiceProtocol {
         from request: RequestProtocol
     ) -> SignalProducer<Event, EventHandlingError> {
         return request.decodeBody(T.self, using: scheduler)
+            .on(failed: { [logger] error in logger.log("Failed to decode `\(T.self)`: \(error)") })
             .mapError { _ in EventHandlingError.invalid }
             .map(transform)
     }

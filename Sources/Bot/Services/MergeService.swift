@@ -55,7 +55,6 @@ public final class MergeService {
             }
 
         gitHubEvents.events
-            .observe(on: scheduler)
             .observeValues { [weak self] event in
                 switch event {
                 case let .pullRequest(event):
@@ -74,6 +73,7 @@ public final class MergeService {
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
+        logger.log("📣 Status check did change: \(event)")
         statusChecksCompletionObserver.send(value: event)
     }
 
