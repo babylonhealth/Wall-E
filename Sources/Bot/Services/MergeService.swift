@@ -221,7 +221,8 @@ extension MergeService {
                     }
                     .flatMapError { _ in .value(.integrationDidChangeStatus(.failed(.synchronizationFailed), metadata)) }
                     .observe(on: scheduler)
-            case .blocked,
+            case .draft,
+                 .blocked,
                  .unstable:
                 return github.fetchCommitStatus(for: metadata.reference)
                     .flatMap(.latest) { commitStatus -> SignalProducer<Event, AnyError> in

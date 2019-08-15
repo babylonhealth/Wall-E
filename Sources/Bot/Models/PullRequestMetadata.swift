@@ -13,6 +13,8 @@ extension PullRequestMetadata {
     //
     // Reference: https://github.com/octokit/octokit.net/pull/1764/files
     public enum MergeState: String, Decodable {
+        /// Work in progress. Merging is blocked.
+        case draft
         /// Merge conflict. Merging is blocked.
         case dirty
         /// Mergeability was not checked yet. Merging is blocked.
