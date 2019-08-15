@@ -131,7 +131,7 @@ extension GitHubEventsTests {
     }
 
     private static func stubService(_ scheduler: TestScheduler) -> GitHubEventsService {
-        return GitHubEventsService(signatureToken: signatureToken, scheduler: scheduler)
+        return GitHubEventsService(signatureToken: signatureToken, logger: MockLogger(), scheduler: scheduler)
     }
 
     private func request(with event: GitHubEventsService.APIEvent, signature: String, payload: String) -> StubbedRequest {
@@ -174,18 +174,15 @@ extension GitHubEventsTests {
             return headers[name]
         }
 
-        public func decodeBody<T>(
-            _ type: T.Type,
-            using scheduler: Scheduler
-        ) -> SignalProducer<T, AnyError> where T: Decodable {
+        public func decodeBody<T>(_ type: T.Type) -> Result<T, AnyError> where T: Decodable {
             guard let data = data
-                else { return SignalProducer(error: AnyError(DecodeError.invalid)) }
+                else { return .failure(AnyError(DecodeError.invalid)) }
 
             do {
                 let decoder = JSONDecoder()
-                return SignalProducer(value: try decoder.decode(T.self, from: data))
+                return .success(try decoder.decode(T.self, from: data))
             } catch {
-                return SignalProducer(error: AnyError(DecodeError.invalid))
+                return .failure(AnyError(DecodeError.invalid))
             }
         }
     }

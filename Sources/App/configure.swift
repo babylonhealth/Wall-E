@@ -10,18 +10,22 @@ enum ConfigurationError: Error {
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
 
     let logger = PrintLogger()
+    let scheduler = EventLoopScheduler()
+
     let gitHubEventsService = GitHubEventsService(
         signatureToken: try Environment.gitHubWebhookSecret(),
-        scheduler: QueueScheduler.main
+        logger: logger,
+        scheduler: scheduler
     )
 
     logger.log("👟 Starting up...")
 
-    services.register(try makeMergeService(with: logger, gitHubEventsService))
+    services.register(scheduler)
+    services.register(try makeMergeService(with: logger, scheduler, gitHubEventsService))
 
     // Register routes to the router
     let router = EngineRouter.default()
-    try routes(router, logger: logger, gitHubEventsService: gitHubEventsService)
+    try routes(router, logger: logger, scheduler: scheduler, gitHubEventsService: gitHubEventsService)
     services.register(router, as: Router.self)
 
     // Register middleware
@@ -33,7 +37,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     logger.log("🏁 Ready")
 }
 
-private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService: GitHubEventsService) throws -> MergeService {
+private func makeMergeService(with logger: LoggerProtocol, _ scheduler: DateScheduler, _ gitHubEventsService: GitHubEventsService) throws -> MergeService {
 
     let gitHubAPI = GitHubClient(session: URLSession(configuration: .default), token: try Environment.gitHubToken())
         .api(for: Repository(owner: try Environment.gitHubOrganization(), name: try Environment.gitHubRepository()))
@@ -43,8 +47,9 @@ private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService
         logger: logger,
         gitHubAPI: gitHubAPI,
         gitHubEvents: gitHubEventsService,
-        scheduler: QueueScheduler.main
+        scheduler: scheduler
     )
 }
 
 extension MergeService: Service {}
+extension EventLoopScheduler: Service {}

@@ -16,21 +16,8 @@ extension Vapor.Request: RequestProtocol {
         return http.headers[name].first
     }
 
-    public func decodeBody<T>(
-        _ type: T.Type,
-        using scheduler: Scheduler
-    ) -> SignalProducer<T, AnyError> where T: Decodable {
-        return SignalProducer { [content] observer, disposable in
-            guard disposable.hasEnded == false else { return }
-
-            do {
-                let value = try content.syncDecode(type)
-                observer.send(value: value)
-                observer.sendCompleted()
-            } catch let error {
-                observer.send(error: AnyError(error))
-            }
-        }.start(on: scheduler)
+    public func decodeBody<T>(_ type: T.Type) -> Result<T, AnyError> where T: Decodable {
+        return Result(catching: { try content.syncDecode(type) })
     }
 }
 

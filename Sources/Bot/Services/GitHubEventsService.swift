@@ -62,7 +62,7 @@ public final class GitHubEventsService: GitHubEventsServiceProtocol {
         _ transform: @escaping (T) -> Event,
         from request: RequestProtocol
     ) -> SignalProducer<Event, EventHandlingError> {
-        return request.decodeBody(T.self, using: scheduler)
+        return SignalProducer { request.decodeBody(T.self) }
             .on(failed: { [logger] error in logger.log("Failed to decode `\(T.self)`: \(error)") })
             .mapError { _ in EventHandlingError.invalid }
             .map(transform)
