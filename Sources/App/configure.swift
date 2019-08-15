@@ -1,5 +1,6 @@
 import Bot
 import Vapor
+import ReactiveSwift
 
 enum ConfigurationError: Error {
     case missingConfiguration(message: String)
@@ -9,7 +10,10 @@ enum ConfigurationError: Error {
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
 
     let logger = PrintLogger()
-    let gitHubEventsService = GitHubEventsService(signatureToken: try Environment.gitHubWebhookSecret())
+    let gitHubEventsService = GitHubEventsService(
+        signatureToken: try Environment.gitHubWebhookSecret(),
+        scheduler: QueueScheduler.main
+    )
 
     logger.log("👟 Starting up...")
 
@@ -38,7 +42,8 @@ private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService
         integrationLabel: try Environment.mergeLabel(),
         logger: logger,
         gitHubAPI: gitHubAPI,
-        gitHubEvents: gitHubEventsService
+        gitHubEvents: gitHubEventsService,
+        scheduler: QueueScheduler.main
     )
 }
 
