@@ -13,7 +13,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     logger.log("👟 Starting up...")
 
-    services.register(try makeMergeService(with: logger, gitHubEventsService))
+//    services.register(try makeMergeService(with: logger, gitHubEventsService))
 
     // Register routes to the router
     let router = EngineRouter.default()
