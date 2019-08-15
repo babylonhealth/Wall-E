@@ -120,21 +120,18 @@ extension MergeService {
                         guard previous.pullRequests.firstIndex(of: pullRequest) == nil
                             else { return .empty }
 
-                        switch index {
-                        case 0:
+                        if index == 0 && current.isIntegrationOngoing == false {
                             return github.postComment(
                                 "Your pull request was accepted and is going to be handled right away 🏎",
                                 in: pullRequest
-                                )
-                                .flatMapError { _ in .empty }
-                        case 1...:
+                            )
+                            .flatMapError { _ in .empty }
+                        } else {
                             return github.postComment(
                                 "Your pull request was accepted and it's currently `#\(index + 1)` in the queue, hold tight ⏳",
                                 in: pullRequest
-                                )
-                                .flatMapError { _ in .empty }
-                        default:
-                            return .empty
+                            )
+                            .flatMapError { _ in .empty }
                         }
                 }
 
@@ -448,6 +445,15 @@ extension MergeService {
         let statusChecksTimeout: TimeInterval
         let pullRequests: [PullRequest]
         let status: Status
+
+        var isIntegrationOngoing: Bool {
+            switch status {
+            case .integrating, .runningStatusChecks:
+                return true
+            case .starting, .idle, .ready, .integrationFailed:
+                return false
+            }
+        }
 
         static func initial(with integrationLabel: PullRequest.Label, statusChecksTimeout: TimeInterval) -> State {
             return State(integrationLabel: integrationLabel, statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .starting)
