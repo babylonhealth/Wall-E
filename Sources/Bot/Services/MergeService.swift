@@ -51,7 +51,7 @@ public final class MergeService {
         state.producer
             .combinePrevious()
             .startWithValues { old, new in
-                logger.log("♻️ [Merge Service] Did change state\n - 📜 \(old) \n - 📄 \(new)")
+                logger.log("♻️ Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
 
         gitHubEvents.events
@@ -69,7 +69,7 @@ public final class MergeService {
     }
 
     private func pullRequestDidChange(event: PullRequestEvent) {
-        logger.log("📣 [Merge Service] Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
+        logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
         pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
@@ -304,7 +304,7 @@ extension MergeService {
                 .observe(on: scheduler)
                 .filter { change in change.state != .pending && change.isRelative(toBranch: pullRequest.source.ref) }
                 .on { change in
-                    logger.log("📣 [Merge Service] Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
+                    logger.log("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
                 }
                 // Checks can complete and lead to new checks which can be included posteriorly leading to a small time
                 // window where all checks have passed but just until the next check is added and stars running. This
