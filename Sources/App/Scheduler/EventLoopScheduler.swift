@@ -16,11 +16,16 @@ final class EventLoopScheduler: DateScheduler {
     func schedule(_ action: @escaping () -> Void) -> Disposable? {
         let disposable = AnyDisposable()
 
-        eventLoopGroup.next()
-            .execute {
+        let eventLoop = eventLoopGroup.next()
+
+        let promise = eventLoop.newPromise(Void.self)
+
+        eventLoop.execute {
                 if disposable.isDisposed == false {
                     action()
                 }
+
+                promise.succeed()
             }
 
         return disposable
@@ -29,11 +34,16 @@ final class EventLoopScheduler: DateScheduler {
     func schedule(after date: Date, action: @escaping () -> Void) -> Disposable? {
         let disposable = AnyDisposable()
 
-        eventLoopGroup.next()
-            .scheduleTask(in: date.timeIntervalSince(currentDate).timeAmount) {
+        let eventLoop = eventLoopGroup.next()
+
+        let promise = eventLoop.newPromise(Void.self)
+
+        eventLoop.scheduleTask(in: date.timeIntervalSince(currentDate).timeAmount) {
                 if disposable.isDisposed == false {
                     action()
                 }
+
+                promise.succeed()
             }
 
         return disposable
@@ -49,8 +59,11 @@ final class EventLoopScheduler: DateScheduler {
 
         let delay = interval.timeInterval + leeway.timeInterval
 
-        eventLoopGroup.next()
-            .scheduleRepeatedTask(
+        let eventLoop = eventLoopGroup.next()
+
+        let promise = eventLoop.newPromise(Void.self)
+
+        eventLoop.scheduleRepeatedTask(
                 initialDelay: date.timeIntervalSince(currentDate).timeAmount,
                 delay: delay.timeAmount
             ) { task -> Void in
@@ -59,6 +72,8 @@ final class EventLoopScheduler: DateScheduler {
                 } else {
                     action()
                 }
+
+                promise.succeed()
             }
 
         return disposable

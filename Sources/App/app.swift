@@ -7,9 +7,6 @@ public func app(_ env: Environment) throws -> Application {
     var services = Services.default()
     try configure(&config, &env, &services)
     let app = try Application(config: config, environment: env, services: services)
-    app.eventLoop.scheduleRepeatedTask(initialDelay: .seconds(15), delay: .seconds(15)) { (_) in
-        print("Doing some work...")
-    }
     try boot(app)
     return app
 }
