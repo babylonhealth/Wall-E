@@ -12,6 +12,10 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     let logger = PrintLogger()
     let scheduler = EventLoopScheduler()
 
+    _ = scheduler.schedule(after: scheduler.currentDate, interval: .seconds(20), leeway: .milliseconds(200)) {
+        logger.log("Testing execution...")
+    }
+
     let gitHubEventsService = GitHubEventsService(
         signatureToken: try Environment.gitHubWebhookSecret(),
         logger: logger,
