@@ -30,7 +30,7 @@ private func linksInLinkHeader(_ header: String) -> [String: URL] {
 }
 
 /// A response from the GitHub API.
-internal struct Response: Hashable {
+public struct Response: Hashable {
     let statusCode: Int
     let headers: [String : String]
     let body: Data

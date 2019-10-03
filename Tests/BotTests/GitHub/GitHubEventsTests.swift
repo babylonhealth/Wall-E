@@ -1,9 +1,20 @@
 import XCTest
 import Nimble
-import Result
 import ReactiveSwift
 import CryptoSwift
 @testable import Bot
+
+extension Result {
+
+    var error: Failure? {
+        switch self {
+        case let .failure(error):
+            return error
+        default:
+            return nil
+        }
+    }
+}
 
 class GitHubEventsTests: XCTestCase {
 
@@ -177,15 +188,15 @@ extension GitHubEventsTests {
         public func decodeBody<T>(
             _ type: T.Type,
             using scheduler: Scheduler
-        ) -> SignalProducer<T, AnyError> where T: Decodable {
+        ) -> SignalProducer<T, Error> where T: Decodable {
             guard let data = data
-                else { return SignalProducer(error: AnyError(DecodeError.invalid)) }
+                else { return SignalProducer(error: DecodeError.invalid) }
 
             do {
                 let decoder = JSONDecoder()
                 return SignalProducer(value: try decoder.decode(T.self, from: data))
             } catch {
-                return SignalProducer(error: AnyError(DecodeError.invalid))
+                return SignalProducer(error: DecodeError.invalid)
             }
         }
     }

@@ -2,6 +2,18 @@ import XCTest
 import Nimble
 @testable import Bot
 
+extension Result {
+
+    var value: Success? {
+        switch self {
+        case let .success(value):
+            return value
+        default:
+            return nil
+        }
+    }
+}
+
 class GitHubAPITests: XCTestCase {
 
     var directory: URL {

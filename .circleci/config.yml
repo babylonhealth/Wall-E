@@ -19,7 +19,7 @@ references:
 jobs:
   test:
     docker:
-      - image: swift:4.2
+      - image: swift:5.0
     steps:
       - checkout
       - run:

@@ -1,6 +1,5 @@
 import Foundation
 import ReactiveSwift
-import Result
 
 public struct RepositoryAPI: GitHubAPIProtocol {
     private let client: GitHubClient
@@ -11,57 +10,47 @@ public struct RepositoryAPI: GitHubAPIProtocol {
         self.repository = repository
     }
 
-    public func fetchPullRequests() -> SignalProducer<[PullRequest], AnyError> {
+    public func fetchPullRequests() -> SignalProducer<[PullRequest], GitHubClient.Error> {
         return client.request(repository.pullRequests)
             // Ensure we group all pages into a single list containing all pull requests
             .flatten()
             .collect()
-            .mapError(AnyError.init)
     }
 
-    public func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, AnyError> {
+    public func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, GitHubClient.Error> {
         return client.request(repository.pullRequest(number: number))
-            .mapError(AnyError.init)
     }
 
-    public func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError> {
+    public func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, GitHubClient.Error> {
         return client.request(repository.commitStatus(for: pullRequest))
-            .mapError(AnyError.init)
     }
 
-    public func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, AnyError> {
+    public func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, GitHubClient.Error> {
         return client.request(repository.requiredStatusChecks(branch: branch))
-            .mapError(AnyError.init)
     }
 
-    public func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError> {
+    public func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], GitHubClient.Error> {
         return client.request(repository.allStatusChecks(for: pullRequest))
-            .mapError(AnyError.init)
     }
 
-    public func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
+    public func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, GitHubClient.Error> {
         return client.request(repository.merge(head: head, into: base))
-            .mapError(AnyError.init)
     }
 
-    public func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<Void, AnyError> {
+    public func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<Void, GitHubClient.Error> {
         return client.request(repository.merge(pullRequest: pullRequest))
-            .mapError(AnyError.init)
     }
 
-    public func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<Void, AnyError> {
+    public func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<Void, GitHubClient.Error> {
         return client.request(repository.deleteBranch(branch: branch))
-            .mapError(AnyError.init)
     }
 
-    public func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<Void, AnyError> {
+    public func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<Void, GitHubClient.Error> {
         return client.request(repository.publish(comment: comment, in: pullRequest))
-            .mapError(AnyError.init)
     }
 
-    public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<Void, AnyError> {
+    public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<Void, GitHubClient.Error> {
         return client.request(repository.removeLabel(label: label, from: pullRequest))
-            .mapError(AnyError.init)
     }
 }
 

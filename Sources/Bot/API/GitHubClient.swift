@@ -1,6 +1,5 @@
 import Foundation
 import ReactiveSwift
-import Result
 
 public struct GitHubClient {
     private let session: URLSession
@@ -46,7 +45,7 @@ public struct GitHubClient {
         return session
             .reactive
             .data(with: request)
-            .mapError { .network($0.error) }
+            .mapError(GitHubClient.Error.network)
             .map { data, response -> Response in
                 let response = response as! HTTPURLResponse
                 let headers = response.allHeaderFields as! [String:String]
@@ -75,10 +74,10 @@ public struct GitHubClient {
 }
 
 extension GitHubClient {
-    enum Error: Swift.Error {
+    public enum Error: Swift.Error {
         case network(Swift.Error)
         case api(Response)
-        case decoding(DecodingError)
+        case decoding(Swift.Error)
     }
 }
 

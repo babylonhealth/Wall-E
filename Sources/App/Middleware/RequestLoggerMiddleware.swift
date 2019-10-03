@@ -8,7 +8,7 @@ final class RequestLoggerMiddleware: Middleware, ServiceType {
         self.logger = logger
     }
 
-    func respond(to request: Request, chainingTo next: Responder) throws -> Future<Response> {
+    func respond(to request: Request, chainingTo next: Responder) throws -> Future<Vapor.Response> {
         logger.log("""
         📝 Request logger 📝
         \(request)

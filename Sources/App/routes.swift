@@ -8,7 +8,7 @@ public func routes(
     gitHubEventsService: GitHubEventsService
 ) throws {
 
-    router.get("/") { request -> Response in
+    router.get("/") { request -> Vapor.Response in
         let response = Response(using: request)
         if request.header(named: HTTPHeaderName.accept.description) == "application/json" {
             try response.content.encode(dispatchService.queueStates, as: .json)

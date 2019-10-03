@@ -1,5 +1,4 @@
 import Foundation
-import Result
 import ReactiveSwift
 import ReactiveFeedback
 
@@ -17,8 +16,8 @@ public final class DispatchService {
 
     /// Merge services per target branch
     private var mergeServices: Atomic<[String: MergeService]>
-    public let mergeServiceLifecycle: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>
-    private let mergeServiceLifecycleObserver: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.Observer
+    public let mergeServiceLifecycle: Signal<DispatchService.MergeServiceLifecycleEvent, Never>
+    private let mergeServiceLifecycleObserver: Signal<DispatchService.MergeServiceLifecycleEvent, Never>.Observer
 
     public init(
         integrationLabel: PullRequest.Label,
@@ -42,7 +41,7 @@ public final class DispatchService {
         self.scheduler = scheduler
 
         self.mergeServices = Atomic([:])
-        (mergeServiceLifecycle, mergeServiceLifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
+        (mergeServiceLifecycle, mergeServiceLifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, Never>.pipe()
 
         gitHubAPI.fetchPullRequests()
             .flatMapError { _ in .value([]) }

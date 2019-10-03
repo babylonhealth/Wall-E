@@ -1,5 +1,4 @@
 import Foundation
-import Result
 import ReactiveSwift
 
 public protocol HTTPBodyProtocol {
@@ -13,5 +12,5 @@ public protocol RequestProtocol {
     func decodeBody<T>(
         _ type: T.Type,
         using scheduler: Scheduler
-    ) -> SignalProducer<T, AnyError> where T: Decodable
+    ) -> SignalProducer<T, Error> where T: Decodable
 }
