@@ -16,6 +16,8 @@ public final class MergeService {
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
     private let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
+    public let healthcheck: Healthcheck
+
     public init(
         integrationLabel: PullRequest.Label,
         statusChecksTimeout: TimeInterval = 60.minutes,
@@ -47,6 +49,8 @@ public final class MergeService {
                 Feedbacks.whenAddingPullRequests(github: self.gitHubAPI, scheduler: scheduler)
             ]
         )
+
+        healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
 
         state.producer
             .combinePrevious()
@@ -400,6 +404,45 @@ extension MergeService {
 }
 
 // MARK: - System types
+
+extension MergeService {
+    public final class Healthcheck {
+
+        public enum Reason: Error, Equatable {
+            case potentialDeadlock
+        }
+
+        public enum Status: Equatable {
+            case ok
+            case unhealthy(Reason)
+        }
+
+        public let status: Property<Status>
+
+        internal init(
+            state: Signal<State, NoError>,
+            statusChecksTimeout: TimeInterval,
+            scheduler: DateScheduler
+            ) {
+            status = Property(
+                initial: .ok,
+                then: state.combinePrevious()
+                    .skipRepeats { lhs, rhs in
+                        return lhs == rhs
+                    }
+                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
+                        switch current.status {
+                        case .starting, .idle:
+                            return SignalProducer(value: .ok)
+                        default:
+                            return SignalProducer(value: .unhealthy(.potentialDeadlock))
+                                .delay(1.5 * statusChecksTimeout, on: scheduler)
+                        }
+                }
+            )
+        }
+    }
+}
 
 extension MergeService {
 
