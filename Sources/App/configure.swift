@@ -17,11 +17,13 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     logger.log("👟 Starting up...")
 
-    services.register(try makeMergeService(with: logger, gitHubEventsService))
+    let mergeService = try makeMergeService(with: logger, gitHubEventsService)
+
+    services.register(mergeService)
 
     // Register routes to the router
     let router = EngineRouter.default()
-    try routes(router, logger: logger, gitHubEventsService: gitHubEventsService)
+    try routes(router, logger: logger, mergeService: mergeService, gitHubEventsService: gitHubEventsService)
     services.register(router, as: Router.self)
 
     // Register middleware
