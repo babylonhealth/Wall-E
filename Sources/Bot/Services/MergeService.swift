@@ -423,7 +423,7 @@ extension MergeService {
             state: Signal<State, NoError>,
             statusChecksTimeout: TimeInterval,
             scheduler: DateScheduler
-            ) {
+        ) {
             status = Property(
                 initial: .ok,
                 then: state.combinePrevious()
@@ -436,6 +436,13 @@ extension MergeService {
                             return SignalProducer(value: .ok)
                         default:
                             return SignalProducer(value: .unhealthy(.potentialDeadlock))
+                                // Status checks have a configurable timeout that is used to prevent blocking the queue
+                                // if for some reason there's an issue with them, we are following a strategy where we
+                                // plan the potential failure and delay it for the expected amount of time that they
+                                // should have take at most (timeout) plus a sensible leeway. Due how `flatMap(.latest)`
+                                // works, any new `state` triggered before this delay will interrupt this signal and
+                                // prevent the false failure otherwise there's something blocking the queue longer than
+                                // we antecipated and we should flag the failure.
                                 .delay(1.5 * statusChecksTimeout, on: scheduler)
                         }
                 }
