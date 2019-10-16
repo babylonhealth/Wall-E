@@ -731,7 +731,8 @@ extension MergeService.State: CustomDebugStringConvertible {
         let pullRequestsSeparator = "\n\t\t"
 
         let pullRequestsRepresentation = pullRequests.enumerated().map { index, pullRequest in
-            return "#\(index + 1): \(pullRequest)"
+            let isTP = pullRequest.isLabelled(withOneOf: self.topPriorityLabels)
+            return "#\(index + 1): \(pullRequest) \(isTP ? "[TP]" : "")"
         }.joined(separator: pullRequestsSeparator)
 
         return "\(pullRequestsSeparator)\(pullRequestsRepresentation)"
