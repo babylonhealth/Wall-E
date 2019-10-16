@@ -20,6 +20,7 @@ public final class MergeService {
 
     public init(
         integrationLabel: PullRequest.Label,
+        topPriorityLabels: [PullRequest.Label],
         statusChecksTimeout: TimeInterval = 60.minutes,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
@@ -36,7 +37,7 @@ public final class MergeService {
         (pullRequestChanges, pullRequestChangesObserver) = Signal.pipe()
 
         state = Property<State>(
-            initial: State.initial(with: integrationLabel, statusChecksTimeout: statusChecksTimeout),
+            initial: State.initial(integrationLabel: integrationLabel, topPriorityLabels: topPriorityLabels, statusChecksTimeout: statusChecksTimeout),
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
@@ -391,6 +392,10 @@ extension MergeService {
                         return Event.Outcome.include(metadata.reference)
                     case .unlabeled where metadata.reference.isLabelled(with: state.integrationLabel) == false:
                         return Event.Outcome.exclude(metadata.reference)
+                    case .labeled where metadata.reference.isLabelled(withOneOf: state.topPriorityLabels) && metadata.isMerged == false:
+                        return Event.Outcome.promoteToTopPriority(metadata.reference)
+                    case .unlabeled where metadata.reference.isLabelled(withOneOf: state.topPriorityLabels) == false:
+                         return Event.Outcome.unpromoteToLowPriority(metadata.reference)
                     case .closed:
                         return Event.Outcome.exclude(metadata.reference)
                     default:
@@ -493,6 +498,7 @@ extension MergeService {
         }
 
         let integrationLabel: PullRequest.Label
+        let topPriorityLabels: [PullRequest.Label]
         let statusChecksTimeout: TimeInterval
         let pullRequests: [PullRequest]
         let status: Status
@@ -506,30 +512,50 @@ extension MergeService {
             }
         }
 
-        static func initial(with integrationLabel: PullRequest.Label, statusChecksTimeout: TimeInterval) -> State {
-            return State(integrationLabel: integrationLabel, statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .starting)
+        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: [],
+                status: .starting
+            )
         }
 
-        init(integrationLabel: PullRequest.Label, statusChecksTimeout: TimeInterval, pullRequests: [PullRequest], status: Status) {
+        init(
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval,
+            pullRequests: [PullRequest],
+            status: Status
+        ) {
             self.integrationLabel = integrationLabel
+            self.topPriorityLabels = topPriorityLabels
             self.statusChecksTimeout = statusChecksTimeout
             self.pullRequests = pullRequests
             self.status = status
         }
 
         func with(status: Status) -> State {
-            return State(integrationLabel: integrationLabel, statusChecksTimeout: statusChecksTimeout, pullRequests: pullRequests, status: status)
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests,
+                status: status
+            )
         }
 
         func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
+            let filteredPRsToInclude = pullRequestsToInclude.filter {
+                [enqueued = self.pullRequests.map { $0.number }] pullRequest in
+                enqueued.contains(pullRequest.number) == false
+            }
             return State(
                 integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests +
-                    pullRequestsToInclude
-                        .filter { [enqueued = self.pullRequests.map { $0.number }] pullRequest in
-                            enqueued.contains(pullRequest.number) == false
-                },
+                pullRequests: sortedByTopPriority(pullRequests: pullRequests + filteredPRsToInclude),
                 status: status
             )
         }
@@ -537,10 +563,27 @@ extension MergeService {
         func exclude(pullRequest: PullRequest) -> State {
             return State(
                 integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: pullRequests.filter { $0.number != pullRequest.number },
                 status: status
             )
+        }
+
+        func reorderQueue() -> State {
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: sortedByTopPriority(pullRequests: pullRequests),
+                status: status
+            )
+        }
+
+        private func sortedByTopPriority(pullRequests unsortedList: [PullRequest]) -> [PullRequest] {
+            return unsortedList.slowStableSort { (pullRequest: PullRequest) in
+                pullRequest.isLabelled(withOneOf: topPriorityLabels)
+            }
         }
     }
 
@@ -557,6 +600,8 @@ extension MergeService {
         enum Outcome {
             case include(PullRequest)
             case exclude(PullRequest)
+            case promoteToTopPriority(PullRequest)
+            case unpromoteToLowPriority(PullRequest)
         }
 
         enum StatusChecksResult {
@@ -582,6 +627,9 @@ extension MergeService.State {
         switch event {
         case let .pullRequestDidChange(.include(pullRequest)):
             return self.with(status: .ready).include(pullRequests: [pullRequest])
+        case .pullRequestDidChange(.promoteToTopPriority(_)),
+             .pullRequestDidChange(.unpromoteToLowPriority(_)):
+            return self.with(status: .ready).reorderQueue()
         default:
             return nil
         }
@@ -654,6 +702,9 @@ extension MergeService.State {
             return self.with(status: status).include(pullRequests: [pullRequest])
         case let .pullRequestDidChange(.exclude(pullRequest)):
             return self.with(status: status).exclude(pullRequest: pullRequest)
+        case .pullRequestDidChange(.promoteToTopPriority(_)),
+             .pullRequestDidChange(.unpromoteToLowPriority(_)):
+            return self.with(status: status).reorderQueue()
         default:
             return self
         }
@@ -666,6 +717,9 @@ private extension PullRequest {
 
     func isLabelled(with label: PullRequest.Label) -> Bool {
         return labels.contains(label)
+    }
+    func isLabelled(withOneOf possibleLabels: [PullRequest.Label]) -> Bool {
+        return labels.contains(where: possibleLabels.contains)
     }
 }
 

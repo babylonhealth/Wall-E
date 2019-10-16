@@ -8,33 +8,43 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
     private let statusChecksTimeout = 30.minutes
 
+    private func makeState(status: MergeService.State.Status) -> MergeService.State {
+        return .init(
+            integrationLabel: .init(name: "Merge"),
+            topPriorityLabels: [.init(name: "TP"), .init(name: "HotFix")],
+            statusChecksTimeout: statusChecksTimeout,
+            pullRequests: [],
+            status: .starting
+        )
+    }
+
     func test_healthcheck_passing() {
 
         perform(
             when: { input, scheduler in
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .starting))
+                input.send(value: makeState(status: .starting))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .idle))
+                input.send(value: makeState(status: .idle))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .ready))
+                input.send(value: makeState(status: .ready))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .integrating(defaultTarget)))
+                input.send(value: makeState(status: .integrating(defaultTarget)))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .ready))
+                input.send(value: makeState(status: .ready))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .idle))
+                input.send(value: makeState(status: .idle))
 
                 scheduler.advance()
             },
@@ -51,28 +61,28 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .starting))
+                input.send(value: makeState(status: .starting))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .idle))
+                input.send(value: makeState(status: .idle))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .ready))
+                input.send(value: makeState(status: .ready))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .runningStatusChecks(defaultTarget)))
+                input.send(value: makeState(status: .runningStatusChecks(defaultTarget)))
 
                 scheduler.advance(by: .minutes(2 * defaultStatusChecksTimeout))
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .integrationFailed(defaultTarget, .checksFailing)))
+                input.send(value: makeState(status: .integrationFailed(defaultTarget, .checksFailing)))
 
                 scheduler.advance()
 
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .ready))
-                input.send(value: .init(integrationLabel: .init(name: "Merge"), statusChecksTimeout: statusChecksTimeout, pullRequests: [], status: .idle))
+                input.send(value: makeState(status: .ready))
+                input.send(value: makeState(status: .idle))
 
                 scheduler.advance()
 

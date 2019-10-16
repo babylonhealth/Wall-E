@@ -11,6 +11,7 @@ struct MockLogger: LoggerProtocol {
 }
 
 let integrationLabel = PullRequest.Label(name: "Please Merge 🙏")
+let topPriorityLabels = [PullRequest.Label(name: "Top Priority 🚨"), PullRequest.Label(name: "HotFix 🚒")]
 
 let defaultBranch = "some-branch"
 
@@ -826,6 +827,7 @@ class MergeServiceTests: XCTestCase {
 
         let service = MergeService(
             integrationLabel: integrationLabel,
+            topPriorityLabels: topPriorityLabels,
             logger: MockLogger(),
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
@@ -849,6 +851,7 @@ class MergeServiceTests: XCTestCase {
     ) -> MergeService.State {
         return MergeService.State(
             integrationLabel: integrationLabel,
+            topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout,
             pullRequests: pullRequests,
             status: status
