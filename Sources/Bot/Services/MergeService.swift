@@ -392,10 +392,6 @@ extension MergeService {
                         return Event.Outcome.include(metadata.reference)
                     case .unlabeled where metadata.reference.isLabelled(with: state.integrationLabel) == false:
                         return Event.Outcome.exclude(metadata.reference)
-                    case .labeled where metadata.reference.isLabelled(withOneOf: state.topPriorityLabels) && metadata.isMerged == false:
-                        return Event.Outcome.promoteToTopPriority(metadata.reference)
-                    case .unlabeled where metadata.reference.isLabelled(withOneOf: state.topPriorityLabels) == false:
-                         return Event.Outcome.unpromoteToLowPriority(metadata.reference)
                     case .closed:
                         return Event.Outcome.exclude(metadata.reference)
                     default:
@@ -547,15 +543,21 @@ extension MergeService {
         }
 
         func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
-            let filteredPRsToInclude = pullRequestsToInclude.filter {
+            let onlyNewPRs = pullRequestsToInclude.filter {
                 [enqueued = self.pullRequests.map { $0.number }] pullRequest in
                 enqueued.contains(pullRequest.number) == false
+            }
+            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
+                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
+            }
+            let newQueue = (updatedOldPRs + onlyNewPRs).slowStableSort { (pullRequest: PullRequest) in
+                pullRequest.isLabelled(withOneOf: topPriorityLabels)
             }
             return State(
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
-                pullRequests: sortedByTopPriority(pullRequests: pullRequests + filteredPRsToInclude),
+                pullRequests: newQueue,
                 status: status
             )
         }
@@ -568,22 +570,6 @@ extension MergeService {
                 pullRequests: pullRequests.filter { $0.number != pullRequest.number },
                 status: status
             )
-        }
-
-        func reorderQueue() -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: sortedByTopPriority(pullRequests: pullRequests),
-                status: status
-            )
-        }
-
-        private func sortedByTopPriority(pullRequests unsortedList: [PullRequest]) -> [PullRequest] {
-            return unsortedList.slowStableSort { (pullRequest: PullRequest) in
-                pullRequest.isLabelled(withOneOf: topPriorityLabels)
-            }
         }
     }
 
@@ -600,8 +586,6 @@ extension MergeService {
         enum Outcome {
             case include(PullRequest)
             case exclude(PullRequest)
-            case promoteToTopPriority(PullRequest)
-            case unpromoteToLowPriority(PullRequest)
         }
 
         enum StatusChecksResult {
@@ -627,9 +611,6 @@ extension MergeService.State {
         switch event {
         case let .pullRequestDidChange(.include(pullRequest)):
             return self.with(status: .ready).include(pullRequests: [pullRequest])
-        case .pullRequestDidChange(.promoteToTopPriority(_)),
-             .pullRequestDidChange(.unpromoteToLowPriority(_)):
-            return self.with(status: .ready).reorderQueue()
         default:
             return nil
         }
@@ -702,9 +683,6 @@ extension MergeService.State {
             return self.with(status: status).include(pullRequests: [pullRequest])
         case let .pullRequestDidChange(.exclude(pullRequest)):
             return self.with(status: status).exclude(pullRequest: pullRequest)
-        case .pullRequestDidChange(.promoteToTopPriority(_)),
-             .pullRequestDidChange(.unpromoteToLowPriority(_)):
-            return self.with(status: status).reorderQueue()
         default:
             return self
         }

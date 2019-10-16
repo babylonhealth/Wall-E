@@ -674,6 +674,111 @@ class MergeServiceTests: XCTestCase {
         )
     }
 
+    func test_changing_pull_request_priorities() {
+
+        let pr1 = PullRequestMetadata.stub(number: 1, labels: [integrationLabel], mergeState: .clean)
+        let pr2 = PullRequestMetadata.stub(number: 2, labels: [integrationLabel, topPriorityLabels[0]], mergeState: .behind)
+        let pr3 = PullRequestMetadata.stub(number: 3, labels: [integrationLabel], mergeState: .clean)
+        let pr4 = PullRequestMetadata.stub(number: 4, labels: [integrationLabel], mergeState: .clean)
+        let allPRs: [PullRequestMetadata] = [pr1, pr2, pr3, pr4]
+
+        func fetchMergeDelete(expectedPRNumber: UInt) -> [MockGitHubAPI.Stubs] {
+            return [
+                .getPullRequest { (num: UInt) -> PullRequestMetadata in
+                    expect(num) == expectedPRNumber
+                    return allPRs.first { $0.reference.number == num }!
+                },
+                .mergePullRequest { pr in expect(pr.number) == expectedPRNumber },
+                .deleteBranch { _ in }
+            ]
+        }
+        func expectComment(for expectedPRNumber: Int) -> (String, PullRequest) -> Void {
+            return { (_: String, pr: PullRequest) -> Void in
+                expect(pr.number) == UInt(expectedPRNumber)
+            }
+        }
+
+        perform(
+            stubs: [
+                .getPullRequests { Array(allPRs).map { $0.reference} },
+                // advance() #1
+                .getPullRequest { (num: UInt) -> PullRequestMetadata in
+                    expect(num) == 2
+                    return allPRs.first { $0.reference.number == num }!
+                },
+                .postComment(expectComment(for: 2)),
+                .postComment(expectComment(for: 1)),
+                .postComment(expectComment(for: 3)),
+                .postComment(expectComment(for: 4)),
+                .mergeIntoBranch { _, _ in .success },
+                // advance() #2
+                .postComment(expectComment(for: 3)), // new comment after reprio
+                // advance() #3
+                // advance() #4
+                .getPullRequest { (num: UInt) -> PullRequestMetadata in
+                    expect(num) == 2
+                    return pr2.with(mergeState: .clean)
+                },
+                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .mergePullRequest { (pr: PullRequest) -> Void in expect(pr.number) == 2 },
+                .deleteBranch { _ in },
+            ]
+            + fetchMergeDelete(expectedPRNumber: 3)
+            + fetchMergeDelete(expectedPRNumber: 1)
+            + fetchMergeDelete(expectedPRNumber: 4)
+            ,
+            when: { service, scheduler in
+
+                scheduler.advance() // #1
+
+                service.eventsObserver.send(value:
+                    .pullRequest(.init(action: .labeled, pullRequestMetadata: pr3.with(labels: [integrationLabel, topPriorityLabels[1]])))
+                )
+
+                scheduler.advance() // #2
+
+                service.eventsObserver.send(value:
+                    .pullRequest(.init(action: .synchronize, pullRequestMetadata: pr2.with(mergeState: .blocked)))
+                )
+
+                scheduler.advance() // #3
+
+                service.eventsObserver.send(value: .status(
+                    StatusEvent(
+                        sha: "abcdef",
+                        context: "",
+                        description: "N/A",
+                        state: .success,
+                        branches: [.init(name: pr2.reference.source.ref)]
+                    )
+                ))
+
+                scheduler.advance(by: .seconds(60)) // #4
+        },
+            assert: {
+                let pr3_tp = pr3.with(labels: [integrationLabel, topPriorityLabels[1]])
+                expect($0) == [
+                    makeState(status: .starting, pullRequests: []),
+                    makeState(status: .ready, pullRequests: [pr2, pr1, pr3, pr4].map{$0.reference}),
+                    makeState(status: .integrating(pr2), pullRequests: [pr1, pr3, pr4].map{$0.reference}),
+                    makeState(status: .integrating(pr2), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference}),
+                    makeState(status: .runningStatusChecks(pr2.with(mergeState: .blocked)), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference}),
+                    makeState(status: .integrating(pr2.with(mergeState: .clean)), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference}),
+                    makeState(status: .ready, pullRequests: [pr3_tp, pr1, pr4].map{$0.reference}),
+                    makeState(status: .integrating(pr3), pullRequests: [pr1, pr4].map{$0.reference}),
+                    makeState(status: .ready, pullRequests: [pr1, pr4].map{$0.reference}),
+                    makeState(status: .integrating(pr1), pullRequests: [pr4].map{$0.reference}),
+                    makeState(status: .ready, pullRequests: [pr4].map{$0.reference}),
+                    makeState(status: .integrating(pr4), pullRequests: []),
+                    makeState(status: .ready, pullRequests: []),
+                    makeState(status: .idle, pullRequests: [])
+                ]
+        }
+        )
+    }
+
+
+
     func test_pull_requests_receive_feedback_when_accepted() {
 
         let pullRequests = [144, 233, 377]
@@ -819,7 +924,7 @@ class MergeServiceTests: XCTestCase {
         stubs: [MockGitHubAPI.Stubs],
         when: (MockGitHubEventsService, TestScheduler) -> Void,
         assert: ([MergeService.State]) -> Void
-        ) {
+    ) {
 
         let scheduler = TestScheduler()
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
