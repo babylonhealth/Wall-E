@@ -14,7 +14,7 @@ class MergeServiceHealthcheckTests: XCTestCase {
             topPriorityLabels: [.init(name: "TP"), .init(name: "HotFix")],
             statusChecksTimeout: statusChecksTimeout,
             pullRequests: [],
-            status: .starting
+            status: status
         )
     }
 
