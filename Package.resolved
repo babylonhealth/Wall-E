@@ -84,7 +84,7 @@
       },
       {
         "package": "ReactiveFeedback",
-        "repositoryURL": "https://github.com/Babylonpartners/ReactiveFeedback",
+        "repositoryURL": "https://github.com/babylonhealth/ReactiveFeedback",
         "state": {
           "branch": null,
           "revision": "2b3ae69cd5d980e7022975fe3d4822cedb7f89f0",
