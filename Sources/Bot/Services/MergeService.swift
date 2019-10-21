@@ -544,8 +544,8 @@ extension MergeService {
 
         func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
             let onlyNewPRs = pullRequestsToInclude.filter {
-                [enqueued = self.pullRequests.map { $0.number }] pullRequest in
-                enqueued.contains(pullRequest.number) == false
+                [currentQueue = self.pullRequests] pullRequest in
+                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
             }
             let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
                 pullRequestsToInclude.first { $0.number == pr.number } ?? pr
