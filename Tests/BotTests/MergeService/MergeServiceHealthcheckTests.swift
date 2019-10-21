@@ -6,18 +6,6 @@ import Result
 
 class MergeServiceHealthcheckTests: XCTestCase {
 
-    private let statusChecksTimeout = 30.minutes
-
-    private func makeState(status: MergeService.State.Status) -> MergeService.State {
-        return .init(
-            integrationLabel: .init(name: "Merge"),
-            topPriorityLabels: [.init(name: "TP"), .init(name: "HotFix")],
-            statusChecksTimeout: statusChecksTimeout,
-            pullRequests: [],
-            status: status
-        )
-    }
-
     func test_healthcheck_passing() {
 
         perform(
@@ -36,7 +24,7 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .integrating(defaultTarget)))
+                input.send(value: makeState(status: .integrating(MergeServiceFixture.defaultTarget)))
 
                 scheduler.advance()
 
@@ -73,11 +61,11 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .runningStatusChecks(defaultTarget)))
+                input.send(value: makeState(status: .runningStatusChecks(MergeServiceFixture.defaultTarget)))
 
-                scheduler.advance(by: .minutes(2 * defaultStatusChecksTimeout))
+                scheduler.advance(by: .minutes(2 * MergeServiceFixture.defaultStatusChecksTimeout))
 
-                input.send(value: makeState(status: .integrationFailed(defaultTarget, .checksFailing)))
+                input.send(value: makeState(status: .integrationFailed(MergeServiceFixture.defaultTarget, .checksFailing)))
 
                 scheduler.advance()
 
@@ -104,7 +92,7 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
         let healthcheck = MergeService.Healthcheck(
             state: state.output,
-            statusChecksTimeout: statusChecksTimeout,
+            statusChecksTimeout: MergeServiceFixture.defaultStatusChecksTimeout,
             scheduler: scheduler
         )
 
