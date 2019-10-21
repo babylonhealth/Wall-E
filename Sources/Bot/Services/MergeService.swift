@@ -550,8 +550,8 @@ extension MergeService {
             let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
                 pullRequestsToInclude.first { $0.number == pr.number } ?? pr
             }
-            let newQueue = (updatedOldPRs + onlyNewPRs).slowStableSort { (pullRequest: PullRequest) in
-                pullRequest.isLabelled(withOneOf: topPriorityLabels)
+            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
+                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
             }
             return State(
                 integrationLabel: integrationLabel,
