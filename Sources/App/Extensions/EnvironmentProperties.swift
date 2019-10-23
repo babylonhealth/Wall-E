@@ -23,6 +23,14 @@ extension Environment {
         return PullRequest.Label(name: try Environment.get("MERGE_LABEL"))
     }
 
+    // TODO: OHA: Add this value to env vars in host
+    static func topPriorityLabels() throws -> [PullRequest.Label] {
+        let labelsList: String = try Environment.get("TOP_PRIORITY_LABELS")
+        return labelsList.split(separator: ",").map { name in
+            PullRequest.Label(name: String(name))
+        }
+    }
+
     static func get(_ key: String) throws -> String {
         guard let value = Environment.get(key) as String?
             else { throw ConfigurationError.missingConfiguration(message: "💥 key `\(key)` not found in environment") }
