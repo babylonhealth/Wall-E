@@ -30,8 +30,8 @@ jobs:
           command: swift test
     
   build:
-    docker:
-      - image: docker:stable
+    machine:
+      - image: ubuntu-1604:201903-01
     steps:
       - checkout
       - setup_remote_docker
@@ -41,8 +41,8 @@ jobs:
           command: make build
 
   deploy:
-    docker:
-      - image: docker:stable
+    machine:
+      - image: ubuntu-1604:201903-01
     steps:
       - run:
           name: Deploy image
