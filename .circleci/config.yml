@@ -1,20 +1,61 @@
 version: 2
 
+use_docker: &use_docker setup_remote_docker
+
+quay_login: &quay_login
+  run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+
+only_tagged: &only_tagged
+  filters:
+    branches:
+      ignore:
+      - /^.*$/
+    tags:
+      only:
+      - /^.*$/
+
 jobs:
   test:
     docker:
       - image: swift:4.2
     steps:
       - checkout
-      - run: 
+      - run:
           name: Compile code
           command: swift build
-      - run: 
+      - run:
           name: Run unit tests
           command: swift test
+    
+  build:
+    steps:
+    - checkout
+    - *use_docker
+    - *quay_login
+    - run:
+        name: Build image
+        command: make build
+
+  deploy:
+    steps:
+      - run:
+          name: Deploy image
+          command: make install
+
 
 workflows:
   version: 2
-  tests:
+  build-and-deploy:
     jobs:
       - test
+        context: babylon
+      - build
+        context: babylon
+        requires:
+          - build
+      - deploy
+        context: babylon
+        <<: *only_tagged
+        requires:
+          - test
+          - build
