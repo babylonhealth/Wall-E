@@ -1,16 +1,20 @@
 version: 2.1
 
-- &quay_login
-  run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+references:
+  - &only_tagged
+    filters:
+      branches:
+        ignore:
+        - /^.*$/
+      tags:
+        only:
+        - /^.*$/
 
-- &only_tagged
-  filters:
-    branches:
-      ignore:
-      - /^.*$/
-    tags:
-      only:
-      - /^.*$/
+commands:
+  quay_login:
+    steps:
+      - run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+    
 
 jobs:
   test:
@@ -26,34 +30,34 @@ jobs:
           command: swift test
     
   build:
+    docker:
+      - image: docker:stable
     steps:
-    - checkout
-    - setup_remote_docker
-    - *quay_login
-    - run:
-        name: Build image
-        command: make build
+      - checkout
+      - setup_remote_docker
+      - quay_login
+      - run:
+          name: Build image
+          command: make build
 
   deploy:
+    docker:
+      - image: docker:stable
     steps:
       - run:
           name: Deploy image
           command: make install
 
-
 workflows:
   version: 2
-  build-and-deploy:
+  test-build-deploy:
     jobs:
       - test:
-        context: babylon
+          context: babylon
       - build:
-        context: babylon
-        requires:
-          - build
+          context: babylon
+          requires: [test]
       - deploy:
-        context: babylon
-        <<: *only_tagged
-        requires:
-          - test
-          - build
+          context: babylon
+          <<: *only_tagged
+          requires: [build]
