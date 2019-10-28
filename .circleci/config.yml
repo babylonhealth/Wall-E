@@ -47,13 +47,13 @@ workflows:
   version: 2
   build-and-deploy:
     jobs:
-      - test
+      - test:
         context: babylon
-      - build
+      - build:
         context: babylon
         requires:
           - build
-      - deploy
+      - deploy:
         context: babylon
         <<: *only_tagged
         requires:
