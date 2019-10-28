@@ -1,7 +1,5 @@
 version: 2.1
 
-- &use_docker setup_remote_docker
-
 - &quay_login
   run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
 
@@ -30,7 +28,7 @@ jobs:
   build:
     steps:
     - checkout
-    - *use_docker
+    - setup_remote_docker
     - *quay_login
     - run:
         name: Build image
