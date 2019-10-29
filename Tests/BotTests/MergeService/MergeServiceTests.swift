@@ -168,15 +168,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .success,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .success)
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -208,15 +200,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .success,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .success)
 
                 scheduler.advance()
             },
@@ -305,15 +289,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .success,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .success)
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -428,15 +404,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .failure,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .failure)
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -484,17 +452,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
 
                 for _ in 1...3 {
-
-                    service.eventsObserver.send(value: .status(
-                        StatusEvent(
-                            sha: "abcdef",
-                            context: "",
-                            description: "N/A",
-                            state: .success,
-                            branches: [StatusEvent.Branch(name: MergeServiceFixture.defaultBranch)]
-                        )
-                    ))
-
+                    service.sendStatusEvent(state: .success)
                     scheduler.advance(by: .seconds(60))
                 }
             },
@@ -638,15 +596,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .failure,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .failure)
 
                 scheduler.advance(by: .seconds(60))
             },
@@ -736,15 +686,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance() // #3
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .success,
-                        branches: [.init(name: pr2.reference.source.ref)]
-                    )
-                ))
+                service.sendStatusEvent(state: .success, branches: [.init(name: pr2.reference.source.ref)])
 
                 scheduler.advance(by: .seconds(60)) // #4
         },
@@ -853,15 +795,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .success,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .success)
 
                 scheduler.advance(by: .seconds(30))
 
@@ -873,15 +807,7 @@ class MergeServiceTests: XCTestCase {
 
                 // Simulate all checks being successful
 
-                service.eventsObserver.send(value: .status(
-                    StatusEvent(
-                        sha: "abcdef",
-                        context: "",
-                        description: "N/A",
-                        state: .success,
-                        branches: [.init(name: MergeServiceFixture.defaultBranch)]
-                    )
-                ))
+                service.sendStatusEvent(state: .success)
 
                 expectedPullRequest = MergeServiceFixture.defaultTarget.with(mergeState: .clean)
                 expectedCommitStatus = CommitState.stub(states: [.success, .success])
@@ -912,6 +838,22 @@ class MergeServiceTests: XCTestCase {
 
         init() {
             (events, eventsObserver) = Signal.pipe()
+        }
+
+        func sendStatusEvent(
+            index: Int = 0,
+            state: StatusEvent.State,
+            branches: [StatusEvent.Branch] = [.init(name: MergeServiceFixture.defaultBranch)]
+        ) {
+            eventsObserver.send(value: .status(
+                StatusEvent(
+                    sha: "abcdef",
+                    context: CommitState.stubContextName(index),
+                    description: "N/A",
+                    state: state,
+                    branches: branches
+                )
+            ))
         }
     }
 
