@@ -1,20 +1,25 @@
 version: 2.1
 
 references:
+  - &enable_tags
+    filters:
+      tags:
+        only: 
+          - /.*/
   - &only_tagged
     filters:
       branches:
         ignore:
-        - /^.*$/
+        - /.*/
       tags:
         only:
-        - /^.*$/
+        - /.*/
 
 commands:
   quay_login:
     steps:
       - run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
-    
+
 
 jobs:
   test:
@@ -49,14 +54,17 @@ jobs:
 
 workflows:
   version: 2
+
   test-build-deploy:
     jobs:
       - test:
           context: babylon
+          <<: *enable_tags
       - build:
           context: babylon
           requires: [test]
+          <<: *enable_tags
       - deploy:
           context: babylon
-          <<: *only_tagged
           requires: [build]
+          <<: *only_tagged
