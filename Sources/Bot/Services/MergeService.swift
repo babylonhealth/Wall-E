@@ -417,8 +417,15 @@ extension MergeService {
         }
     }
 
-    fileprivate static func getRequiredChecksState(github: GitHubAPIProtocol, targetBranch: PullRequest.Branch, commitState: CommitState) -> SignalProducer<CommitState.State, AnyError> {
-        github.fetchRequiredStatusChecks(for: targetBranch).map { (requiredStatusChecks) -> CommitState.State in
+    fileprivate static func getRequiredChecksState(
+        github: GitHubAPIProtocol,
+        targetBranch: PullRequest.Branch,
+        commitState: CommitState
+    ) -> SignalProducer<CommitState.State, AnyError> {
+        guard commitState.state != .success else {
+            return .value(.success)
+        }
+        return github.fetchRequiredStatusChecks(for: targetBranch).map { (requiredStatusChecks) -> CommitState.State in
             let requiredStates = commitState.statuses.filter { status in
                 requiredStatusChecks.contexts.contains(status.context)
             }
