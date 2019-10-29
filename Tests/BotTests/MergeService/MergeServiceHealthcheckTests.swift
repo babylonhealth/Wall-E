@@ -12,27 +12,27 @@ class MergeServiceHealthcheckTests: XCTestCase {
             when: { input, scheduler in
                 scheduler.advance()
 
-                input.send(value: makeState(status: .starting))
+                input.send(value: MergeService.State.stub(status: .starting))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .idle))
+                input.send(value: MergeService.State.stub(status: .idle))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .ready))
+                input.send(value: MergeService.State.stub(status: .ready))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .integrating(MergeServiceFixture.defaultTarget)))
+                input.send(value: MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .ready))
+                input.send(value: MergeService.State.stub(status: .ready))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .idle))
+                input.send(value: MergeService.State.stub(status: .idle))
 
                 scheduler.advance()
             },
@@ -49,28 +49,28 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .starting))
+                input.send(value: MergeService.State.stub(status: .starting))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .idle))
+                input.send(value: MergeService.State.stub(status: .idle))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .ready))
+                input.send(value: MergeService.State.stub(status: .ready))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .runningStatusChecks(MergeServiceFixture.defaultTarget)))
+                input.send(value: MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget)))
 
                 scheduler.advance(by: .minutes(2 * MergeServiceFixture.defaultStatusChecksTimeout))
 
-                input.send(value: makeState(status: .integrationFailed(MergeServiceFixture.defaultTarget, .checksFailing)))
+                input.send(value: MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget, .checksFailing)))
 
                 scheduler.advance()
 
-                input.send(value: makeState(status: .ready))
-                input.send(value: makeState(status: .idle))
+                input.send(value: MergeService.State.stub(status: .ready))
+                input.send(value: MergeService.State.stub(status: .idle))
 
                 scheduler.advance()
 

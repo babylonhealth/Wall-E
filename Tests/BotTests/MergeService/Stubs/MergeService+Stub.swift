@@ -21,20 +21,22 @@ struct MergeServiceFixture {
 
 // MARK: - Helpers
 
-func makeState(
-    status: MergeService.State.Status,
-    pullRequests: [PullRequest] = [],
-    integrationLabel: PullRequest.Label = LabelFixture.integrationLabel,
-    topPriorityLabels: [PullRequest.Label] = LabelFixture.topPriorityLabels,
-    statusChecksTimeout: TimeInterval = MergeServiceFixture.defaultStatusChecksTimeout
-) -> MergeService.State {
-    return .init(
-        integrationLabel: integrationLabel,
-        topPriorityLabels: topPriorityLabels,
-        statusChecksTimeout: statusChecksTimeout,
-        pullRequests: pullRequests,
-        status: status
-    )
+extension MergeService.State {
+    static func stub(
+        status: MergeService.State.Status,
+        pullRequests: [PullRequest] = [],
+        integrationLabel: PullRequest.Label = LabelFixture.integrationLabel,
+        topPriorityLabels: [PullRequest.Label] = LabelFixture.topPriorityLabels,
+        statusChecksTimeout: TimeInterval = MergeServiceFixture.defaultStatusChecksTimeout
+    ) -> MergeService.State {
+        return .init(
+            integrationLabel: integrationLabel,
+            topPriorityLabels: topPriorityLabels,
+            statusChecksTimeout: statusChecksTimeout,
+            pullRequests: pullRequests,
+            status: status
+        )
+    }
 }
 
 extension ArraySlice {
