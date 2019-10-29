@@ -1,7 +1,7 @@
 version: 2.1
 
 references:
-  - &on_branchs_and_tags
+  - &on_branches_and_tags
     filters:
       tags:
         only: 
@@ -59,11 +59,11 @@ workflows:
     jobs:
       - test:
           context: babylon
-          <<: *on_branchs_and_tags
+          <<: *on_branches_and_tags
       - build:
           context: babylon
           requires: [test]
-          <<: *on_branchs_and_tags
+          <<: *on_branches_and_tags
       - deploy:
           context: babylon
           requires: [build]
