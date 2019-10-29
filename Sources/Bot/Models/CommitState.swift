@@ -14,6 +14,12 @@ public struct CommitState: Decodable, Equatable {
         public let context: String
     }
 
+    /// Combined state for all the checks
+    /// - `.failure` if any of the contexts report as error or failure
+    /// - `.pending` if there are no statuses or a context is pending
+    /// - `.success` if the latest status for all contexts is success
     public let state: State
+
+    /// Individual status of each check
     public let statuses: [Status]
 }

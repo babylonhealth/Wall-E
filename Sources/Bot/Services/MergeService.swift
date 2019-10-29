@@ -422,17 +422,17 @@ extension MergeService {
         targetBranch: PullRequest.Branch,
         commitState: CommitState
     ) -> SignalProducer<CommitState.State, AnyError> {
-        guard commitState.state != .success else {
+        if commitState.state == .success {
             return .value(.success)
         }
         return github.fetchRequiredStatusChecks(for: targetBranch).map { (requiredStatusChecks) -> CommitState.State in
-            let requiredStates = commitState.statuses.filter { status in
-                requiredStatusChecks.contexts.contains(status.context)
+            let requiredStates = requiredStatusChecks.contexts.map { requiredContext in
+                commitState.statuses.first(where: { $0.context == requiredContext })?.state ?? .pending
             }
-            if requiredStates.contains(where: { status in status.state == .pending }) {
-                return .pending
-            } else if requiredStates.contains(where: { status in status.state == .failure }) {
+            if requiredStates.contains(.failure) {
                 return .failure
+            } else if requiredStates.contains(.pending) {
+                return .pending
             } else {
                 return .success
             }
