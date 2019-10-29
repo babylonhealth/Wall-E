@@ -1,12 +1,12 @@
 version: 2.1
 
 references:
-  - &enable_tags
+  - &on_branchs_and_tags
     filters:
       tags:
         only: 
           - /.*/
-  - &only_tagged
+  - &on_tags_only
     filters:
       branches:
         ignore:
@@ -59,12 +59,12 @@ workflows:
     jobs:
       - test:
           context: babylon
-          <<: *enable_tags
+          <<: *on_branchs_and_tags
       - build:
           context: babylon
           requires: [test]
-          <<: *enable_tags
+          <<: *on_branchs_and_tags
       - deploy:
           context: babylon
           requires: [build]
-          <<: *only_tagged
+          <<: *on_tags_only
