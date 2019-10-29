@@ -1,4 +1,20 @@
-version: 2
+version: 2.1
+
+references:
+  - &only_tagged
+    filters:
+      branches:
+        ignore:
+        - /^.*$/
+      tags:
+        only:
+        - /^.*$/
+
+commands:
+  quay_login:
+    steps:
+      - run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+    
 
 jobs:
   test:
@@ -6,15 +22,41 @@ jobs:
       - image: swift:4.2
     steps:
       - checkout
-      - run: 
+      - run:
           name: Compile code
           command: swift build
-      - run: 
+      - run:
           name: Run unit tests
           command: swift test
+    
+  build:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run:
+          name: Build image
+          command: make build
+
+  deploy:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - quay_login 
+      - run:
+          name: Deploy image
+          command: make install
 
 workflows:
   version: 2
-  tests:
+  test-build-deploy:
     jobs:
-      - test
+      - test:
+          context: babylon
+      - build:
+          context: babylon
+          requires: [test]
+      - deploy:
+          context: babylon
+          <<: *only_tagged
+          requires: [build]
