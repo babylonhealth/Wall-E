@@ -232,8 +232,8 @@ extension MergeService {
             case .blocked,
                  .unstable:
                 return github.fetchCommitStatus(for: metadata.reference)
-                    .flatMap(.latest) { status -> SignalProducer<Event, AnyError> in
-                        switch status.state {
+                    .flatMap(.latest) { commitStatus -> SignalProducer<Event, AnyError> in
+                        switch commitStatus.state {
                         case .pending:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .failure:
@@ -413,6 +413,9 @@ extension MergeService {
         }
     }
 
+    /// Returns the consolidated status of all _required_ checks only
+    /// i.e. returns .failure or .pending if one of the required check is in .failure or .pending respectively
+    /// and return .success only if all required states are .success
     fileprivate static func getRequiredChecksState(
         github: GitHubAPIProtocol,
         targetBranch: PullRequest.Branch,
