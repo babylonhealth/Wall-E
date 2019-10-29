@@ -192,7 +192,8 @@ extension MergeService {
                 else { return .value(.integrationDidChangeStatus(.done, metadata)) }
 
             switch metadata.mergeState {
-            case .clean:
+            case .clean,
+                 .unstable where !requiresAllStatusChecks:
                 return github.mergePullRequest(metadata.reference)
                     .flatMap(.latest) { () -> SignalProducer<(), NoError> in
                         github.deleteBranch(named: metadata.reference.source)
@@ -231,13 +232,8 @@ extension MergeService {
             case .blocked,
                  .unstable:
                 return github.fetchCommitStatus(for: metadata.reference)
-                    .flatMap(.latest) { (commitStatus: CommitState) -> SignalProducer<CommitState.State, AnyError> in
-                        return requiresAllStatusChecks
-                            ? .value(commitStatus.state)
-                            : getRequiredChecksState(github: github, targetBranch: metadata.reference.target, commitState: commitStatus)
-                    }
-                    .flatMap(.latest) { state -> SignalProducer<Event, AnyError> in
-                        switch state {
+                    .flatMap(.latest) { status -> SignalProducer<Event, AnyError> in
+                        switch status.state {
                         case .pending:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .failure:
