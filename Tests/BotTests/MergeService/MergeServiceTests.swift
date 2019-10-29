@@ -154,7 +154,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
-                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
             ],
@@ -200,7 +200,7 @@ class MergeServiceTests: XCTestCase {
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
                 .postComment { _, _ in },
-                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
@@ -282,7 +282,7 @@ class MergeServiceTests: XCTestCase {
                     expect(pullRequest.number) == 2
                 },
                 .getPullRequest { _ in first.with(mergeState: .clean) },
-                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
                 .getPullRequest { _ in second },
@@ -414,7 +414,8 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
-                .getCommitStatus { _ in CommitState(state: .failure, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.failure]) },
+                .getRequiredStatusChecks { _ in RequiredStatusChecks.stub(indices: [0]) },
                 .postComment { _, _ in },
                 .removeLabel { _, _ in }
             ],
@@ -454,6 +455,8 @@ class MergeServiceTests: XCTestCase {
     }
 
     func test_pull_request_with_multiple_status_checks() {
+        let requiredStatusChecks = RequiredStatusChecks.stub(indices: [0])
+
         perform(
             stubs: [
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
@@ -461,11 +464,13 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
-                .getCommitStatus { _ in CommitState(state: .pending, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.pending]) },
+                .getRequiredStatusChecks{ _ in requiredStatusChecks },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
-                .getCommitStatus { _ in CommitState(state: .pending, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.pending]) },
+                .getRequiredStatusChecks{ _ in requiredStatusChecks },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
-                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
             ],
@@ -613,7 +618,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in first.with(mergeState: .clean) },
-                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in }
             ],
@@ -705,7 +710,7 @@ class MergeServiceTests: XCTestCase {
                     expect(num) == 2
                     return pr2.with(mergeState: .clean)
                 },
-                .getCommitStatus { _ in CommitState(state: .success, statuses: []) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .mergePullRequest { (pr: PullRequest) -> Void in expect(pr.number) == 2 },
                 .deleteBranch { _ in },
             ]
@@ -822,7 +827,8 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_does_not_fail_prematurely_if_checks_complete_before_adding_the_following_checks() {
 
         var expectedPullRequest = MergeServiceFixture.defaultTarget.with(mergeState: .blocked)
-        var expectedCommitStatus = CommitState(state: .success, statuses: [])
+        var expectedCommitStatus = CommitState.stub(states: [.success])
+        let expectedRequiredStatusChecks = RequiredStatusChecks.stub(indices: [0])
 
         perform(
             stubs: [
@@ -832,6 +838,7 @@ class MergeServiceTests: XCTestCase {
                 .mergeIntoBranch { _, _ in .success },
                 .getPullRequest { _ in expectedPullRequest },
                 .getCommitStatus { _ in expectedCommitStatus },
+                .getRequiredStatusChecks { _ in expectedRequiredStatusChecks },
                 .getPullRequest { _ in expectedPullRequest },
                 .getCommitStatus { _ in expectedCommitStatus },
                 .mergePullRequest { _ in },
@@ -860,7 +867,7 @@ class MergeServiceTests: XCTestCase {
 
                 // Simulate a new check being added
 
-                expectedCommitStatus = CommitState(state: .pending, statuses: [])
+                expectedCommitStatus = CommitState.stub(states: [.pending, .success])
 
                 scheduler.advance(by: .seconds(30))
 
@@ -877,7 +884,7 @@ class MergeServiceTests: XCTestCase {
                 ))
 
                 expectedPullRequest = MergeServiceFixture.defaultTarget.with(mergeState: .clean)
-                expectedCommitStatus = CommitState(state: .success, statuses: [])
+                expectedCommitStatus = CommitState.stub(states: [.success, .success])
 
                 scheduler.advance(by: .seconds(60))
             },
