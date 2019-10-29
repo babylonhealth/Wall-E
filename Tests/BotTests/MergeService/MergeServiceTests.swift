@@ -921,6 +921,7 @@ class MergeServiceTests: XCTestCase {
         let service = MergeService(
             integrationLabel: LabelFixture.integrationLabel,
             topPriorityLabels: LabelFixture.topPriorityLabels,
+            requiresAllStatusChecks: false,
             statusChecksTimeout: MergeServiceFixture.defaultStatusChecksTimeout,
             logger: MockLogger(),
             gitHubAPI: gitHubAPI,

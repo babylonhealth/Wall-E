@@ -1,5 +1,3 @@
-import Foundation
-
 let GitHubPullRequestEvent: String = """
 {
     "action": "closed",

@@ -1,5 +1,3 @@
-import Foundation
-
 let GitHubPullRequest = """
 {
     "id": 1,

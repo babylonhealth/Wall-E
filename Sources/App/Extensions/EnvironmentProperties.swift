@@ -19,6 +19,13 @@ extension Environment {
         return try Environment.get("GITHUB_REPOSITORY")
     }
 
+    static func requiresAllGitHubStatusChecks() throws -> Bool {
+        guard let stringValue: String = try? Environment.get("REQUIRES_ALL_STATUS_CHECKS") else {
+            return false // defaults to only consider required checks
+        }
+        return ["yes", "1", "true"].contains(stringValue.lowercased())
+    }
+
     static func mergeLabel() throws -> PullRequest.Label {
         return PullRequest.Label(name: try Environment.get("MERGE_LABEL"))
     }

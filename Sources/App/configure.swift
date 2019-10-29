@@ -43,6 +43,7 @@ private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService
     return MergeService(
         integrationLabel: try Environment.mergeLabel(),
         topPriorityLabels: try Environment.topPriorityLabels(),
+        requiresAllStatusChecks: try Environment.requiresAllGitHubStatusChecks(), 
         logger: logger,
         gitHubAPI: gitHubAPI,
         gitHubEvents: gitHubEventsService,
