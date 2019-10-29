@@ -15,11 +15,6 @@ references:
         only:
         - /.*/
 
-commands:
-  quay_login:
-    steps:
-      - run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
-
 
 jobs:
   test:
@@ -33,8 +28,8 @@ jobs:
       - run:
           name: Run unit tests
           command: swift test
-    
-  build:
+
+  deploy:
     machine:
       image: ubuntu-1604:201903-01
     steps:
@@ -42,12 +37,9 @@ jobs:
       - run:
           name: Build image
           command: make build
-
-  deploy:
-    machine:
-      image: ubuntu-1604:201903-01
-    steps:
-      - quay_login 
+      - run:
+          name: Login in quay.io
+          command: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
       - run:
           name: Deploy image
           command: make install
@@ -55,16 +47,12 @@ jobs:
 workflows:
   version: 2
 
-  test-build-deploy:
+  test-n-deploy:
     jobs:
       - test:
           context: babylon
           <<: *on_branches_and_tags
-      - build:
-          context: babylon
-          requires: [test]
-          <<: *on_branches_and_tags
       - deploy:
           context: babylon
-          requires: [build]
+          requires: [test]
           <<: *on_tags_only
