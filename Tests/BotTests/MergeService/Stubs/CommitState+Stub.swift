@@ -6,17 +6,8 @@ extension CommitState {
             return CommitState(state: .pending, statuses: [])
         }
 
-        let combinedState: CommitState.State
-        if states.contains(.failure) {
-            combinedState = .failure
-        } else if states.contains(.pending) {
-            combinedState = .pending
-        } else {
-            combinedState = .success
-        }
-
         return .init(
-            state: combinedState,
+            state: CommitState.State.combinedState(for: states),
             statuses: states.enumerated().map { item in
                 CommitState.Status.stub(state: item.element, context: CommitState.stubContextName(item.offset))
             }

@@ -428,13 +428,7 @@ extension MergeService {
             let requiredStates = requiredStatusChecks.contexts.map { requiredContext in
                 commitState.statuses.first(where: { $0.context == requiredContext })?.state ?? .pending
             }
-            if requiredStates.contains(.failure) {
-                return .failure
-            } else if requiredStates.contains(.pending) {
-                return .pending
-            } else {
-                return .success
-            }
+            return CommitState.State.combinedState(for: requiredStates)
         }
     }
 }
