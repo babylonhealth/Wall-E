@@ -35,9 +35,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Build image
-          command: make build
-      - run:
           name: Login in quay.io
           command: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
       - run:
