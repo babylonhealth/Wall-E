@@ -8,6 +8,9 @@ public func routes(
     gitHubEventsService: GitHubEventsService
 ) throws {
 
+    router.get("/", use: notFoundHandler(with: logger))
+    router.get(all, use: notFoundHandler(with: logger))
+
     router.get("healthcheck") { request -> HTTPResponse in
         switch mergeService.healthcheck.status.value {
         case .ok: return HTTPResponse(status: .ok)
@@ -22,5 +25,12 @@ public func routes(
         case .failure?, .none:
             return HTTPResponse(status: .badRequest)
         }
+    }
+}
+
+private func notFoundHandler(with logger: LoggerProtocol) -> (Request) -> HTTPResponse {
+    return { request in
+        logger.log("\n🚨🚨🚨 Got an unexpected request 🚨🚨🚨\n\(request.http)\n🚨🚨🚨 ------------------------- 🚨🚨🚨")
+        return HTTPResponse(status: .notFound)
     }
 }
