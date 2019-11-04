@@ -9,7 +9,11 @@ final class RequestLoggerMiddleware: Middleware, ServiceType {
     }
 
     func respond(to request: Request, chainingTo next: Responder) throws -> Future<Response> {
-        logger.log("📝 Request logger 📝\n\(request)\n===========================")
+        logger.log("""
+        📝 Request logger 📝
+        \(request)
+        ===========================
+        """)
         return try next.respond(to: request)
     }
 
