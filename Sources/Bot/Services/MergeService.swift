@@ -4,7 +4,7 @@ import ReactiveSwift
 import ReactiveFeedback
 
 public final class MergeService {
-    let state: Property<State>
+    public let state: Property<State>
 
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
@@ -483,7 +483,7 @@ extension MergeService {
 
 extension MergeService {
 
-    enum FailureReason: Equatable {
+    public enum FailureReason: Equatable {
         case conflicts
         case mergeFailed
         case synchronizationFailed
@@ -493,9 +493,9 @@ extension MergeService {
         case unknown
     }
 
-    struct State: Equatable {
+    public struct State: Equatable {
 
-        enum Status: Equatable {
+        public enum Status: Equatable {
             case starting
             case idle
             case ready
@@ -503,7 +503,7 @@ extension MergeService {
             case runningStatusChecks(PullRequestMetadata)
             case integrationFailed(PullRequestMetadata, FailureReason)
 
-            var integrationMetadata: PullRequestMetadata? {
+            internal var integrationMetadata: PullRequestMetadata? {
                 switch self {
                 case let .integrating(metadata):
                     return metadata
@@ -512,7 +512,7 @@ extension MergeService {
                 }
             }
 
-            var statusChecksMetadata: PullRequestMetadata? {
+            internal var statusChecksMetadata: PullRequestMetadata? {
                 switch self {
                 case let .runningStatusChecks(metadata):
                     return metadata
@@ -522,11 +522,11 @@ extension MergeService {
             }
         }
 
-        let integrationLabel: PullRequest.Label
-        let topPriorityLabels: [PullRequest.Label]
-        let statusChecksTimeout: TimeInterval
-        let pullRequests: [PullRequest]
-        let status: Status
+        internal let integrationLabel: PullRequest.Label
+        internal let topPriorityLabels: [PullRequest.Label]
+        internal let statusChecksTimeout: TimeInterval
+        public let pullRequests: [PullRequest]
+        public let status: Status
 
         var isIntegrationOngoing: Bool {
             switch status {
@@ -730,7 +730,7 @@ private extension PullRequest {
     }
 }
 
-extension MergeService.State: CustomDebugStringConvertible {
+extension MergeService.State: CustomStringConvertible {
 
     private var queueDescription: String {
         guard pullRequests.isEmpty == false else { return "[]" }
@@ -745,7 +745,7 @@ extension MergeService.State: CustomDebugStringConvertible {
         return "\(pullRequestsSeparator)\(pullRequestsRepresentation)"
     }
 
-    var debugDescription: String {
+    public var description: String {
         return "State(\n - status: \(status),\n - queue: \(queueDescription)\n)"
     }
 }
