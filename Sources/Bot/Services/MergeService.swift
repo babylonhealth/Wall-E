@@ -21,6 +21,7 @@ public final class MergeService {
     public init(
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
+        requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval = 60.minutes,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
@@ -43,8 +44,8 @@ public final class MergeService {
             feedbacks: [
                 Feedbacks.whenStarting(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
-                Feedbacks.whenIntegrating(github: self.gitHubAPI, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
-                Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
+                Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
+                Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
                 Feedbacks.whenIntegrationFailed(github: self.gitHubAPI, logger: logger, scheduler: scheduler),
                 Feedbacks.pullRequestChanges(pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenAddingPullRequests(github: self.gitHubAPI, scheduler: scheduler)
@@ -175,6 +176,7 @@ extension MergeService {
 
     fileprivate static func whenIntegrating(
         github: GitHubAPIProtocol,
+        requiresAllStatusChecks: Bool,
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
@@ -190,7 +192,8 @@ extension MergeService {
                 else { return .value(.integrationDidChangeStatus(.done, metadata)) }
 
             switch metadata.mergeState {
-            case .clean:
+            case .clean,
+                 .unstable where !requiresAllStatusChecks:
                 return github.mergePullRequest(metadata.reference)
                     .flatMap(.latest) { () -> SignalProducer<(), NoError> in
                         github.deleteBranch(named: metadata.reference.source)
@@ -234,7 +237,7 @@ extension MergeService {
                         case .pending:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .failure:
-                            return .value(.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed), metadata))
+                            return .value(.integrationDidChangeStatus(.failed(.checksFailing), metadata))
                         case  .success:
                             return github.fetchPullRequest(number: metadata.reference.number)
                                 .map { metadata in
@@ -280,6 +283,7 @@ extension MergeService {
     fileprivate static func whenRunningStatusChecks(
         github: GitHubAPIProtocol,
         logger: LoggerProtocol,
+        requiresAllStatusChecks: Bool,
         statusChecksCompletion: Signal<StatusEvent, NoError>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
@@ -315,13 +319,19 @@ extension MergeService {
                 // window where all checks have passed but just until the next check is added and stars running. This
                 // hopefully prevents those false positives by making sure we wait some time before checking if all
                 // checks have passed
-                .debounce(60, on: scheduler)
+                .debounce(60.0, on: scheduler)
                 .flatMap(.latest) { change in
                     github.fetchPullRequest(number: pullRequest.number)
                         .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
+                        .flatMap(.latest) { commitStatus, pullRequestMetadataRefreshed -> SignalProducer<(CommitState.State, PullRequestMetadata), AnyError> in
+                            let requiredStateProducer = requiresAllStatusChecks
+                                ? .value(commitStatus.state)
+                                : getRequiredChecksState(github: github, targetBranch: pullRequest.target, commitState: commitStatus)
+                            return requiredStateProducer.zip(with: .value(pullRequestMetadataRefreshed))
+                        }
                         .flatMapError { _ in .empty }
-                        .filterMap { commitStatus, pullRequestMetadataRefreshed in
-                            switch commitStatus.state {
+                        .filterMap { state, pullRequestMetadataRefreshed in
+                            switch state {
                             case .pending:
                                 return nil
                             case .failure:
@@ -400,6 +410,25 @@ extension MergeService {
                 }
                 .skipNil()
                 .map(Event.pullRequestDidChange)
+        }
+    }
+
+    /// Returns the consolidated status of all _required_ checks only
+    /// i.e. returns .failure or .pending if one of the required check is in .failure or .pending respectively
+    /// and return .success only if all required states are .success
+    fileprivate static func getRequiredChecksState(
+        github: GitHubAPIProtocol,
+        targetBranch: PullRequest.Branch,
+        commitState: CommitState
+    ) -> SignalProducer<CommitState.State, AnyError> {
+        if commitState.state == .success {
+            return .value(.success)
+        }
+        return github.fetchRequiredStatusChecks(for: targetBranch).map { (requiredStatusChecks) -> CommitState.State in
+            let requiredStates = requiredStatusChecks.contexts.map { requiredContext in
+                commitState.statuses.first(where: { $0.context == requiredContext })?.state ?? .pending
+            }
+            return CommitState.State.combinedState(for: requiredStates)
         }
     }
 }

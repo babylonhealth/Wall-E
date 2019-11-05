@@ -10,6 +10,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         case getPullRequests(() -> [PullRequest])
         case getPullRequest((UInt) -> PullRequestMetadata)
         case getCommitStatus((PullRequest) -> CommitState)
+        case getRequiredStatusChecks((PullRequest.Branch) -> RequiredStatusChecks)
         case mergePullRequest((PullRequest) -> Void)
         case mergeIntoBranch((PullRequest.Branch, PullRequest.Branch) -> MergeResult)
         case deleteBranch((PullRequest.Branch) -> Void)
@@ -47,6 +48,15 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         switch nextStub() {
         case let .getCommitStatus(handler):
             return SignalProducer(value: handler(pullRequest))
+        default:
+            fatalError("Stub not found")
+        }
+    }
+
+    func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, AnyError> {
+        switch nextStub() {
+        case let .getRequiredStatusChecks(handler):
+            return SignalProducer(value: handler(branch))
         default:
             fatalError("Stub not found")
         }

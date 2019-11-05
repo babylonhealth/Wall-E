@@ -1,5 +1,3 @@
-import Foundation
-
 let GitHubStatusEvent: String = """
 {
   "id": 5018968172,

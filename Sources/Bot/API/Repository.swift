@@ -51,6 +51,14 @@ extension Repository {
         )
     }
 
+    func requiredStatusChecks(branch: PullRequest.Branch) -> Resource<RequiredStatusChecks> {
+        return Resource(
+            method: .GET,
+            path: path(for: "branches/\(branch.ref)/protection/required_status_checks"),
+            decoder: decode
+        )
+    }
+
     func deleteBranch(branch: PullRequest.Branch) -> Resource<Void> {
         return Resource(
             method: .DELETE,

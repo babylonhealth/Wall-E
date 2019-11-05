@@ -93,6 +93,41 @@ class GitHubAPITests: XCTestCase {
         }
     }
 
+    func test_fetch_required_status_checks() {
+        perform(stub:
+            Interceptor.load(
+                stubs: [
+                    Interceptor.Stub(
+                        response: Interceptor.Stub.Response(
+                            url: URL(string: "https://api.github.com/repos/babylonhealth/babylon-ios/branches/develop/protection/required_status_checks")!,
+                            statusCode: 200,
+                            body: GitHubRequiredStatusChecks.data(using: .utf8)!
+                        )
+                    )]
+            )
+        ) { client in
+
+            let api = RepositoryAPI(client: client, repository: .init(owner: "golang", name: "go"))
+
+            let result = api.fetchRequiredStatusChecks(for: target.target).first()?.value
+
+            expect(result).toNot(beNil())
+            expect(result) == RequiredStatusChecks(
+                isStrict: true,
+                contexts: [
+                    "ci/circleci: Build: SDK",
+                    "ci/circleci: UnitTests: Ascension",
+                    "ci/circleci: UnitTests: BabylonKSA",
+                    "ci/circleci: UnitTests: BabylonUS",
+                    "ci/circleci: UnitTests: Telus",
+                    "ci/circleci: SnapshotTests: BabylonChatBotUI",
+                    "ci/circleci: SnapshotTests: BabylonUI",
+                    "ci/circleci: SnapshotTests: Babylon"
+                ]
+            )
+        }
+    }
+
     func test_delete_branch() {
 
         perform(stub:
