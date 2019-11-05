@@ -2,16 +2,16 @@
 
 extension RequiredStatusChecks {
     static func stub(
-        strict: Bool = true,
+        isStrict: Bool = true,
         contexts: [String]
     ) -> RequiredStatusChecks {
-        return .init(strict: strict, contexts: contexts)
+        return .init(isStrict: isStrict, contexts: contexts)
     }
 
     static func stub(
-        strict: Bool = true,
+        isStrict: Bool = true,
         indices: [Int]
     ) -> RequiredStatusChecks {
-        return .stub(strict: strict, contexts: indices.map(CommitState.stubContextName))
+        return .stub(isStrict: isStrict, contexts: indices.map(CommitState.stubContextName))
     }
 }

@@ -113,7 +113,7 @@ class GitHubAPITests: XCTestCase {
 
             expect(result).toNot(beNil())
             expect(result) == RequiredStatusChecks(
-                strict: true,
+                isStrict: true,
                 contexts: [
                     "ci/circleci: Build: SDK",
                     "ci/circleci: UnitTests: Ascension",
