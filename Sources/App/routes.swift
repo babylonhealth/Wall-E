@@ -8,6 +8,10 @@ public func routes(
     gitHubEventsService: GitHubEventsService
 ) throws {
 
+    router.get("/") { request -> String in
+        return String(describing: mergeService.state.value)
+    }
+
     router.get("health") { request -> HTTPResponse in
         switch mergeService.healthcheck.status.value {
         case .ok: return HTTPResponse(status: .ok)
