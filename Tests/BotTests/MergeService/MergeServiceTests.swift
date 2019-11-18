@@ -589,7 +589,9 @@ class MergeServiceTests: XCTestCase {
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
-                .postComment { _, _ in },
+                .postComment { comment, _ in
+                    expect(comment) == "@John Doe unfortunately the integration failed with code: `timedOut`."
+                },
                 .removeLabel { _, _ in }
                 ],
             when: { service, scheduler in
