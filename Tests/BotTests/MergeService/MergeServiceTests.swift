@@ -589,7 +589,9 @@ class MergeServiceTests: XCTestCase {
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
-                .postComment { _, _ in },
+                .postComment { comment, _ in
+                    expect(comment) == "@John Doe unfortunately the integration failed with code: `timedOut`."
+                },
                 .removeLabel { _, _ in }
                 ],
             when: { service, scheduler in
@@ -608,7 +610,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
-                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .checksFailing)),
+                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .timedOut)),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]

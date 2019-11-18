@@ -22,7 +22,7 @@ public final class MergeService {
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
-        statusChecksTimeout: TimeInterval = 60.minutes,
+        statusChecksTimeout: TimeInterval,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
@@ -316,7 +316,7 @@ extension MergeService {
                     logger.log("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
                 }
                 // Checks can complete and lead to new checks which can be included posteriorly leading to a small time
-                // window where all checks have passed but just until the next check is added and stars running. This
+                // window where all checks have passed but just until the next check is added and starts running. This
                 // hopefully prevents those false positives by making sure we wait some time before checking if all
                 // checks have passed
                 .debounce(60.0, on: scheduler)
@@ -344,7 +344,7 @@ extension MergeService {
                 .timeout(after: context.statusChecksTimeout, raising: TimeoutError.timedOut, on: scheduler)
                 .flatMapError { error in
                     switch error {
-                    case .timedOut: return .value(.statusChecksDidComplete(.failed(context.pullRequestMetadata)))
+                    case .timedOut: return .value(.statusChecksDidComplete(.timedOut(context.pullRequestMetadata)))
                     }
                 }
         }
@@ -489,6 +489,7 @@ extension MergeService {
         case synchronizationFailed
         case checkingCommitChecksFailed
         case checksFailing
+        case timedOut
         case blocked
         case unknown
     }
@@ -620,6 +621,7 @@ extension MergeService {
         enum StatusChecksResult {
             case failed(PullRequestMetadata)
             case passed(PullRequestMetadata)
+            case timedOut(PullRequestMetadata)
         }
 
         enum IntegrationStatus {
@@ -690,6 +692,8 @@ extension MergeService.State {
             return self.with(status: .integrating(pullRequest))
         case let .statusChecksDidComplete(.failed(pullRequest)):
             return self.with(status: .integrationFailed(pullRequest, .checksFailing))
+        case let .statusChecksDidComplete(.timedOut(pullRequest)):
+            return self.with(status: .integrationFailed(pullRequest, .timedOut))
         case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
             return self.with(status: .ready)
         default:

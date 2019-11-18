@@ -26,6 +26,11 @@ extension Environment {
         return ["yes", "1", "true"].contains(stringValue.lowercased())
     }
 
+    static func statusChecksTimeout() throws -> TimeInterval? {
+        let value: String = try Environment.get("STATUS_CHECKS_TIMEOUT")
+        return TimeInterval(value)
+    }
+
     static func mergeLabel() throws -> PullRequest.Label {
         return PullRequest.Label(name: try Environment.get("MERGE_LABEL"))
     }
