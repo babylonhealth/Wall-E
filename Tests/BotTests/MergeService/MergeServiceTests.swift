@@ -608,7 +608,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
-                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .checksFailing)),
+                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .timedOut)),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
