@@ -48,6 +48,7 @@ public final class MergeService {
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
+                Feedbacks.whenStarting(scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -70,6 +71,8 @@ public final class MergeService {
             switch state.status {
             case .idle:
                 return state.reduceIdle(with: event)
+            case .starting:
+                return state.reduceStarting(with: event)
             case .ready:
                 return state.reduceReady(with: event)
             case let .integrating(metadata):
@@ -103,7 +106,7 @@ extension MergeService {
                     .enumerated()
                     .map { index, pullRequest -> SignalProducer<(), NoError> in
 
-                        guard previous.pullRequests.firstIndex(of: pullRequest) == nil
+                        guard previous.status == .starting || previous.pullRequests.firstIndex(of: pullRequest) == nil
                             else { return .empty }
 
                         if index == 0 && current.isIntegrationOngoing == false {
@@ -124,6 +127,15 @@ extension MergeService {
                 return SignalProducer.merge(actions)
                     .then(.empty)
         })
+    }
+
+    fileprivate static func whenStarting(scheduler: DateScheduler) -> Feedback<State, Event> {
+        return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, NoError> in
+            return SignalProducer
+                .value(Event.pullRequestsLoaded(state.pullRequests))
+//                .delay(0.1, on: scheduler) // TODO: IOSP-164: Remove hack here
+                .observe(on: scheduler)
+        }
     }
 
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
@@ -357,7 +369,7 @@ extension MergeService {
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
-        return Feedback { state in
+        return Feedback(predicate: { $0.status != .starting }) { state in
             return pullRequestChanges
                 .observe(on: scheduler)
                 .map { metadata, action -> Event.Outcome? in
@@ -417,6 +429,7 @@ extension MergeService {
     public struct State: Equatable {
 
         public enum Status: Equatable {
+            case starting
             case idle
             case ready
             case integrating(PullRequestMetadata)
@@ -452,22 +465,18 @@ extension MergeService {
             switch status {
             case .integrating, .runningStatusChecks:
                 return true
-            case .idle, .ready, .integrationFailed:
+            case .starting, .idle, .ready, .integrationFailed:
                 return false
             }
         }
 
-        static func initial(
-            integrationLabel: PullRequest.Label,
-            topPriorityLabels: [PullRequest.Label],
-            statusChecksTimeout: TimeInterval
-        ) -> State {
+        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
             return State(
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: [],
-                status: .ready
+                status: .starting
             )
         }
 
@@ -565,6 +574,17 @@ extension MergeService.State {
         switch event {
         case let .pullRequestDidChange(.include(pullRequest)):
             return self.with(status: .ready).include(pullRequests: [pullRequest])
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceStarting(with event: Event) -> MergeService.State? {
+        switch event {
+        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == true:
+            return self.with(status: .idle)
+        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == false:
+            return self.with(status: .ready).include(pullRequests: pullRequests)
         default:
             return nil
         }
