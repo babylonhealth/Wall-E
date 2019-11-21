@@ -653,16 +653,6 @@ extension MergeService.State {
 
 // MARK: - Helpers
 
-private extension PullRequest {
-
-    func isLabelled(with label: PullRequest.Label) -> Bool {
-        return labels.contains(label)
-    }
-    func isLabelled(withOneOf possibleLabels: [PullRequest.Label]) -> Bool {
-        return labels.contains(where: possibleLabels.contains)
-    }
-}
-
 extension MergeService.State: CustomStringConvertible {
 
     private var queueDescription: String {

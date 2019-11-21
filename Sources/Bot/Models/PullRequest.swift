@@ -70,3 +70,12 @@ extension PullRequest.Branch: CustomDebugStringConvertible {
         return "Branch(\(ref), \(sha))"
     }
 }
+
+extension PullRequest {
+    func isLabelled(with label: PullRequest.Label) -> Bool {
+        return labels.contains(label)
+    }
+    func isLabelled(withOneOf possibleLabels: [PullRequest.Label]) -> Bool {
+        return labels.contains(where: possibleLabels.contains)
+    }
+}
