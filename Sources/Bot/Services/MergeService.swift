@@ -41,14 +41,14 @@ public final class MergeService {
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout
-        ).include(pullRequests: initialPullRequests)
+        )
         
         state = Property<State>(
             initial: initialState,
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(scheduler: scheduler),
+                Feedbacks.whenStarting(initialPullRequests: initialPullRequests, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -129,11 +129,10 @@ extension MergeService {
         })
     }
 
-    fileprivate static func whenStarting(scheduler: DateScheduler) -> Feedback<State, Event> {
+    fileprivate static func whenStarting(initialPullRequests: [PullRequest], scheduler: DateScheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, NoError> in
             return SignalProducer
-                .value(Event.pullRequestsLoaded(state.pullRequests))
-//                .delay(0.1, on: scheduler) // TODO: IOSP-164: Remove hack here
+                .value(Event.pullRequestsLoaded(initialPullRequests))
                 .observe(on: scheduler)
         }
     }
