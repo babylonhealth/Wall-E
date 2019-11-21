@@ -38,7 +38,15 @@ public final class DispatchService {
 
         self.mergeServices = [:]
 
-        // TODO: IOSP-164: Don't forget to handle the boot sequence (fetching current list of PRs and dispatching them)
+        gitHubAPI.fetchPullRequests()
+            .flatMapError { _ in .value([]) }
+            .map { pullRequests in
+                pullRequests.filter { $0.isLabelled(with: self.integrationLabel) }
+            }
+            .observe(on: scheduler)
+            .startWithValues { [weak self] pullRequests in
+                self?.dispatchInitial(pullRequests: pullRequests)
+            }
 
         // TODO: IOSP-164: Decomment once healthcheck is ready again
 //        healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
@@ -57,19 +65,30 @@ public final class DispatchService {
             }
     }
 
+    private func dispatchInitial(pullRequests: [PullRequest]) {
+        let dispatchTable = Dictionary(grouping: pullRequests) { pullRequest in pullRequest.target.ref }
+        for (branch, pullRequestsForBranch) in dispatchTable {
+            let mergeService = makeMergeService(targetBranch: branch, initialPullRequests: pullRequestsForBranch)
+            mergeServices[branch] = mergeService
+        }
+    }
+
+    private func getOrCreateMergeService(forBranch targetBranch: String) -> MergeService {
+        let mergeService: MergeService
+        if let service = mergeServices[targetBranch] {
+            mergeService = service
+        } else {
+            mergeService = makeMergeService(targetBranch: targetBranch)
+            mergeServices[targetBranch] = mergeService
+            // TODO: IOSP-164: Hook to mergeService.state.status so that when it's back in `.idle` then we can consider cleaning it up from the dict
+        }
+        return mergeService
+    }
+
     private func pullRequestDidChange(event: PullRequestEvent) {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
         let prTargetBranch = event.pullRequestMetadata.reference.target.ref
-
-        let mergeService: MergeService
-        if let service = mergeServices[prTargetBranch] {
-            mergeService = service
-        } else {
-            mergeService = makeMergeService(targetBranch: prTargetBranch)
-            mergeServices[prTargetBranch] = mergeService
-            // TODO: IOSP-164: Hook to mergeService.state.status so that when it's back in `.idle` then we can consider cleaning it up from the dict
-        }
-
+        let mergeService = getOrCreateMergeService(forBranch: prTargetBranch)
         mergeService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
@@ -82,13 +101,14 @@ public final class DispatchService {
         mergeService.statusChecksCompletionObserver.send(value: event)
     }
 
-    private func makeMergeService(targetBranch: String) -> MergeService {
+    private func makeMergeService(targetBranch: String, initialPullRequests: [PullRequest] = []) -> MergeService {
         return MergeService(
             targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
             statusChecksTimeout: statusChecksTimeout,
+            initialPullRequests: initialPullRequests,
             logger: logger,
             gitHubAPI: gitHubAPI
         )
@@ -97,7 +117,10 @@ public final class DispatchService {
 
 extension DispatchService {
     public var queuesDescription: String {
-        mergeServices.map { (entry: (key: String, value: MergeService)) -> String in
+        guard !mergeServices.isEmpty else {
+            return "No PR pending, all queues empty."
+        }
+        return mergeServices.map { (entry: (key: String, value: MergeService)) -> String in
             """
             ## Merge Queue for target branch: \(entry.key) ##
 

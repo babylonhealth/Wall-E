@@ -23,6 +23,7 @@ public final class MergeService {
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
+        initialPullRequests: [PullRequest],
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -36,12 +37,17 @@ public final class MergeService {
 
         (pullRequestChanges, pullRequestChangesObserver) = Signal.pipe()
 
+        let initialState = State.initial(
+            integrationLabel: integrationLabel,
+            topPriorityLabels: topPriorityLabels,
+            statusChecksTimeout: statusChecksTimeout
+        ).include(pullRequests: initialPullRequests)
+        
         state = Property<State>(
-            initial: State.initial(integrationLabel: integrationLabel, topPriorityLabels: topPriorityLabels, statusChecksTimeout: statusChecksTimeout),
+            initial: initialState,
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -64,8 +70,6 @@ public final class MergeService {
             switch state.status {
             case .idle:
                 return state.reduceIdle(with: event)
-            case .starting:
-                return state.reduceStarting(with: event)
             case .ready:
                 return state.reduceReady(with: event)
             case let .integrating(metadata):
@@ -120,19 +124,6 @@ extension MergeService {
                 return SignalProducer.merge(actions)
                     .then(.empty)
         })
-    }
-
-    fileprivate static func whenStarting(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
-        return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, NoError> in
-
-            return github.fetchPullRequests()
-                .flatMapError { _ in .value([]) }
-                .map { pullRequests in
-                    pullRequests.filter { $0.isLabelled(with: state.integrationLabel) }
-                }
-                .map(Event.pullRequestsLoaded)
-                .start(on: scheduler)
-        }
     }
 
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
@@ -366,7 +357,7 @@ extension MergeService {
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
-        return Feedback(predicate: { $0.status != .starting }) { state in
+        return Feedback { state in
             return pullRequestChanges
                 .observe(on: scheduler)
                 .map { metadata, action -> Event.Outcome? in
@@ -426,7 +417,6 @@ extension MergeService {
     public struct State: Equatable {
 
         public enum Status: Equatable {
-            case starting
             case idle
             case ready
             case integrating(PullRequestMetadata)
@@ -462,18 +452,22 @@ extension MergeService {
             switch status {
             case .integrating, .runningStatusChecks:
                 return true
-            case .starting, .idle, .ready, .integrationFailed:
+            case .idle, .ready, .integrationFailed:
                 return false
             }
         }
 
-        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+        static func initial(
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval
+        ) -> State {
             return State(
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: [],
-                status: .starting
+                status: .ready
             )
         }
 
@@ -571,17 +565,6 @@ extension MergeService.State {
         switch event {
         case let .pullRequestDidChange(.include(pullRequest)):
             return self.with(status: .ready).include(pullRequests: [pullRequest])
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceStarting(with event: Event) -> MergeService.State? {
-        switch event {
-        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == true:
-            return self.with(status: .idle)
-        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == false:
-            return self.with(status: .ready).include(pullRequests: pullRequests)
         default:
             return nil
         }

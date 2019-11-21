@@ -22,7 +22,7 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
+                    MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
             }
@@ -43,7 +43,7 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
+                    MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
             }
@@ -65,7 +65,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean))),
                     MergeService.State.stub(status: .ready),
@@ -104,7 +103,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }),
                     MergeService.State.stub(status: .integrating(pullRequests[0]), pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray),
                     MergeService.State.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray),
@@ -135,7 +133,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [target.reference]),
                     MergeService.State.stub(status: .integrating(target)),
                     MergeService.State.stub(status: .integrationFailed(target, .conflicts)),
@@ -174,7 +171,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -206,7 +202,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean))),
@@ -239,7 +234,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .idle),
                     MergeService.State.stub(status: .ready, pullRequests: [targetLabeled.reference]),
                     MergeService.State.stub(status: .integrating(targetLabeled)),
@@ -295,7 +289,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [first.reference]),
                     MergeService.State.stub(status: .integrating(first)),
                     MergeService.State.stub(status: .runningStatusChecks(first.with(mergeState: .blocked))),
@@ -335,7 +328,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -371,7 +363,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -410,7 +401,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -458,7 +448,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -516,7 +505,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -569,7 +557,6 @@ class MergeServiceTests: XCTestCase {
         },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -606,7 +593,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -635,7 +621,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown))),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean))),
@@ -665,7 +650,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown))),
                     MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unknown), .unknown)),
@@ -715,7 +699,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [first, second].map { $0.reference}),
                     MergeService.State.stub(status: .integrating(first), pullRequests: [second.reference]),
                     MergeService.State.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)), pullRequests: [second.reference]),
@@ -806,7 +789,6 @@ class MergeServiceTests: XCTestCase {
             assert: {
                 let pr3_tp = pr3.with(labels: [LabelFixture.integrationLabel, LabelFixture.topPriorityLabels[1]])
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [pr2, pr1, pr3, pr4].map{$0.reference}),
                     MergeService.State.stub(status: .integrating(pr2), pullRequests: [pr1, pr3, pr4].map{$0.reference}),
                     MergeService.State.stub(status: .integrating(pr2), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference}),
@@ -865,7 +847,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }),
                     MergeService.State.stub(status: .integrating(pullRequests[0]), pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray),
                     MergeService.State.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray),
@@ -929,7 +910,6 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
@@ -981,7 +961,9 @@ class MergeServiceTests: XCTestCase {
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        let service = MergeService(
+        var states: [MergeService.State] = []
+
+        _ = MonoQueueDispatchServiceMock(
             integrationLabel: LabelFixture.integrationLabel,
             topPriorityLabels: LabelFixture.topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
@@ -989,16 +971,66 @@ class MergeServiceTests: XCTestCase {
             logger: MockLogger(),
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
-            scheduler: scheduler
+            scheduler: scheduler,
+            onNewMergeService: { service in
+                service.state.producer.observe(on: scheduler).startWithValues { states.append($0) }
+            }
         )
-
-        var states: [MergeService.State] = []
-
-        service.state.producer.observe(on: scheduler).startWithValues { states.append($0) }
 
         when(gitHubEvents, scheduler)
         assert(states)
 
         expect(gitHubAPI.assert()) == true
+    }
+}
+
+private final class MonoQueueDispatchServiceMock {
+    var mergeService: MergeService?
+
+    init(
+        integrationLabel: PullRequest.Label,
+        topPriorityLabels: [PullRequest.Label],
+        requiresAllStatusChecks: Bool,
+        statusChecksTimeout: TimeInterval,
+        logger: LoggerProtocol,
+        gitHubAPI: GitHubAPIProtocol,
+        gitHubEvents: GitHubEventsServiceProtocol,
+        scheduler: DateScheduler = QueueScheduler(),
+        onNewMergeService: @escaping (MergeService) -> ()
+    ) {
+        gitHubAPI.fetchPullRequests()
+            .flatMapError { _ in .value([]) }
+            .map { pullRequests in
+                pullRequests.filter { $0.isLabelled(with: integrationLabel) }
+            }
+            .observe(on: scheduler)
+            .startWithValues { pullRequests in
+                let mergeService = MergeService(
+                    targetBranch: "develop",
+                    integrationLabel: integrationLabel,
+                    topPriorityLabels: topPriorityLabels,
+                    requiresAllStatusChecks: requiresAllStatusChecks,
+                    statusChecksTimeout: statusChecksTimeout,
+                    initialPullRequests: pullRequests,
+                    logger: logger,
+                    gitHubAPI: gitHubAPI,
+                    scheduler: scheduler
+                )
+                self.mergeService = mergeService
+                onNewMergeService(mergeService)
+            }
+
+        gitHubEvents.events
+            .observe(on: scheduler)
+            .observeValues { gitHubEvent in
+                switch gitHubEvent {
+                case let .pullRequest(event):
+                    self.mergeService?.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+                case let .status(event):
+                    self.mergeService?.statusChecksCompletionObserver.send(value: event)
+                case .ping:
+                    break
+                }
+            }
     }
 }
