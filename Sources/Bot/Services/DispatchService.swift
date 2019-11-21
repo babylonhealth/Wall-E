@@ -25,7 +25,8 @@ public final class DispatchService {
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
-        scheduler: DateScheduler = QueueScheduler()
+        scheduler: DateScheduler = QueueScheduler(),
+        onNewMergeService: (MergeService) -> Void = { _ in }
     ) {
         self.integrationLabel = integrationLabel
         self.topPriorityLabels = topPriorityLabels

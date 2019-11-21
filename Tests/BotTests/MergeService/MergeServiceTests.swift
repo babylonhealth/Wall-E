@@ -983,7 +983,7 @@ class MergeServiceTests: XCTestCase {
 
         var states: [MergeService.State] = []
 
-        _ = MonoQueueDispatchServiceMock(
+        _ = DispatchService(
             integrationLabel: LabelFixture.integrationLabel,
             topPriorityLabels: LabelFixture.topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
@@ -1001,56 +1001,5 @@ class MergeServiceTests: XCTestCase {
         assert(states)
 
         expect(gitHubAPI.assert()) == true
-    }
-}
-
-private final class MonoQueueDispatchServiceMock {
-    var mergeService: MergeService?
-
-    init(
-        integrationLabel: PullRequest.Label,
-        topPriorityLabels: [PullRequest.Label],
-        requiresAllStatusChecks: Bool,
-        statusChecksTimeout: TimeInterval,
-        logger: LoggerProtocol,
-        gitHubAPI: GitHubAPIProtocol,
-        gitHubEvents: GitHubEventsServiceProtocol,
-        scheduler: DateScheduler = QueueScheduler(),
-        onNewMergeService: @escaping (MergeService) -> ()
-    ) {
-        gitHubAPI.fetchPullRequests()
-            .flatMapError { _ in .value([]) }
-            .map { pullRequests in
-                pullRequests.filter { $0.isLabelled(with: integrationLabel) }
-            }
-            .observe(on: scheduler)
-            .startWithValues { pullRequests in
-                let mergeService = MergeService(
-                    targetBranch: "develop",
-                    integrationLabel: integrationLabel,
-                    topPriorityLabels: topPriorityLabels,
-                    requiresAllStatusChecks: requiresAllStatusChecks,
-                    statusChecksTimeout: statusChecksTimeout,
-                    initialPullRequests: pullRequests,
-                    logger: logger,
-                    gitHubAPI: gitHubAPI,
-                    scheduler: scheduler
-                )
-                self.mergeService = mergeService
-                onNewMergeService(mergeService)
-            }
-
-        gitHubEvents.events
-            .observe(on: scheduler)
-            .observeValues { gitHubEvent in
-                switch gitHubEvent {
-                case let .pullRequest(event):
-                    self.mergeService?.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
-                case let .status(event):
-                    self.mergeService?.statusChecksCompletionObserver.send(value: event)
-                case .ping:
-                    break
-                }
-            }
     }
 }
