@@ -4,20 +4,23 @@ import Vapor
 public func routes(
     _ router: Router,
     logger: LoggerProtocol,
-    mergeService: MergeService,
+    dispatchService: DispatchService,
     gitHubEventsService: GitHubEventsService
 ) throws {
 
     router.get("/") { request -> String in
-        return String(describing: mergeService.state.value)
+        return dispatchService.queuesDescription
     }
 
+    /*
+     // TODO: IOSP-164: Decomment this once ready to tweak healthcheck
     router.get("health") { request -> HTTPResponse in
-        switch mergeService.healthcheck.status.value {
+        switch dispatchService.healthcheck.status.value {
         case .ok: return HTTPResponse(status: .ok)
         default: return HTTPResponse(status: .serviceUnavailable)
         }
     }
+    */
 
     router.post("github") { request -> HTTPResponse in
         switch gitHubEventsService.handleEvent(from: request).first() {

@@ -13,15 +13,15 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     logger.log("👟 Starting up...")
 
-    let mergeService = try makeMergeService(with: logger, gitHubEventsService)
+    let dispatchService = try makeDispatchService(with: logger, gitHubEventsService)
 
-    services.register(mergeService)
+    services.register(dispatchService)
     services.register(logger, as: PrintLogger.self)
     services.register(RequestLoggerMiddleware.self)
 
     // Register routes to the router
     let router = EngineRouter.default()
-    try routes(router, logger: logger, mergeService: mergeService, gitHubEventsService: gitHubEventsService)
+    try routes(router, logger: logger, dispatchService: dispatchService, gitHubEventsService: gitHubEventsService)
     services.register(router, as: Router.self)
 
     // Register middleware
@@ -34,12 +34,12 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     logger.log("🏁 Ready")
 }
 
-private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService: GitHubEventsService) throws -> MergeService {
+private func makeDispatchService(with logger: LoggerProtocol, _ gitHubEventsService: GitHubEventsService) throws -> DispatchService {
 
     let gitHubAPI = GitHubClient(session: URLSession(configuration: .default), token: try Environment.gitHubToken())
         .api(for: Repository(owner: try Environment.gitHubOrganization(), name: try Environment.gitHubRepository()))
 
-    return MergeService(
+    return DispatchService(
         integrationLabel: try Environment.mergeLabel(),
         topPriorityLabels: try Environment.topPriorityLabels(),
         requiresAllStatusChecks: try Environment.requiresAllGitHubStatusChecks(),
@@ -50,4 +50,4 @@ private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService
     )
 }
 
-extension MergeService: Service {}
+extension DispatchService: Service {}

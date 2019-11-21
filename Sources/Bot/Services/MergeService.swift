@@ -5,30 +5,29 @@ import ReactiveFeedback
 
 public final class MergeService {
     public let state: Property<State>
+    public let targetBranch: String
 
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
     private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
-    private let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
+    public let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
 
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
-    private let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
-
-    public let healthcheck: Healthcheck
+    public let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
     public init(
+        targetBranch: String,
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
-        gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
-
+        self.targetBranch = targetBranch
         self.logger = logger
         self.gitHubAPI = gitHubAPI
         self.scheduler = scheduler
@@ -52,35 +51,11 @@ public final class MergeService {
             ]
         )
 
-        healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
-
         state.producer
             .combinePrevious()
             .startWithValues { old, new in
-                logger.log("♻️ Did change state\n - 📜 \(old) \n - 📄 \(new)")
+                logger.log("♻️ [\(targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
-
-        gitHubEvents.events
-            .observe(on: scheduler)
-            .observeValues { [weak self] event in
-                switch event {
-                case let .pullRequest(event):
-                    self?.pullRequestDidChange(event: event)
-                case let .status(event):
-                    self?.statusChecksDidChange(event: event)
-                case .ping:
-                    break
-                }
-            }
-    }
-
-    private func pullRequestDidChange(event: PullRequestEvent) {
-        logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
-        pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
-    }
-
-    private func statusChecksDidChange(event: StatusEvent) {
-        statusChecksCompletionObserver.send(value: event)
     }
 
     static func reduce(state: State, event: Event) -> State {
@@ -434,52 +409,6 @@ extension MergeService {
 }
 
 // MARK: - System types
-
-extension MergeService {
-    public final class Healthcheck {
-
-        public enum Reason: Error, Equatable {
-            case potentialDeadlock
-        }
-
-        public enum Status: Equatable {
-            case ok
-            case unhealthy(Reason)
-        }
-
-        public let status: Property<Status>
-
-        internal init(
-            state: Signal<State, NoError>,
-            statusChecksTimeout: TimeInterval,
-            scheduler: DateScheduler
-        ) {
-            status = Property(
-                initial: .ok,
-                then: state.combinePrevious()
-                    .skipRepeats { lhs, rhs in
-                        return lhs == rhs
-                    }
-                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
-                        switch current.status {
-                        case .starting, .idle:
-                            return SignalProducer(value: .ok)
-                        default:
-                            return SignalProducer(value: .unhealthy(.potentialDeadlock))
-                                // Status checks have a configurable timeout that is used to prevent blocking the queue
-                                // if for some reason there's an issue with them, we are following a strategy where we
-                                // plan the potential failure and delay it for the expected amount of time that they
-                                // should have take at most (timeout) plus a sensible leeway. Due how `flatMap(.latest)`
-                                // works, any new `state` triggered before this delay will interrupt this signal and
-                                // prevent the false failure otherwise there's something blocking the queue longer than
-                                // we antecipated and we should flag the failure.
-                                .delay(1.5 * statusChecksTimeout, on: scheduler)
-                        }
-                }
-            )
-        }
-    }
-}
 
 extension MergeService {
 
