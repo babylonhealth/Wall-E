@@ -75,21 +75,14 @@ public final class DispatchService {
         }
     }
 
-    private func getOrCreateMergeService(forBranch targetBranch: String) -> MergeService {
-        let mergeService: MergeService
-        if let service = mergeServices[targetBranch] {
-            mergeService = service
-        } else {
-            mergeService = makeMergeService(targetBranch: targetBranch, scheduler: self.scheduler)
-        }
-        return mergeService
-    }
-
     private func pullRequestDidChange(event: PullRequestEvent) {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
-        let prTargetBranch = event.pullRequestMetadata.reference.target.ref
-        let mergeService = getOrCreateMergeService(forBranch: prTargetBranch)
-        mergeService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+        let targetBranch = event.pullRequestMetadata.reference.target.ref
+        if let service = mergeServices[targetBranch] {
+            service.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+        } else {
+            makeMergeService(targetBranch: targetBranch, scheduler: self.scheduler, initialPullRequests: [event.pullRequestMetadata.reference])
+        }
     }
 
     private func statusChecksDidChange(event: StatusEvent) {

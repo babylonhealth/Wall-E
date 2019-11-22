@@ -234,7 +234,6 @@ class MergeServiceTests: XCTestCase {
             assert: {
                 expect($0) == [
                     MergeService.State.stub(status: .starting),
-                    MergeService.State.stub(status: .idle),
                     MergeService.State.stub(status: .ready, pullRequests: [targetLabeled.reference]),
                     MergeService.State.stub(status: .integrating(targetLabeled)),
                     MergeService.State.stub(status: .ready),
