@@ -93,12 +93,10 @@ public final class DispatchService {
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
-        let prTargetBranch = ""
-        guard let mergeService = mergeServices[prTargetBranch] else {
-            logger.log("🚨 Received status check change for \(event) but no MergeService responsible for branch \(prTargetBranch) were running")
-            return
+        // TODO: IOSP-164: No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checking for head branch not target so not useful here
+        for (_, mergeServiceForBranch) in mergeServices /* where event.isRelative(toBranch: branch) */ {
+            mergeServiceForBranch.statusChecksCompletionObserver.send(value: event)
         }
-        mergeService.statusChecksCompletionObserver.send(value: event)
     }
 
     @discardableResult

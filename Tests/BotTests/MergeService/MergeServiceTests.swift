@@ -998,7 +998,7 @@ class MergeServiceTests: XCTestCase {
         )
 
         when(gitHubEvents, scheduler)
-        // TODO: IOSP-164: Also assert we're using the MergeService for the right targetBranch
+        // TODO: IOSP-164: Also assert we're using the MergeService for the right targetBranch + MergeService creation events
         assert(states.map({ $0.1 }))
 
         expect(gitHubAPI.assert()) == true
