@@ -10,13 +10,13 @@ public struct PullRequest: Equatable {
 }
 
 extension PullRequest {
-    public struct Author: Equatable, Decodable {
+    public struct Author: Equatable, Codable {
         public let login: String
     }
 }
 
 extension PullRequest {
-    public struct Label: Equatable, Decodable {
+    public struct Label: Equatable, Codable {
         public let name: String
 
         public init(name: String) {
@@ -26,7 +26,7 @@ extension PullRequest {
 }
 
 extension PullRequest {
-    public struct Branch: Equatable, Decodable {
+    public struct Branch: Equatable, Codable {
         public let ref: String
         public let sha: String
     }
@@ -48,7 +48,7 @@ extension PullRequest {
     }
 }
 
-extension PullRequest: Decodable {
+extension PullRequest: Codable {
     enum CodingKeys: String, CodingKey {
         case number
         case title
