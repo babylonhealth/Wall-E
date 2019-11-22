@@ -92,6 +92,159 @@ public final class MergeService {
     }
 }
 
+// MARK: - System types
+
+extension MergeService {
+
+    public enum FailureReason: Equatable {
+        case conflicts
+        case mergeFailed
+        case synchronizationFailed
+        case checkingCommitChecksFailed
+        case checksFailing
+        case timedOut
+        case blocked
+        case unknown
+    }
+
+    public struct State: Equatable {
+
+        public enum Status: Equatable {
+            case starting
+            case idle
+            case ready
+            case integrating(PullRequestMetadata)
+            case runningStatusChecks(PullRequestMetadata)
+            case integrationFailed(PullRequestMetadata, FailureReason)
+
+            internal var integrationMetadata: PullRequestMetadata? {
+                switch self {
+                case let .integrating(metadata):
+                    return metadata
+                default:
+                    return nil
+                }
+            }
+
+            internal var statusChecksMetadata: PullRequestMetadata? {
+                switch self {
+                case let .runningStatusChecks(metadata):
+                    return metadata
+                default:
+                    return nil
+                }
+            }
+        }
+
+        internal let integrationLabel: PullRequest.Label
+        internal let topPriorityLabels: [PullRequest.Label]
+        internal let statusChecksTimeout: TimeInterval
+        public let pullRequests: [PullRequest]
+        public let status: Status
+
+        var isIntegrationOngoing: Bool {
+            switch status {
+            case .integrating, .runningStatusChecks:
+                return true
+            case .starting, .idle, .ready, .integrationFailed:
+                return false
+            }
+        }
+
+        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: [],
+                status: .starting
+            )
+        }
+
+        init(
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval,
+            pullRequests: [PullRequest],
+            status: Status
+        ) {
+            self.integrationLabel = integrationLabel
+            self.topPriorityLabels = topPriorityLabels
+            self.statusChecksTimeout = statusChecksTimeout
+            self.pullRequests = pullRequests
+            self.status = status
+        }
+
+        func with(status: Status) -> State {
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests,
+                status: status
+            )
+        }
+
+        func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
+            let onlyNewPRs = pullRequestsToInclude.filter {
+                [currentQueue = self.pullRequests] pullRequest in
+                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
+            }
+            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
+                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
+            }
+            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
+                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
+            }
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: newQueue,
+                status: status
+            )
+        }
+
+        func exclude(pullRequest: PullRequest) -> State {
+            return State(
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests.filter { $0.number != pullRequest.number },
+                status: status
+            )
+        }
+    }
+
+    enum Event {
+        case noMorePullRequests
+        case pullRequestsLoaded([PullRequest])
+        case pullRequestDidChange(Outcome)
+        case statusChecksDidComplete(StatusChecksResult)
+        case integrate(PullRequestMetadata)
+        case retryIntegration(PullRequestMetadata)
+        case integrationDidChangeStatus(IntegrationStatus, PullRequestMetadata)
+        case integrationFailureHandled
+
+        enum Outcome {
+            case include(PullRequest)
+            case exclude(PullRequest)
+        }
+
+        enum StatusChecksResult {
+            case failed(PullRequestMetadata)
+            case passed(PullRequestMetadata)
+            case timedOut(PullRequestMetadata)
+        }
+
+        enum IntegrationStatus {
+            case updating
+            case done
+            case failed(FailureReason)
+        }
+    }
+}
+
 // MARK: - Feedbacks
 
 extension MergeService {
@@ -500,159 +653,6 @@ extension MergeService.State {
             return self.with(status: status).exclude(pullRequest: pullRequest)
         default:
             return self
-        }
-    }
-}
-
-// MARK: - System types
-
-extension MergeService {
-
-    public enum FailureReason: Equatable {
-        case conflicts
-        case mergeFailed
-        case synchronizationFailed
-        case checkingCommitChecksFailed
-        case checksFailing
-        case timedOut
-        case blocked
-        case unknown
-    }
-
-    public struct State: Equatable {
-
-        public enum Status: Equatable {
-            case starting
-            case idle
-            case ready
-            case integrating(PullRequestMetadata)
-            case runningStatusChecks(PullRequestMetadata)
-            case integrationFailed(PullRequestMetadata, FailureReason)
-
-            internal var integrationMetadata: PullRequestMetadata? {
-                switch self {
-                case let .integrating(metadata):
-                    return metadata
-                default:
-                    return nil
-                }
-            }
-
-            internal var statusChecksMetadata: PullRequestMetadata? {
-                switch self {
-                case let .runningStatusChecks(metadata):
-                    return metadata
-                default:
-                    return nil
-                }
-            }
-        }
-
-        internal let integrationLabel: PullRequest.Label
-        internal let topPriorityLabels: [PullRequest.Label]
-        internal let statusChecksTimeout: TimeInterval
-        public let pullRequests: [PullRequest]
-        public let status: Status
-
-        var isIntegrationOngoing: Bool {
-            switch status {
-            case .integrating, .runningStatusChecks:
-                return true
-            case .starting, .idle, .ready, .integrationFailed:
-                return false
-            }
-        }
-
-        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: [],
-                status: .starting
-            )
-        }
-
-        init(
-            integrationLabel: PullRequest.Label,
-            topPriorityLabels: [PullRequest.Label],
-            statusChecksTimeout: TimeInterval,
-            pullRequests: [PullRequest],
-            status: Status
-        ) {
-            self.integrationLabel = integrationLabel
-            self.topPriorityLabels = topPriorityLabels
-            self.statusChecksTimeout = statusChecksTimeout
-            self.pullRequests = pullRequests
-            self.status = status
-        }
-
-        func with(status: Status) -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests,
-                status: status
-            )
-        }
-
-        func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
-            let onlyNewPRs = pullRequestsToInclude.filter {
-                [currentQueue = self.pullRequests] pullRequest in
-                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
-            }
-            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
-                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
-            }
-            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
-                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
-            }
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: newQueue,
-                status: status
-            )
-        }
-
-        func exclude(pullRequest: PullRequest) -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests.filter { $0.number != pullRequest.number },
-                status: status
-            )
-        }
-    }
-
-    enum Event {
-        case noMorePullRequests
-        case pullRequestsLoaded([PullRequest])
-        case pullRequestDidChange(Outcome)
-        case statusChecksDidComplete(StatusChecksResult)
-        case integrate(PullRequestMetadata)
-        case retryIntegration(PullRequestMetadata)
-        case integrationDidChangeStatus(IntegrationStatus, PullRequestMetadata)
-        case integrationFailureHandled
-
-        enum Outcome {
-            case include(PullRequest)
-            case exclude(PullRequest)
-        }
-
-        enum StatusChecksResult {
-            case failed(PullRequestMetadata)
-            case passed(PullRequestMetadata)
-            case timedOut(PullRequestMetadata)
-        }
-
-        enum IntegrationStatus {
-            case updating
-            case done
-            case failed(FailureReason)
         }
     }
 }
