@@ -156,7 +156,7 @@ extension DispatchService {
             case unhealthy(Reason)
         }
 
-        public var status: Property<Status> { Property(_status) }
+        public var status: Property<Status> { return Property(_status) }
 
         private let scheduler: DateScheduler
         private var producers: [String: SignalProducer<MergeService.Healthcheck.Status, NoError>] = [:]
