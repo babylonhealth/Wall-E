@@ -410,6 +410,96 @@ extension MergeService {
     }
 }
 
+// MARK: - Reducers
+
+extension MergeService.State {
+
+    fileprivate typealias Event = MergeService.Event
+
+    fileprivate func reduceIdle(with event: Event) -> MergeService.State? {
+        switch event {
+        case let .pullRequestDidChange(.include(pullRequest)):
+            return self.with(status: .ready).include(pullRequests: [pullRequest])
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceStarting(with event: Event) -> MergeService.State? {
+        switch event {
+        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == true:
+            return self.with(status: .idle)
+        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == false:
+            return self.with(status: .ready).include(pullRequests: pullRequests)
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceReady(with event: Event) -> MergeService.State? {
+        switch event {
+        case .noMorePullRequests:
+            return self.with(status: .idle)
+        case let .integrate(metadata):
+            return self.with(status: .integrating(metadata)).exclude(pullRequest: metadata.reference)
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceIntegrating(with metadata: PullRequestMetadata, event: Event) -> MergeService.State? {
+        switch event {
+        case .integrationDidChangeStatus(.done, _):
+            return self.with(status: .ready)
+        case let .integrationDidChangeStatus(.failed(reason), metadata):
+            return self.with(status: .integrationFailed(metadata, reason))
+        case let .integrationDidChangeStatus(.updating, metadata):
+            return self.with(status: .runningStatusChecks(metadata))
+        case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
+            return self.with(status: .ready)
+        case let .retryIntegration(metadata):
+            return self.with(status: .integrating(metadata))
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceRunningStatusChecks(with metadata: PullRequestMetadata, event: Event) -> MergeService.State? {
+        switch event {
+        case let .statusChecksDidComplete(.passed(pullRequest)):
+            return self.with(status: .integrating(pullRequest))
+        case let .statusChecksDidComplete(.failed(pullRequest)):
+            return self.with(status: .integrationFailed(pullRequest, .checksFailing))
+        case let .statusChecksDidComplete(.timedOut(pullRequest)):
+            return self.with(status: .integrationFailed(pullRequest, .timedOut))
+        case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
+            return self.with(status: .ready)
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceIntegrationFailed(with event: Event) -> MergeService.State? {
+        switch event {
+        case .integrationFailureHandled:
+            return self.with(status: .ready)
+        default:
+            return nil
+        }
+    }
+
+    fileprivate func reduceDefault(with event: Event) -> MergeService.State {
+        switch event {
+        case let .pullRequestDidChange(.include(pullRequest)):
+            return self.with(status: status).include(pullRequests: [pullRequest])
+        case let .pullRequestDidChange(.exclude(pullRequest)):
+            return self.with(status: status).exclude(pullRequest: pullRequest)
+        default:
+            return self
+        }
+    }
+}
+
 // MARK: - System types
 
 extension MergeService {
@@ -559,96 +649,6 @@ extension MergeService {
             case updating
             case done
             case failed(FailureReason)
-        }
-    }
-}
-
-// MARK: - Reducers
-
-extension MergeService.State {
-
-    fileprivate typealias Event = MergeService.Event
-
-    fileprivate func reduceIdle(with event: Event) -> MergeService.State? {
-        switch event {
-        case let .pullRequestDidChange(.include(pullRequest)):
-            return self.with(status: .ready).include(pullRequests: [pullRequest])
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceStarting(with event: Event) -> MergeService.State? {
-        switch event {
-        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == true:
-            return self.with(status: .idle)
-        case let .pullRequestsLoaded(pullRequests) where pullRequests.isEmpty == false:
-            return self.with(status: .ready).include(pullRequests: pullRequests)
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceReady(with event: Event) -> MergeService.State? {
-        switch event {
-        case .noMorePullRequests:
-            return self.with(status: .idle)
-        case let .integrate(metadata):
-            return self.with(status: .integrating(metadata)).exclude(pullRequest: metadata.reference)
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceIntegrating(with metadata: PullRequestMetadata, event: Event) -> MergeService.State? {
-        switch event {
-        case .integrationDidChangeStatus(.done, _):
-            return self.with(status: .ready)
-        case let .integrationDidChangeStatus(.failed(reason), metadata):
-            return self.with(status: .integrationFailed(metadata, reason))
-        case let .integrationDidChangeStatus(.updating, metadata):
-            return self.with(status: .runningStatusChecks(metadata))
-        case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
-            return self.with(status: .ready)
-        case let .retryIntegration(metadata):
-            return self.with(status: .integrating(metadata))
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceRunningStatusChecks(with metadata: PullRequestMetadata, event: Event) -> MergeService.State? {
-        switch event {
-        case let .statusChecksDidComplete(.passed(pullRequest)):
-            return self.with(status: .integrating(pullRequest))
-        case let .statusChecksDidComplete(.failed(pullRequest)):
-            return self.with(status: .integrationFailed(pullRequest, .checksFailing))
-        case let .statusChecksDidComplete(.timedOut(pullRequest)):
-            return self.with(status: .integrationFailed(pullRequest, .timedOut))
-        case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
-            return self.with(status: .ready)
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceIntegrationFailed(with event: Event) -> MergeService.State? {
-        switch event {
-        case .integrationFailureHandled:
-            return self.with(status: .ready)
-        default:
-            return nil
-        }
-    }
-
-    fileprivate func reduceDefault(with event: Event) -> MergeService.State {
-        switch event {
-        case let .pullRequestDidChange(.include(pullRequest)):
-            return self.with(status: status).include(pullRequests: [pullRequest])
-        case let .pullRequestDidChange(.exclude(pullRequest)):
-            return self.with(status: status).exclude(pullRequest: pullRequest)
-        default:
-            return self
         }
     }
 }
