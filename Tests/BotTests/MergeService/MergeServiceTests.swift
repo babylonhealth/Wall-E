@@ -21,10 +21,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
             },
             assert: {
-                expect($0) == [
-                    MergeService.State.stub(status: .starting),
-                    MergeService.State.stub(status: .idle)
-                ]
+                expect($0) == []
             }
         )
     }
@@ -42,10 +39,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
             },
             assert: {
-                expect($0) == [
-                    MergeService.State.stub(status: .starting),
-                    MergeService.State.stub(status: .idle)
-                ]
+                expect($0) == []
             }
         )
 
@@ -970,6 +964,8 @@ class MergeServiceTests: XCTestCase {
         }
     }
 
+    private var dispatchService: DispatchService?
+
     private func perform(
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
@@ -981,9 +977,9 @@ class MergeServiceTests: XCTestCase {
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        var states: [MergeService.State] = []
+        var states: [(String, MergeService.State)] = []
 
-        _ = DispatchService(
+        self.dispatchService = DispatchService(
             integrationLabel: LabelFixture.integrationLabel,
             topPriorityLabels: LabelFixture.topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
@@ -993,13 +989,20 @@ class MergeServiceTests: XCTestCase {
             gitHubEvents: gitHubEvents,
             scheduler: scheduler,
             onNewMergeService: { service in
-                service.state.producer.observe(on: scheduler).startWithValues { states.append($0) }
+                service.state.producer
+                    .observe(on: scheduler)
+                    .startWithValues {
+                        states.append((service.targetBranch, $0))
+                    }
             }
         )
 
         when(gitHubEvents, scheduler)
-        assert(states)
+        // TODO: IOSP-164: Also assert we're using the MergeService for the right targetBranch
+        assert(states.map({ $0.1 }))
 
         expect(gitHubAPI.assert()) == true
+
+        self.dispatchService = nil
     }
 }

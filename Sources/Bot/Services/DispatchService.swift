@@ -14,6 +14,7 @@ public final class DispatchService {
     private let scheduler: DateScheduler
 
     private var mergeServices: [String: MergeService]
+    private let onNewMergeService: (MergeService) -> Void
 
 //    public let healthcheck: Healthcheck // TODO: IOSP-164: Decomment when ready to tweak
 
@@ -26,7 +27,7 @@ public final class DispatchService {
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler(),
-        onNewMergeService: (MergeService) -> Void = { _ in }
+        onNewMergeService: @escaping (MergeService) -> Void = { _ in }
     ) {
         self.integrationLabel = integrationLabel
         self.topPriorityLabels = topPriorityLabels
@@ -38,6 +39,7 @@ public final class DispatchService {
         self.scheduler = scheduler
 
         self.mergeServices = [:]
+        self.onNewMergeService = onNewMergeService
 
         gitHubAPI.fetchPullRequests()
             .flatMapError { _ in .value([]) }
@@ -45,8 +47,8 @@ public final class DispatchService {
                 pullRequests.filter { $0.isLabelled(with: self.integrationLabel) }
             }
             .observe(on: scheduler)
-            .startWithValues { [weak self] pullRequests in
-                self?.dispatchInitial(pullRequests: pullRequests)
+            .startWithValues { pullRequests in
+                self.dispatchInitial(pullRequests: pullRequests)
             }
 
         // TODO: IOSP-164: Decomment once healthcheck is ready again
@@ -69,8 +71,7 @@ public final class DispatchService {
     private func dispatchInitial(pullRequests: [PullRequest]) {
         let dispatchTable = Dictionary(grouping: pullRequests) { pullRequest in pullRequest.target.ref }
         for (branch, pullRequestsForBranch) in dispatchTable {
-            let mergeService = makeMergeService(targetBranch: branch, initialPullRequests: pullRequestsForBranch)
-            mergeServices[branch] = mergeService
+            makeMergeService(targetBranch: branch, scheduler: self.scheduler, initialPullRequests: pullRequestsForBranch)
         }
     }
 
@@ -79,9 +80,7 @@ public final class DispatchService {
         if let service = mergeServices[targetBranch] {
             mergeService = service
         } else {
-            mergeService = makeMergeService(targetBranch: targetBranch)
-            mergeServices[targetBranch] = mergeService
-            // TODO: IOSP-164: Hook to mergeService.state.status so that when it's back in `.idle` then we can consider cleaning it up from the dict
+            mergeService = makeMergeService(targetBranch: targetBranch, scheduler: self.scheduler)
         }
         return mergeService
     }
@@ -102,8 +101,9 @@ public final class DispatchService {
         mergeService.statusChecksCompletionObserver.send(value: event)
     }
 
-    private func makeMergeService(targetBranch: String, initialPullRequests: [PullRequest] = []) -> MergeService {
-        return MergeService(
+    @discardableResult
+    private func makeMergeService(targetBranch: String, scheduler: DateScheduler, initialPullRequests: [PullRequest] = []) -> MergeService {
+        let mergeService = MergeService(
             targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
@@ -111,8 +111,13 @@ public final class DispatchService {
             statusChecksTimeout: statusChecksTimeout,
             initialPullRequests: initialPullRequests,
             logger: logger,
-            gitHubAPI: gitHubAPI
+            gitHubAPI: gitHubAPI,
+            scheduler: scheduler
         )
+        self.mergeServices[targetBranch] = mergeService
+        onNewMergeService(mergeService)
+        // TODO: IOSP-164: Hook to mergeService.state.status so that when it's back in `.idle` then we can consider cleaning it up from the dict
+        return mergeService
     }
 }
 
