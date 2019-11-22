@@ -14,7 +14,7 @@ public final class DispatchService {
     private let scheduler: DateScheduler
 
     private var mergeServices: [String: MergeService]
-    private let onNewMergeService: (MergeService) -> Void
+    private let mergeServiceLifetimeObserver: Signal<MergeServiceLifetime, NoError>.Observer?
 
     public let healthcheck: Healthcheck
 
@@ -27,7 +27,7 @@ public final class DispatchService {
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler(),
-        onNewMergeService: @escaping (MergeService) -> Void = { _ in }
+        mergeServiceLifetimeObserver: Signal<MergeServiceLifetime, NoError>.Observer? = nil
     ) {
         self.integrationLabel = integrationLabel
         self.topPriorityLabels = topPriorityLabels
@@ -39,7 +39,7 @@ public final class DispatchService {
         self.scheduler = scheduler
 
         self.mergeServices = [:]
-        self.onNewMergeService = onNewMergeService
+        self.mergeServiceLifetimeObserver = mergeServiceLifetimeObserver
 
         healthcheck = Healthcheck(scheduler: scheduler)
 
@@ -107,9 +107,23 @@ public final class DispatchService {
         )
         self.mergeServices[targetBranch] = mergeService
         self.healthcheck.startMonitoring(mergeServiceHealthcheck: mergeService.healthcheck)
-        onNewMergeService(mergeService)
-        // TODO: IOSP-164: Hook to mergeService.state.status so that when it's back in `.idle` then we can consider cleaning it up from the dict
+        mergeServiceLifetimeObserver?.send(.value(.created(mergeService)))
+        mergeService.state.producer
+            .observe(on: scheduler)
+            .filter { state in state.status == .idle }
+            .startWithValues { [weak self] isIdle in
+                self?.mergeServices[targetBranch] = nil
+                self?.mergeServiceLifetimeObserver?.send(.value(.destroyed(mergeService)))
+            }
+
         return mergeService
+    }
+}
+
+extension DispatchService {
+    public enum MergeServiceLifetime {
+        case created(MergeService)
+        case destroyed(MergeService)
     }
 }
 
