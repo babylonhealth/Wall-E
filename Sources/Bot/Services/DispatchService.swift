@@ -86,7 +86,7 @@ public final class DispatchService {
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
-        // TODO: IOSP-164: No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checking for head branch not target so not useful here
+        // IOSP-164: No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checking for head branch not target so not useful here
         for (_, mergeServiceForBranch) in mergeServices /* where event.isRelative(toBranch: branch) */ {
             mergeServiceForBranch.statusChecksCompletionObserver.send(value: event)
         }

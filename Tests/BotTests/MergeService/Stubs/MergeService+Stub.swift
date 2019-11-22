@@ -10,10 +10,12 @@ struct MergeServiceFixture {
     static let defaultStatusChecksTimeout = 30.minutes
 
     static let defaultBranch = "some-branch"
+    static let defaultTargetBranch = "master"
 
     static let defaultTarget = PullRequestMetadata.stub(
         number: 1,
         headRef: MergeServiceFixture.defaultBranch,
+        baseRef: MergeServiceFixture.defaultTargetBranch,
         labels: [LabelFixture.integrationLabel],
         mergeState: .behind
     )
