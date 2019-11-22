@@ -17,6 +17,8 @@ public final class MergeService {
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
     public let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
+    public let healthcheck: Healthcheck
+
     public init(
         targetBranch: String,
         integrationLabel: PullRequest.Label,
@@ -42,7 +44,7 @@ public final class MergeService {
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout
         )
-        
+
         state = Property<State>(
             initial: initialState,
             scheduler: scheduler,
@@ -57,6 +59,8 @@ public final class MergeService {
                 Feedbacks.whenAddingPullRequests(github: self.gitHubAPI, scheduler: scheduler)
             ]
         )
+
+        healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
 
         state.producer
             .combinePrevious()
@@ -649,6 +653,54 @@ extension MergeService {
             case updating
             case done
             case failed(FailureReason)
+        }
+    }
+}
+
+// MARK: - Healthcheck
+
+extension MergeService {
+    public final class Healthcheck {
+
+        public enum Reason: Error, Equatable {
+            case potentialDeadlock
+        }
+
+        public enum Status: Equatable {
+            case ok
+            case unhealthy(Reason)
+        }
+
+        public let status: Property<Status>
+
+        internal init(
+            state: Signal<State, NoError>,
+            statusChecksTimeout: TimeInterval,
+            scheduler: DateScheduler
+        ) {
+            status = Property(
+                initial: .ok,
+                then: state.combinePrevious()
+                    .skipRepeats { lhs, rhs in
+                        return lhs == rhs
+                    }
+                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
+                        switch current.status {
+                        case .starting, .idle:
+                            return SignalProducer(value: .ok)
+                        default:
+                            return SignalProducer(value: .unhealthy(.potentialDeadlock))
+                                // Status checks have a configurable timeout that is used to prevent blocking the queue
+                                // if for some reason there's an issue with them, we are following a strategy where we
+                                // plan the potential failure and delay it for the expected amount of time that they
+                                // should have take at most (timeout) plus a sensible leeway. Due how `flatMap(.latest)`
+                                // works, any new `state` triggered before this delay will interrupt this signal and
+                                // prevent the false failure otherwise there's something blocking the queue longer than
+                                // we antecipated and we should flag the failure.
+                                .delay(1.5 * statusChecksTimeout, on: scheduler)
+                        }
+                }
+            )
         }
     }
 }

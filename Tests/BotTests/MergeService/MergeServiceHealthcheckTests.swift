@@ -3,8 +3,6 @@ import Nimble
 import ReactiveSwift
 import Result
 @testable import Bot
-/*
- // TODO: IOSP-164: Uncomment when ready to tweak Healthcheck
 
 class MergeServiceHealthcheckTests: XCTestCase {
 
@@ -106,4 +104,3 @@ class MergeServiceHealthcheckTests: XCTestCase {
         assert(statuses)
     }
 }
-*/

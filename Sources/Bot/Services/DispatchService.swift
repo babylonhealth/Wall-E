@@ -16,7 +16,7 @@ public final class DispatchService {
     private var mergeServices: [String: MergeService]
     private let onNewMergeService: (MergeService) -> Void
 
-//    public let healthcheck: Healthcheck // TODO: IOSP-164: Decomment when ready to tweak
+    public let healthcheck: Healthcheck
 
     public init(
         integrationLabel: PullRequest.Label,
@@ -41,6 +41,8 @@ public final class DispatchService {
         self.mergeServices = [:]
         self.onNewMergeService = onNewMergeService
 
+        healthcheck = Healthcheck(scheduler: scheduler)
+
         gitHubAPI.fetchPullRequests()
             .flatMapError { _ in .value([]) }
             .map { pullRequests in
@@ -50,9 +52,6 @@ public final class DispatchService {
             .startWithValues { pullRequests in
                 self.dispatchInitial(pullRequests: pullRequests)
             }
-
-        // TODO: IOSP-164: Decomment once healthcheck is ready again
-//        healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
 
         gitHubEvents.events
             .observe(on: scheduler)
@@ -86,8 +85,9 @@ public final class DispatchService {
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
-        // IOSP-164: No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checking for head branch not target so not useful here
-        for (_, mergeServiceForBranch) in mergeServices /* where event.isRelative(toBranch: branch) */ {
+        // No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checks for head branch not target so not useful here
+        // So we're sending it to all MergeServices, and they'll filter them themselves based on their own queues
+        for mergeServiceForBranch in mergeServices.values {
             mergeServiceForBranch.statusChecksCompletionObserver.send(value: event)
         }
     }
@@ -106,6 +106,7 @@ public final class DispatchService {
             scheduler: scheduler
         )
         self.mergeServices[targetBranch] = mergeService
+        self.healthcheck.startMonitoring(mergeServiceHealthcheck: mergeService.healthcheck)
         onNewMergeService(mergeService)
         // TODO: IOSP-164: Hook to mergeService.state.status so that when it's back in `.idle` then we can consider cleaning it up from the dict
         return mergeService
@@ -127,9 +128,8 @@ extension DispatchService {
     }
 }
 
-// MARK: - System types
+// MARK: - Healthcheck
 
-/* // TODO: IOSP-164: Decomment when ready to tweak
 extension DispatchService {
     public final class Healthcheck {
 
@@ -142,37 +142,36 @@ extension DispatchService {
             case unhealthy(Reason)
         }
 
-        public let status: Property<Status>
+        public var status: Property<Status> { Property(_status) }
+
+        private let scheduler: DateScheduler
+        private var producers: [String: SignalProducer<MergeService.Healthcheck.Status, NoError>] = [:]
+        private var statusProducerDisposable: Disposable?
+        private var _status: MutableProperty<Status> = MutableProperty(.ok)
 
         internal init(
-            state: Signal<State, NoError>,
-            statusChecksTimeout: TimeInterval,
             scheduler: DateScheduler
         ) {
-            status = Property(
-                initial: .ok,
-                then: state.combinePrevious()
-                    .skipRepeats { lhs, rhs in
-                        return lhs == rhs
-                    }
-                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
-                        switch current.status {
-                        case .starting, .idle:
-                            return SignalProducer(value: .ok)
-                        default:
-                            return SignalProducer(value: .unhealthy(.potentialDeadlock))
-                                // Status checks have a configurable timeout that is used to prevent blocking the queue
-                                // if for some reason there's an issue with them, we are following a strategy where we
-                                // plan the potential failure and delay it for the expected amount of time that they
-                                // should have take at most (timeout) plus a sensible leeway. Due how `flatMap(.latest)`
-                                // works, any new `state` triggered before this delay will interrupt this signal and
-                                // prevent the false failure otherwise there's something blocking the queue longer than
-                                // we antecipated and we should flag the failure.
-                                .delay(1.5 * statusChecksTimeout, on: scheduler)
-                        }
+            self.scheduler = scheduler
+        }
+
+        func startMonitoring(mergeServiceHealthcheck: MergeService.Healthcheck) {
+            let uuid = UUID().uuidString
+            producers[uuid] = mergeServiceHealthcheck.status.producer
+                .on(disposed: { [weak self] in
+                    self?.producers[uuid] = nil
+                })
+
+            statusProducerDisposable?.dispose()
+            statusProducerDisposable = SignalProducer
+                .combineLatest(producers.values)
+                .map({ (mergeServiceStatuses: [MergeService.Healthcheck.Status]) -> Healthcheck.Status in
+                    return mergeServiceStatuses.contains(where: { $0 != .ok }) ? .unhealthy(.potentialDeadlock) : .ok
+                })
+                .observe(on: scheduler)
+                .startWithValues { [weak self] in
+                    self?._status.value = $0
                 }
-            )
         }
     }
 }
-*/
