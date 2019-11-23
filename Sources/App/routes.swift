@@ -8,8 +8,14 @@ public func routes(
     gitHubEventsService: GitHubEventsService
 ) throws {
 
-    router.get("/") { request -> String in
-        return String(describing: mergeService.state.value)
+    router.get("/") { request -> Response in
+        let response = Response(using: request)
+        if request.header(named: HTTPHeaderName.accept.description) == "application/json" {
+            try response.content.encode(mergeService.state.value, as: .json)
+        } else {
+            try response.content.encode(String(describing: mergeService.state.value), as: .plainText)
+        }
+        return response
     }
 
     router.get("health") { request -> HTTPResponse in
