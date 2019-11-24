@@ -1020,14 +1020,14 @@ class MergeServiceTests: XCTestCase {
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
         when: (MockGitHubEventsService, TestScheduler) -> Void,
-        assert: ([DispatchServiceState]) -> Void
+        assert: @escaping ([DispatchServiceState]) -> Void
     ) {
 
         let scheduler = TestScheduler()
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        var states: [DispatchServiceState] = []
+        let (states, statesObserver) = Signal<DispatchServiceState, NoError>.pipe()
 
         let (lifetimeSignal, lifetimeObserver) = Signal<DispatchService.MergeServiceLifetime, NoError>.pipe()
 
@@ -1048,20 +1048,21 @@ class MergeServiceTests: XCTestCase {
             .observeValues { lifetime in
                 switch lifetime {
                 case .created(let service):
-                    states.append(.mergeServiceCreated(forBranch: service.targetBranch))
+                    statesObserver.send(value: .mergeServiceCreated(forBranch: service.targetBranch))
                     service.state.producer
                         .observe(on: scheduler)
                         .startWithValues {
-                            states.append(.mergeServiceState(branch: service.targetBranch, state: $0))
+                            statesObserver.send(value: .mergeServiceState(branch: service.targetBranch, state: $0))
                         }
                 case .destroyed(let service):
-                    states.append(.mergeServiceDestroyed(forBranch: service.targetBranch))
+                    statesObserver.send(value: .mergeServiceDestroyed(forBranch: service.targetBranch))
                 }
         }
 
-
         when(gitHubEvents, scheduler)
-        assert(states)
+
+        statesObserver.sendCompleted()
+        states.collect().observeValues(assert)
 
         expect(gitHubAPI.assert()) == true
 
