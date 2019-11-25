@@ -96,15 +96,11 @@ class DispatchServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked))
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .labeled, pullRequestMetadata: dev2))
-                )
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: dev2)
 
                 scheduler.advance()
 

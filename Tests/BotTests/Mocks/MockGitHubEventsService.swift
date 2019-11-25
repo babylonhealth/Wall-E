@@ -25,4 +25,10 @@ struct MockGitHubEventsService: GitHubEventsServiceProtocol {
             )
         ))
     }
+
+    func sendPullRequestEvent(action: PullRequest.Action, pullRequestMetadata: PullRequestMetadata) {
+        eventsObserver.send(value: .pullRequest(
+            .init(action: action, pullRequestMetadata: pullRequestMetadata))
+        )
+    }
 }

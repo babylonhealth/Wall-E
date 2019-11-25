@@ -162,9 +162,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance()
 
@@ -236,9 +234,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .labeled, pullRequestMetadata: targetLabeled))
-                )
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: targetLabeled)
                 scheduler.advance()
             },
             assert: {
@@ -282,15 +278,11 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: first.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: first.with(mergeState: .blocked))
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .labeled, pullRequestMetadata: second))
-                )
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: second)
 
                 scheduler.advance()
 
@@ -328,15 +320,11 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .closed, pullRequestMetadata: MergeServiceFixture.defaultTarget))
-                )
+                service.sendPullRequestEvent(action: .closed, pullRequestMetadata: MergeServiceFixture.defaultTarget)
 
                 scheduler.advance()
             },
@@ -366,9 +354,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance()
 
@@ -409,9 +395,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance()
 
@@ -458,9 +442,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance()
 
@@ -514,9 +496,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance() // 1
 
@@ -569,9 +549,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance() // 1
 
@@ -933,9 +911,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 scheduler.advance()
 
