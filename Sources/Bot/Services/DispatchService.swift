@@ -144,8 +144,8 @@ extension DispatchService {
         }.joined(separator: "\n\n")
     }
 
-    public var queues: [String: MergeService.State] {
-        return self.mergeServices.mapValues { $0.state.value }
+    public var queueStates: [MergeService.State] {
+        return self.mergeServices.values.map { $0.state.value }
     }
 }
 

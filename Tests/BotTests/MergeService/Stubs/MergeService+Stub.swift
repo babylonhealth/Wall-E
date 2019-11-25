@@ -25,6 +25,7 @@ struct MergeServiceFixture {
 
 extension MergeService.State {
     static func stub(
+        targetBranch: String = MergeServiceFixture.defaultTargetBranch,
         status: MergeService.State.Status,
         pullRequests: [PullRequest] = [],
         integrationLabel: PullRequest.Label = LabelFixture.integrationLabel,
@@ -32,6 +33,7 @@ extension MergeService.State {
         statusChecksTimeout: TimeInterval = MergeServiceFixture.defaultStatusChecksTimeout
     ) -> MergeService.State {
         return .init(
+            targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout,

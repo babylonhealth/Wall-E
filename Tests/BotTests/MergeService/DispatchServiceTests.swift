@@ -43,11 +43,11 @@ class DispatchServiceTests: XCTestCase {
                     let prForBranch = filteredPRs.first!
                     expect(events) == [
                         .created(branch: branch),
-                        .state(branch: branch, .stub(status: .starting)),
-                        .state(branch: branch, .stub(status: .ready, pullRequests: [prForBranch.reference])),
-                        .state(branch: branch, .stub(status: .integrating(prForBranch))),
-                        .state(branch: branch, .stub(status: .ready)),
-                        .state(branch: branch, .stub(status: .idle)),
+                        .state(.stub(targetBranch: branch, status: .starting)),
+                        .state(.stub(targetBranch: branch, status: .ready, pullRequests: [prForBranch.reference])),
+                        .state(.stub(targetBranch: branch, status: .integrating(prForBranch))),
+                        .state(.stub(targetBranch: branch, status: .ready)),
+                        .state(.stub(targetBranch: branch, status: .idle)),
                         .destroyed(branch: branch),
                     ]
                 }
@@ -117,25 +117,25 @@ class DispatchServiceTests: XCTestCase {
             assert: {
                 expect($0) == [
                     .created(branch: developBranch),
-                    .state(branch: developBranch, .stub(status: .starting)),
-                    .state(branch: developBranch, .stub(status: .ready, pullRequests: [dev1.reference])),
-                    .state(branch: developBranch, .stub(status: .integrating(dev1))),
-                    .state(branch: developBranch, .stub(status: .runningStatusChecks(dev1.with(mergeState: .blocked)))),
-                    .state(branch: developBranch, .stub(status: .runningStatusChecks(dev1.with(mergeState: .blocked)), pullRequests: [dev2.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .starting)),
+                    .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev1.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .integrating(dev1))),
+                    .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)))),
+                    .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)), pullRequests: [dev2.reference])),
 
                     .created(branch: releaseBranch),
-                    .state(branch: releaseBranch, .stub(status: .starting)),
-                    .state(branch: releaseBranch, .stub(status: .ready, pullRequests: [rel3.reference])),
-                    .state(branch: releaseBranch, .stub(status: .integrating(rel3))),
-                    .state(branch: releaseBranch, .stub(status: .ready)),
-                    .state(branch: releaseBranch, .stub(status: .idle)),
+                    .state(.stub(targetBranch: releaseBranch, status: .starting)),
+                    .state(.stub(targetBranch: releaseBranch, status: .ready, pullRequests: [rel3.reference])),
+                    .state(.stub(targetBranch: releaseBranch, status: .integrating(rel3))),
+                    .state(.stub(targetBranch: releaseBranch, status: .ready)),
+                    .state(.stub(targetBranch: releaseBranch, status: .idle)),
                     .destroyed(branch: releaseBranch),
 
-                    .state(branch: developBranch, .stub(status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
-                    .state(branch: developBranch, .stub(status: .ready, pullRequests: [dev2.reference])),
-                    .state(branch: developBranch, .stub(status: .integrating(dev2))),
-                    .state(branch: developBranch, .stub(status: .ready)),
-                    .state(branch: developBranch, .stub(status: .idle)),
+                    .state(.stub(targetBranch: developBranch, status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev2.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .integrating(dev2))),
+                    .state(.stub(targetBranch: developBranch, status: .ready)),
+                    .state(.stub(targetBranch: developBranch, status: .idle)),
                     .destroyed(branch: developBranch)
                 ]
             }

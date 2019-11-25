@@ -11,7 +11,7 @@ public func routes(
     router.get("/") { request -> Response in
         let response = Response(using: request)
         if request.header(named: HTTPHeaderName.accept.description) == "application/json" {
-            try response.content.encode(dispatchService.queues, as: .json)
+            try response.content.encode(dispatchService.queueStates, as: .json)
         } else {
             try response.content.encode(dispatchService.queuesDescription, as: .plainText)
         }

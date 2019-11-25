@@ -4,29 +4,26 @@ import Result
 
 enum DispatchServiceEvent: Equatable {
     case created(branch: String)
-    case state(branch: String, MergeService.State)
+    case state(MergeService.State)
     case destroyed(branch: String)
-
-    static func state(_ state: MergeService.State) -> DispatchServiceEvent {
-        // IOSP-169: Once we migrate to Swift 5 we can change that to being a default value for enum associated value
-        return .state(branch: MergeServiceFixture.defaultTargetBranch, state)
-    }
 
     init(from lifecycleEvent: DispatchService.MergeServiceLifecycleEvent) {
         switch lifecycleEvent {
         case .created(let service):
-            self = .created(branch: service.targetBranch)
+            self = .created(branch: service.state.value.targetBranch)
         case .stateChanged(let service):
-            self = .state(branch: service.targetBranch, service.state.value)
+            self = .state(service.state.value)
         case .destroyed(let service):
-            self = .destroyed(branch: service.targetBranch)
+            self = .destroyed(branch: service.state.value.targetBranch)
         }
     }
 
     var branch: String {
         switch self {
-        case .created(let branch), .state(let branch, _), .destroyed(let branch):
+        case .created(let branch), .destroyed(let branch):
             return branch
+        case .state(let state):
+            return state.targetBranch
         }
 
     }

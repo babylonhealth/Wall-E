@@ -5,7 +5,6 @@ import ReactiveFeedback
 
 public final class MergeService {
     public let state: Property<State>
-    public let targetBranch: String
 
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
@@ -30,7 +29,6 @@ public final class MergeService {
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
-        self.targetBranch = targetBranch
         self.logger = logger
         self.gitHubAPI = gitHubAPI
         self.scheduler = scheduler
@@ -40,6 +38,7 @@ public final class MergeService {
         (pullRequestChanges, pullRequestChangesObserver) = Signal.pipe()
 
         let initialState = State.initial(
+            targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout
@@ -65,7 +64,7 @@ public final class MergeService {
         state.producer
             .combinePrevious()
             .startWithValues { old, new in
-                logger.log("♻️ [\(targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
+                logger.log("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
     }
 
@@ -165,6 +164,7 @@ extension MergeService {
             }
         }
 
+        internal let targetBranch: String
         internal let integrationLabel: PullRequest.Label
         internal let topPriorityLabels: [PullRequest.Label]
         internal let statusChecksTimeout: TimeInterval
@@ -180,8 +180,9 @@ extension MergeService {
             }
         }
 
-        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
             return State(
+                targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
@@ -191,12 +192,14 @@ extension MergeService {
         }
 
         init(
+            targetBranch: String,
             integrationLabel: PullRequest.Label,
             topPriorityLabels: [PullRequest.Label],
             statusChecksTimeout: TimeInterval,
             pullRequests: [PullRequest],
             status: Status
         ) {
+            self.targetBranch = targetBranch
             self.integrationLabel = integrationLabel
             self.topPriorityLabels = topPriorityLabels
             self.statusChecksTimeout = statusChecksTimeout
@@ -206,6 +209,7 @@ extension MergeService {
 
         func with(status: Status) -> State {
             return State(
+                targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
@@ -226,6 +230,7 @@ extension MergeService {
                 !pullRequest.isLabelled(withOneOf: topPriorityLabels)
             }
             return State(
+                targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
@@ -236,6 +241,7 @@ extension MergeService {
 
         func exclude(pullRequest: PullRequest) -> State {
             return State(
+                targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
