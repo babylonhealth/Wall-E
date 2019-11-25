@@ -1027,7 +1027,7 @@ class MergeServiceTests: XCTestCase {
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        let (states, statesObserver) = Signal<DispatchServiceState, NoError>.pipe()
+        var states: [DispatchServiceState] = []
 
         let (lifetimeSignal, lifetimeObserver) = Signal<DispatchService.MergeServiceLifetime, NoError>.pipe()
 
@@ -1048,21 +1048,20 @@ class MergeServiceTests: XCTestCase {
             .observeValues { lifetime in
                 switch lifetime {
                 case .created(let service):
-                    statesObserver.send(value: .mergeServiceCreated(forBranch: service.targetBranch))
+                    states.append(.mergeServiceCreated(forBranch: service.targetBranch))
                     service.state.producer
                         .observe(on: scheduler)
                         .startWithValues {
-                            statesObserver.send(value: .mergeServiceState(branch: service.targetBranch, state: $0))
+                            states.append(.mergeServiceState(branch: service.targetBranch, state: $0))
                         }
                 case .destroyed(let service):
-                    statesObserver.send(value: .mergeServiceDestroyed(forBranch: service.targetBranch))
+                    states.append(.mergeServiceDestroyed(forBranch: service.targetBranch))
                 }
         }
 
         when(gitHubEvents, scheduler)
 
-        statesObserver.sendCompleted()
-        states.collect().observeValues(assert)
+        assert(states)
 
         expect(gitHubAPI.assert()) == true
 

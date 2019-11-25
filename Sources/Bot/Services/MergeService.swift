@@ -12,10 +12,10 @@ public final class MergeService {
     private let scheduler: DateScheduler
 
     private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
-    public let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
+    internal let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
 
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
-    public let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
+    internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
     public let healthcheck: Healthcheck
 
@@ -297,8 +297,11 @@ extension MergeService {
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
 
-            guard let next = state.pullRequests.first
-                else { return .value(.noMorePullRequests) }
+            guard let next = state.pullRequests.first else {
+                return SignalProducer
+                    .value(.noMorePullRequests)
+                    .observe(on: scheduler)
+            }
 
             // Refresh pull request to ensure an up-to-date state
             return github.fetchPullRequest(number: next.number)
