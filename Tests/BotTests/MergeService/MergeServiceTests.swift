@@ -59,13 +59,13 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -100,17 +100,17 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference })),
-                    .mergeServiceState(.stub(status: .integrating(pullRequests[0]), pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
-                    .mergeServiceState(.stub(status: .integrating(pullRequests[1]), pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
-                    .mergeServiceState(.stub(status: .integrating(pullRequests[2]))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference })),
+                    .state(.stub(status: .integrating(pullRequests[0]), pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
+                    .state(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
+                    .state(.stub(status: .integrating(pullRequests[1]), pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
+                    .state(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
+                    .state(.stub(status: .integrating(pullRequests[2]))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -133,14 +133,14 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [target.reference])),
-                    .mergeServiceState(.stub(status: .integrating(target))),
-                    .mergeServiceState(.stub(status: .integrationFailed(target, .conflicts))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [target.reference])),
+                    .state(.stub(status: .integrating(target))),
+                    .state(.stub(status: .integrationFailed(target, .conflicts))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -174,15 +174,15 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -208,14 +208,14 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -243,13 +243,13 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [targetLabeled.reference])),
-                    .mergeServiceState(.stub(status: .integrating(targetLabeled))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [targetLabeled.reference])),
+                    .state(.stub(status: .integrating(targetLabeled))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
         }
         )
@@ -300,18 +300,18 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [first.reference])),
-                    .mergeServiceState(.stub(status: .integrating(first))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)), pullRequests: [second.reference])),
-                    .mergeServiceState(.stub(status: .integrating(first.with(mergeState: .clean)), pullRequests: [second.reference])),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [second.reference])),
-                    .mergeServiceState(.stub(status: .integrating(second))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [first.reference])),
+                    .state(.stub(status: .integrating(first))),
+                    .state(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)))),
+                    .state(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)), pullRequests: [second.reference])),
+                    .state(.stub(status: .integrating(first.with(mergeState: .clean)), pullRequests: [second.reference])),
+                    .state(.stub(status: .ready, pullRequests: [second.reference])),
+                    .state(.stub(status: .integrating(second))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -342,14 +342,14 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -380,14 +380,14 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -421,15 +421,15 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .checksFailing))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .checksFailing))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -471,15 +471,15 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -531,15 +531,15 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unstable)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unstable)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -586,15 +586,15 @@ class MergeServiceTests: XCTestCase {
         },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unstable), .checksFailing))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unstable), .checksFailing))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
         }
         )
@@ -625,15 +625,15 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .timedOut))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .timedOut))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -656,14 +656,14 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown)))),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -688,14 +688,14 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown)))),
-                    .mergeServiceState(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unknown), .unknown))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown)))),
+                    .state(.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unknown), .unknown))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -740,16 +740,16 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [first, second].map { $0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(first), pullRequests: [second.reference])),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)), pullRequests: [second.reference])),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrating(first.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [first, second].map { $0.reference})),
+                    .state(.stub(status: .integrating(first), pullRequests: [second.reference])),
+                    .state(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)), pullRequests: [second.reference])),
+                    .state(.stub(status: .runningStatusChecks(first.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(first.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -833,22 +833,22 @@ class MergeServiceTests: XCTestCase {
             assert: {
                 let pr3_tp = pr3.with(labels: [LabelFixture.integrationLabel, LabelFixture.topPriorityLabels[1]])
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [pr2, pr1, pr3, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(pr2), pullRequests: [pr1, pr3, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(pr2), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(pr2.with(mergeState: .blocked)), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(pr2.with(mergeState: .clean)), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(pr3), pullRequests: [pr1, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [pr1, pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(pr1), pullRequests: [pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [pr4].map{$0.reference})),
-                    .mergeServiceState(.stub(status: .integrating(pr4))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [pr2, pr1, pr3, pr4].map{$0.reference})),
+                    .state(.stub(status: .integrating(pr2), pullRequests: [pr1, pr3, pr4].map{$0.reference})),
+                    .state(.stub(status: .integrating(pr2), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
+                    .state(.stub(status: .runningStatusChecks(pr2.with(mergeState: .blocked)), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
+                    .state(.stub(status: .integrating(pr2.with(mergeState: .clean)), pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
+                    .state(.stub(status: .ready, pullRequests: [pr3_tp, pr1, pr4].map{$0.reference})),
+                    .state(.stub(status: .integrating(pr3), pullRequests: [pr1, pr4].map{$0.reference})),
+                    .state(.stub(status: .ready, pullRequests: [pr1, pr4].map{$0.reference})),
+                    .state(.stub(status: .integrating(pr1), pullRequests: [pr4].map{$0.reference})),
+                    .state(.stub(status: .ready, pullRequests: [pr4].map{$0.reference})),
+                    .state(.stub(status: .integrating(pr4))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
         }
         )
@@ -894,17 +894,17 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference })),
-                    .mergeServiceState(.stub(status: .integrating(pullRequests[0]), pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
-                    .mergeServiceState(.stub(status: .integrating(pullRequests[1]), pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
-                    .mergeServiceState(.stub(status: .integrating(pullRequests[2]))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference })),
+                    .state(.stub(status: .integrating(pullRequests[0]), pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
+                    .state(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(2).asArray)),
+                    .state(.stub(status: .integrating(pullRequests[1]), pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
+                    .state(.stub(status: .ready, pullRequests: pullRequests.map { $0.reference }.suffix(1).asArray)),
+                    .state(.stub(status: .integrating(pullRequests[2]))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -960,15 +960,15 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
-                    .mergeServiceCreated,
-                    .mergeServiceState(.stub(status: .starting)),
-                    .mergeServiceState(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .mergeServiceState(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .mergeServiceState(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
-                    .mergeServiceState(.stub(status: .ready)),
-                    .mergeServiceState(.stub(status: .idle)),
-                    .mergeServiceDestroyed
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
             }
         )
@@ -1005,30 +1005,31 @@ class MergeServiceTests: XCTestCase {
 
     private var dispatchService: DispatchService?
 
-    enum DispatchServiceState: Equatable {
-        case mergeServiceCreated(forBranch: String)
-        case mergeServiceState(branch: String, state: MergeService.State)
-        case mergeServiceDestroyed(forBranch: String)
+    enum DispatchServiceEvent: Equatable {
+        case created(branch: String)
+        case state(branch: String, MergeService.State)
+        case destroyed(branch: String)
 
-        // Default values in enums were only introduced in Swift 5.1 so until we migrate…
-        static var mergeServiceCreated: DispatchServiceState { return .mergeServiceCreated(forBranch: MergeServiceFixture.defaultTargetBranch) }
-        static var mergeServiceDestroyed: DispatchServiceState { return .mergeServiceDestroyed(forBranch: MergeServiceFixture.defaultTargetBranch) }
-        static func mergeServiceState(_ state: MergeService.State) -> DispatchServiceState { return .mergeServiceState(branch: MergeServiceFixture.defaultTargetBranch, state: state) }
+        static func state(_ state: MergeService.State) -> DispatchServiceEvent {
+            // IOSP-169: Once we migrate to Swift 5 we can change that to being a default value for enum associated value
+            return .state(branch: MergeServiceFixture.defaultTargetBranch, state)
+        }
     }
 
     private func perform(
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
         when: (MockGitHubEventsService, TestScheduler) -> Void,
-        assert: ([DispatchServiceState]) -> Void
+        assert: ([DispatchServiceEvent]) -> Void
     ) {
+
         let scheduler = TestScheduler()
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        var states: [DispatchServiceState] = []
+        var events: [DispatchServiceEvent] = []
 
-        let (lifetimeSignal, lifetimeObserver) = Signal<DispatchService.MergeServiceLifetime, NoError>.pipe()
+        let (lifecycleSignal, lifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
 
         self.dispatchService = DispatchService(
             integrationLabel: LabelFixture.integrationLabel,
@@ -1039,28 +1040,28 @@ class MergeServiceTests: XCTestCase {
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
             scheduler: scheduler,
-            mergeServiceLifetimeObserver: lifetimeObserver
+            mergeServiceLifecycleObserver: lifecycleObserver
         )
 
-        lifetimeSignal
-            .observe(on: scheduler)
-            .observeValues { lifetime in
-                switch lifetime {
+        lifecycleSignal
+            .map { event in
+                switch event {
                 case .created(let service):
-                    states.append(.mergeServiceCreated(forBranch: service.targetBranch))
-                    service.state.producer
-                        .observe(on: scheduler)
-                        .startWithValues {
-                            states.append(.mergeServiceState(branch: service.targetBranch, state: $0))
-                        }
+                    return .created(branch: service.targetBranch)
+                case .stateChanged(let service):
+                    return .state(branch: service.targetBranch, service.state.value)
                 case .destroyed(let service):
-                    states.append(.mergeServiceDestroyed(forBranch: service.targetBranch))
+                    return .destroyed(branch: service.targetBranch)
                 }
-        }
+            }
+            .observe(on: scheduler)
+            .observeValues { event in
+                events.append(event)
+            }
 
         when(gitHubEvents, scheduler)
 
-        assert(states)
+        assert(events)
 
         expect(gitHubAPI.assert()) == true
 
