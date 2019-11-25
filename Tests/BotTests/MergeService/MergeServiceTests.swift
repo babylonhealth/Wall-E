@@ -1003,8 +1003,6 @@ class MergeServiceTests: XCTestCase {
         }
     }
 
-    private var dispatchService: DispatchService?
-
     enum DispatchServiceEvent: Equatable {
         case created(branch: String)
         case state(branch: String, MergeService.State)
@@ -1014,7 +1012,20 @@ class MergeServiceTests: XCTestCase {
             // IOSP-169: Once we migrate to Swift 5 we can change that to being a default value for enum associated value
             return .state(branch: MergeServiceFixture.defaultTargetBranch, state)
         }
+
+        init(from lifecycleEvent: DispatchService.MergeServiceLifecycleEvent) {
+            switch lifecycleEvent {
+            case .created(let service):
+                self = .created(branch: service.targetBranch)
+            case .stateChanged(let service):
+                self = .state(branch: service.targetBranch, service.state.value)
+            case .destroyed(let service):
+                self = .destroyed(branch: service.targetBranch)
+            }
+        }
     }
+
+    private var dispatchService: DispatchService?
 
     private func perform(
         requiresAllStatusChecks: Bool = false,
@@ -1044,16 +1055,7 @@ class MergeServiceTests: XCTestCase {
         )
 
         lifecycleSignal
-            .map { event in
-                switch event {
-                case .created(let service):
-                    return .created(branch: service.targetBranch)
-                case .stateChanged(let service):
-                    return .state(branch: service.targetBranch, service.state.value)
-                case .destroyed(let service):
-                    return .destroyed(branch: service.targetBranch)
-                }
-            }
+            .map(DispatchServiceEvent.init)
             .observe(on: scheduler)
             .observeValues { event in
                 events.append(event)
