@@ -978,55 +978,6 @@ class MergeServiceTests: XCTestCase {
 
     // MARK: - Helpers
 
-    struct MockGitHubEventsService: GitHubEventsServiceProtocol {
-        let eventsObserver: Signal<Event, NoError>.Observer
-        let events: Signal<Event, NoError>
-
-        init() {
-            (events, eventsObserver) = Signal.pipe()
-        }
-
-        func sendStatusEvent(
-            index: Int = 0,
-            state: StatusEvent.State,
-            branches: [StatusEvent.Branch] = [.init(name: MergeServiceFixture.defaultBranch)]
-        ) {
-            eventsObserver.send(value: .status(
-                StatusEvent(
-                    sha: "abcdef",
-                    context: CommitState.stubContextName(index),
-                    description: "N/A",
-                    state: state,
-                    branches: branches
-                )
-            ))
-        }
-    }
-
-    enum DispatchServiceEvent: Equatable {
-        case created(branch: String)
-        case state(branch: String, MergeService.State)
-        case destroyed(branch: String)
-
-        static func state(_ state: MergeService.State) -> DispatchServiceEvent {
-            // IOSP-169: Once we migrate to Swift 5 we can change that to being a default value for enum associated value
-            return .state(branch: MergeServiceFixture.defaultTargetBranch, state)
-        }
-
-        init(from lifecycleEvent: DispatchService.MergeServiceLifecycleEvent) {
-            switch lifecycleEvent {
-            case .created(let service):
-                self = .created(branch: service.targetBranch)
-            case .stateChanged(let service):
-                self = .state(branch: service.targetBranch, service.state.value)
-            case .destroyed(let service):
-                self = .destroyed(branch: service.targetBranch)
-            }
-        }
-    }
-
-    private var dispatchService: DispatchService?
-
     private func perform(
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
@@ -1038,35 +989,17 @@ class MergeServiceTests: XCTestCase {
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        var events: [DispatchServiceEvent] = []
-
-        let (lifecycleSignal, lifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
-
-        self.dispatchService = DispatchService(
-            integrationLabel: LabelFixture.integrationLabel,
-            topPriorityLabels: LabelFixture.topPriorityLabels,
+        let dispatchServiceContext = DispatchServiceContext(
             requiresAllStatusChecks: requiresAllStatusChecks,
-            statusChecksTimeout: MergeServiceFixture.defaultStatusChecksTimeout,
-            logger: MockLogger(),
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
-            scheduler: scheduler,
-            mergeServiceLifecycleObserver: lifecycleObserver
+            scheduler: scheduler
         )
-
-        lifecycleSignal
-            .map(DispatchServiceEvent.init)
-            .observe(on: scheduler)
-            .observeValues { event in
-                events.append(event)
-            }
 
         when(gitHubEvents, scheduler)
 
-        assert(events)
+        assert(dispatchServiceContext.events)
 
         expect(gitHubAPI.assert()) == true
-
-        self.dispatchService = nil
     }
 }
