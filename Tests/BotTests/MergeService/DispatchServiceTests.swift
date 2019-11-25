@@ -7,90 +7,52 @@ import Result
 class DispatchServiceTests: XCTestCase {
     func test_multiple_pull_requests_with_different_target_branches() {
 
-        let pullRequests = (1...3)
-            .map {
-                PullRequestMetadata.stub(number: $0, baseRef: "branch\($0)", labels: [LabelFixture.integrationLabel])
-                    .with(mergeState: .clean)
-            }
+        let pullRequests = (1...3).map {
+            PullRequestMetadata.stub(number: $0, baseRef: "branch\($0)", labels: [LabelFixture.integrationLabel])
+                .with(mergeState: .clean)
+        }
+        func returnPR() -> (UInt) -> PullRequestMetadata {
+            return { number in pullRequests[Int(number-1)] }
+        }
 
         perform(
             stubs: [
                 .getPullRequests { pullRequests.map { $0.reference } },
-                .getPullRequest { _ in pullRequests[0] },
+                .getPullRequest(returnPR()),
                 .postComment { _, _ in },
-                .getPullRequest { _ in pullRequests[1] },
+                .getPullRequest(returnPR()),
                 .postComment { _, _ in },
-                .getPullRequest { _ in pullRequests[2] },
+                .getPullRequest(returnPR()),
                 .postComment { _, _ in },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
                 .mergePullRequest { _ in },
-                .deleteBranch { _ in }
+                .deleteBranch { _ in },
             ],
             when: { service, scheduler in
                 scheduler.advance()
             },
-            assert: {
-                expect($0) == [
-                    .created(branch: "branch1"),
-                    .created(branch: "branch2"),
-                    .created(branch: "branch3"),
-
-                    .state(branch: "branch1", .stub(status: .starting)),
-                    .state(branch: "branch2", .stub(status: .starting)),
-                    .state(branch: "branch3", .stub(status: .starting)),
-
-                    .state(branch: "branch1", .stub(status: .ready, pullRequests: [pullRequests[0].reference])),
-                    .state(branch: "branch2", .stub(status: .ready, pullRequests: [pullRequests[1].reference])),
-                    .state(branch: "branch3", .stub(status: .ready, pullRequests: [pullRequests[2].reference])),
-
-                    .state(branch: "branch1", .stub(status: .integrating(pullRequests[0]))),
-                    .state(branch: "branch2", .stub(status: .integrating(pullRequests[1]))),
-                    .state(branch: "branch3", .stub(status: .integrating(pullRequests[2]))),
-
-                    .state(branch: "branch1", .stub(status: .ready)),
-                    .state(branch: "branch2", .stub(status: .ready)),
-                    .state(branch: "branch3", .stub(status: .ready)),
-
-                    .state(branch: "branch1", .stub(status: .idle)),
-                    .destroyed(branch: "branch1"),
-
-                    .state(branch: "branch2", .stub(status: .idle)),
-                    .destroyed(branch: "branch2"),
-
-                    .state(branch: "branch3", .stub(status: .idle)),
-                    .destroyed(branch: "branch3")
-                ]
+            assert: { events in
+                let perBranchEvents = Dictionary(grouping: events) { $0.branch }
+                expect(perBranchEvents.count) == 3
+                for (branch, events) in perBranchEvents {
+                    let filteredPRs = pullRequests.filter { $0.reference.target.ref == branch }
+                    expect(filteredPRs.count) == 1
+                    let prForBranch = filteredPRs.first!
+                    expect(events) == [
+                        .created(branch: branch),
+                        .state(branch: branch, .stub(status: .starting)),
+                        .state(branch: branch, .stub(status: .ready, pullRequests: [prForBranch.reference])),
+                        .state(branch: branch, .stub(status: .integrating(prForBranch))),
+                        .state(branch: branch, .stub(status: .ready)),
+                        .state(branch: branch, .stub(status: .idle)),
+                        .destroyed(branch: branch),
+                    ]
+                }
             }
         )
-    }
-
-    private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String) -> (String, PullRequest) -> Void {
-        return { message, pullRequest in
-            expect(pullRequest.number) == expectedPRNumber
-            expect(message) == expectedMessage
-        }
-    }
-
-    private func checkReturnPR(_ prToReturn: PullRequestMetadata) -> (UInt) -> PullRequestMetadata {
-        return { number in
-            expect(number) == prToReturn.reference.number
-            return prToReturn
-        }
-    }
-
-    private func checkPRNumber(_ expectedNumber: UInt) -> (PullRequest) -> Void {
-        return { pullRequest in
-            expect(pullRequest.number) == expectedNumber
-        }
-    }
-
-    private func checkBranch(_ expectedBranch: PullRequest.Branch) -> (PullRequest.Branch) -> Void {
-        return { branch in
-            expect(branch.ref) == expectedBranch.ref
-        }
     }
 
     func test_adding_new_pull_requests_during_integration() {
@@ -186,7 +148,31 @@ class DispatchServiceTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private var dispatchService: DispatchService?
+    private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String) -> (String, PullRequest) -> Void {
+        return { message, pullRequest in
+            expect(pullRequest.number) == expectedPRNumber
+            expect(message) == expectedMessage
+        }
+    }
+
+    private func checkReturnPR(_ prToReturn: PullRequestMetadata) -> (UInt) -> PullRequestMetadata {
+        return { number in
+            expect(number) == prToReturn.reference.number
+            return prToReturn
+        }
+    }
+
+    private func checkPRNumber(_ expectedNumber: UInt) -> (PullRequest) -> Void {
+        return { pullRequest in
+            expect(pullRequest.number) == expectedNumber
+        }
+    }
+
+    private func checkBranch(_ expectedBranch: PullRequest.Branch) -> (PullRequest.Branch) -> Void {
+        return { branch in
+            expect(branch.ref) == expectedBranch.ref
+        }
+    }
 
     private func perform(
         requiresAllStatusChecks: Bool = false,
@@ -211,7 +197,6 @@ class DispatchServiceTests: XCTestCase {
         assert(dispatchServiceContext.events)
 
         expect(gitHubAPI.assert()) == true
-
-        self.dispatchService = nil
     }
+    
 }

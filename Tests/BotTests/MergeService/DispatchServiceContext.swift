@@ -22,6 +22,14 @@ enum DispatchServiceEvent: Equatable {
             self = .destroyed(branch: service.targetBranch)
         }
     }
+
+    var branch: String {
+        switch self {
+        case .created(let branch), .state(let branch, _), .destroyed(let branch):
+            return branch
+        }
+
+    }
 }
 
 class DispatchServiceContext {
