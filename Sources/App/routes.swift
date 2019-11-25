@@ -8,8 +8,14 @@ public func routes(
     gitHubEventsService: GitHubEventsService
 ) throws {
 
-    router.get("/") { request -> String in
-        return dispatchService.queuesDescription
+    router.get("/") { request -> Response in
+        let response = Response(using: request)
+        if request.header(named: HTTPHeaderName.accept.description) == "application/json" {
+            try response.content.encode(dispatchService.queues, as: .json)
+        } else {
+            try response.content.encode(dispatchService.queuesDescription, as: .plainText)
+        }
+        return response
     }
 
     router.get("health") { request -> HTTPResponse in

@@ -12,7 +12,7 @@ extension PullRequestMetadata {
     // efficient than doing multiple checks to determine this
     //
     // Reference: https://github.com/octokit/octokit.net/pull/1764/files
-    public enum MergeState: String, Decodable {
+    public enum MergeState: String, Codable {
         /// Merge conflict. Merging is blocked.
         case dirty
         /// Mergeability was not checked yet. Merging is blocked.
@@ -28,7 +28,7 @@ extension PullRequestMetadata {
     }
 }
 
-extension PullRequestMetadata: Decodable {
+extension PullRequestMetadata: Codable {
     public init(from decoder: Decoder) throws {
         reference = try PullRequest(from: decoder)
 
@@ -41,6 +41,7 @@ extension PullRequestMetadata: Decodable {
     enum CodingKeys: String, CodingKey {
         case isMerged = "merged"
         case mergeState = "mergeable_state"
+        case reference
     }
 }
 

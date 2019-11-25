@@ -96,7 +96,7 @@ public final class MergeService {
 
 extension MergeService {
 
-    public enum FailureReason: Equatable {
+    public enum FailureReason: String, Equatable, Encodable {
         case conflicts
         case mergeFailed
         case synchronizationFailed
@@ -109,7 +109,7 @@ extension MergeService {
 
     public struct State: Equatable {
 
-        public enum Status: Equatable {
+        public enum Status: Equatable, Encodable {
             case starting
             case idle
             case ready
@@ -133,6 +133,35 @@ extension MergeService {
                 default:
                     return nil
                 }
+            }
+
+            enum CodingKeys: String, CodingKey {
+                case status
+                case metadata
+                case error
+            }
+
+            public func encode(to encoder: Encoder) throws {
+                var values = encoder.container(keyedBy: CodingKeys.self)
+                switch self {
+                case .starting:
+                    try values.encode("starting", forKey: .status)
+                case .idle:
+                    try values.encode("idle", forKey: .status)
+                case .ready:
+                    try values.encode("ready", forKey: .status)
+                case let .integrating(metadata):
+                    try values.encode("integrating", forKey: .status)
+                    try values.encode(metadata, forKey: .metadata)
+                case let .runningStatusChecks(metadata):
+                    try values.encode("runningStatusChecks", forKey: .status)
+                    try values.encode(metadata, forKey: .metadata)
+                case let .integrationFailed(metadata, error):
+                    try values.encode("integrationFailed", forKey: .status)
+                    try values.encode(metadata, forKey: .metadata)
+                    try values.encode(error, forKey: .error)
+                }
+
             }
         }
 
@@ -727,6 +756,19 @@ extension MergeService.State: CustomStringConvertible {
 
     public var description: String {
         return "State(\n - status: \(status),\n - queue: \(queueDescription)\n)"
+    }
+}
+
+extension MergeService.State: Encodable {
+    enum CodingKeys: String, CodingKey {
+        case status
+        case queue
+    }
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+
+        try values.encode(status, forKey: .status)
+        try values.encode(pullRequests, forKey: .queue)
     }
 }
 

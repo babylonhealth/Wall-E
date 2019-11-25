@@ -143,6 +143,10 @@ extension DispatchService {
             """
         }.joined(separator: "\n\n")
     }
+
+    public var queues: [String: MergeService.State] {
+        return self.mergeServices.mapValues { $0.state.value }
+    }
 }
 
 // MARK: - Healthcheck
