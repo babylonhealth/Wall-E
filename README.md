@@ -30,3 +30,5 @@ To install the client app:
  - build it in Xcode and copy to your applications directory
  - run `defaults write com.babylonhealth.WallEView Host <applicaiton address>` 
  - launch the app
+
+Iconography © https://dribbble.com/shots/2772860-WALL-E-Movie-Icons
