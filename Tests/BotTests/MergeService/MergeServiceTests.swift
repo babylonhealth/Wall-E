@@ -1020,9 +1020,8 @@ class MergeServiceTests: XCTestCase {
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
         when: (MockGitHubEventsService, TestScheduler) -> Void,
-        assert: @escaping ([DispatchServiceState]) -> Void
+        assert: ([DispatchServiceState]) -> Void
     ) {
-
         let scheduler = TestScheduler()
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
