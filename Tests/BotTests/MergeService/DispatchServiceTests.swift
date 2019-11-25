@@ -73,7 +73,7 @@ class DispatchServiceTests: XCTestCase {
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the queue, hold tight ⏳")),
+                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
 
                 .getPullRequest(checkReturnPR(rel3)),
                 .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
@@ -144,29 +144,29 @@ class DispatchServiceTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String) -> (String, PullRequest) -> Void {
+    private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String, file: FileString = #file, line: UInt = #line) -> (String, PullRequest) -> Void {
         return { message, pullRequest in
-            expect(pullRequest.number) == expectedPRNumber
-            expect(message) == expectedMessage
+            expect(pullRequest.number, file: file, line: line) == expectedPRNumber
+            expect(message, file: file, line: line) == expectedMessage
         }
     }
 
-    private func checkReturnPR(_ prToReturn: PullRequestMetadata) -> (UInt) -> PullRequestMetadata {
+    private func checkReturnPR(_ prToReturn: PullRequestMetadata, file: FileString = #file, line: UInt = #line) -> (UInt) -> PullRequestMetadata {
         return { number in
-            expect(number) == prToReturn.reference.number
+            expect(number, file: file, line: line) == prToReturn.reference.number
             return prToReturn
         }
     }
 
-    private func checkPRNumber(_ expectedNumber: UInt) -> (PullRequest) -> Void {
+    private func checkPRNumber(_ expectedNumber: UInt, file: FileString = #file, line: UInt = #line) -> (PullRequest) -> Void {
         return { pullRequest in
-            expect(pullRequest.number) == expectedNumber
+            expect(pullRequest.number, file: file, line: line) == expectedNumber
         }
     }
 
-    private func checkBranch(_ expectedBranch: PullRequest.Branch) -> (PullRequest.Branch) -> Void {
+    private func checkBranch(_ expectedBranch: PullRequest.Branch, file: FileString = #file, line: UInt = #line) -> (PullRequest.Branch) -> Void {
         return { branch in
-            expect(branch.ref) == expectedBranch.ref
+            expect(branch.ref, file: file, line: line) == expectedBranch.ref
         }
     }
 

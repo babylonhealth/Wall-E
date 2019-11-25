@@ -309,7 +309,7 @@ extension MergeService {
                             .flatMapError { _ in .empty }
                         } else {
                             return github.postComment(
-                                "Your pull request was accepted and it's currently `#\(index + 1)` in the queue, hold tight ⏳",
+                                "Your pull request was accepted and it's currently `#\(index + 1)` in the `\(current.targetBranch)` queue, hold tight ⏳",
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }

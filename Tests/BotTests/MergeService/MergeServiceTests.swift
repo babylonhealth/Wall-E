@@ -263,7 +263,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and it's currently `#1` in the queue, hold tight ⏳"
+                    expect(message) == "Your pull request was accepted and it's currently `#1` in the `master` queue, hold tight ⏳"
                     expect(pullRequest.number) == 2
                 },
                 .getPullRequest { _ in first.with(mergeState: .clean) },
@@ -851,11 +851,11 @@ class MergeServiceTests: XCTestCase {
                     expect(pullRequest.number) == 144
                 },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and it's currently `#2` in the queue, hold tight ⏳"
+                    expect(message) == "Your pull request was accepted and it's currently `#2` in the `master` queue, hold tight ⏳"
                     expect(pullRequest.number) == 233
                 },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and it's currently `#3` in the queue, hold tight ⏳"
+                    expect(message) == "Your pull request was accepted and it's currently `#3` in the `master` queue, hold tight ⏳"
                     expect(pullRequest.number) == 377
                 },
                 .mergePullRequest { _ in },
