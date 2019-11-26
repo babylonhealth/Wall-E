@@ -719,6 +719,7 @@ extension MergeService {
             status = Property(
                 initial: .ok,
                 then: state.combinePrevious()
+                    // Can't just use skipRepeats() as (at least as of Swift 4), tuple of Equatable is not itself Equatable
                     .skipRepeats { lhs, rhs in
                         return lhs == rhs
                     }
