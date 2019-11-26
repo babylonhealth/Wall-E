@@ -3,6 +3,7 @@ import Result
 import ReactiveSwift
 import ReactiveFeedback
 
+/// Orchestrates multiple merge services, one per each target branch of PRs enqueued for integration
 public final class DispatchService {
     private let integrationLabel: PullRequest.Label
     private let topPriorityLabels: [PullRequest.Label]
@@ -13,6 +14,7 @@ public final class DispatchService {
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
+    /// Merge services per target branch
     private var mergeServices: [String: MergeService]
     private let mergeServiceLifecycleObserver: Signal<MergeServiceLifecycleEvent, NoError>.Observer?
 
@@ -68,9 +70,13 @@ public final class DispatchService {
     }
 
     private func dispatchInitial(pullRequests: [PullRequest]) {
-        let dispatchTable = Dictionary(grouping: pullRequests) { pullRequest in pullRequest.target.ref }
+        let dispatchTable = Dictionary(grouping: pullRequests) { $0.target.ref }
         for (branch, pullRequestsForBranch) in dispatchTable {
-            makeMergeService(targetBranch: branch, scheduler: self.scheduler, initialPullRequests: pullRequestsForBranch)
+            makeMergeService(
+                targetBranch: branch,
+                scheduler: self.scheduler,
+                initialPullRequests: pullRequestsForBranch
+            )
         }
     }
 
@@ -187,7 +193,7 @@ extension DispatchService {
             statusProducerDisposable = SignalProducer
                 .combineLatest(producers.values)
                 .map({ (mergeServiceStatuses: [MergeService.Healthcheck.Status]) -> Healthcheck.Status in
-                    return mergeServiceStatuses.contains(where: { $0 != .ok }) ? .unhealthy(.potentialDeadlock) : .ok
+                   mergeServiceStatuses.contains(where: { $0 != .ok }) ? .unhealthy(.potentialDeadlock) : .ok
                 })
                 .observe(on: scheduler)
                 .startWithValues { [weak self] in
