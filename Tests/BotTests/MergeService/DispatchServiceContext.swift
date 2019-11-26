@@ -34,8 +34,6 @@ class DispatchServiceContext {
     var events: [DispatchServiceEvent] = []
 
     init(requiresAllStatusChecks: Bool, gitHubAPI: GitHubAPIProtocol, gitHubEvents: GitHubEventsServiceProtocol, scheduler: DateScheduler) {
-        let (lifecycleSignal, lifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
-
         self.dispatchService = DispatchService(
             integrationLabel: LabelFixture.integrationLabel,
             topPriorityLabels: LabelFixture.topPriorityLabels,
@@ -44,11 +42,10 @@ class DispatchServiceContext {
             logger: MockLogger(),
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
-            scheduler: scheduler,
-            mergeServiceLifecycleObserver: lifecycleObserver
+            scheduler: scheduler
         )
 
-        lifecycleSignal
+        self.dispatchService.mergeServiceLifecycle
             .map(DispatchServiceEvent.init)
             .observe(on: scheduler)
             .observeValues { [weak self] event in

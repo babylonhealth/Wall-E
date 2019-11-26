@@ -16,7 +16,8 @@ public final class DispatchService {
 
     /// Merge services per target branch
     private var mergeServices: [String: MergeService]
-    private let mergeServiceLifecycleObserver: Signal<MergeServiceLifecycleEvent, NoError>.Observer?
+    public let mergeServiceLifecycle: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>
+    private let mergeServiceLifecycleObserver: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.Observer
 
     public let healthcheck: Healthcheck
 
@@ -28,8 +29,7 @@ public final class DispatchService {
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
-        scheduler: DateScheduler = QueueScheduler(),
-        mergeServiceLifecycleObserver: Signal<MergeServiceLifecycleEvent, NoError>.Observer? = nil
+        scheduler: DateScheduler = QueueScheduler()
     ) {
         self.integrationLabel = integrationLabel
         self.topPriorityLabels = topPriorityLabels
@@ -41,7 +41,7 @@ public final class DispatchService {
         self.scheduler = scheduler
 
         self.mergeServices = [:]
-        self.mergeServiceLifecycleObserver = mergeServiceLifecycleObserver
+        (mergeServiceLifecycle, mergeServiceLifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
 
         healthcheck = Healthcheck(scheduler: scheduler)
 
@@ -113,14 +113,14 @@ public final class DispatchService {
         )
         self.mergeServices[targetBranch] = mergeService
         self.healthcheck.startMonitoring(mergeServiceHealthcheck: mergeService.healthcheck)
-        mergeServiceLifecycleObserver?.send(value: .created(mergeService))
+        mergeServiceLifecycleObserver.send(value: .created(mergeService))
         mergeService.state.producer
             .observe(on: scheduler)
             .startWithValues { [weak self, service = mergeService] state in
-                self?.mergeServiceLifecycleObserver?.send(value: .stateChanged(service))
+                self?.mergeServiceLifecycleObserver.send(value: .stateChanged(service))
                 if state.status == .idle {
                     self?.mergeServices[targetBranch] = nil
-                    self?.mergeServiceLifecycleObserver?.send(value: .destroyed(service))
+                    self?.mergeServiceLifecycleObserver.send(value: .destroyed(service))
                 }
             }
 
