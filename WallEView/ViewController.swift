@@ -39,13 +39,16 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
         didSet {
             tableView.reloadData()
 
-            let hideContent = state?.isIdle == true || state?.isFailing == true
+            // TODO: this logic should pick the queue depending on user selection of target branch
+            let queue = state?.queues.first
+
+            let hideContent = queue?.isIdle == true || queue?.isFailing == true
             background.isHidden = !hideContent
             tableViewContainer.isHidden = hideContent
 
-            if state?.isFailing == true {
+            if state?.queues.first?.isFailing == true {
                 backgroundImage.image = #imageLiteral(resourceName: "foot")
-                backgroundLabel.stringValue = "Something failin':\n\n\(state?.error.map(String.init(describing:)) ?? "")"
+                backgroundLabel.stringValue = "Something failin':\n\n\(queue?.error.map(String.init(describing:)) ?? "")"
             } else {
                 backgroundImage.image = #imageLiteral(resourceName: "green")
                 backgroundLabel.stringValue = "Doin' nothin', just chillin'"
@@ -53,10 +56,17 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
         }
     }
 
-    struct State {
+    struct State: Decodable {
+        let queues: [Queue]
+
+        static let empty = State(queues: [])
+    }
+
+    struct Queue {
         struct Current: Decodable {
             let reference: PullRequest
         }
+        let targetBranch: String
         let current: Current?
         let queue: [PullRequest]
         let error: Error?
@@ -75,12 +85,12 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        return state?.pullRequests.count ?? 0
+        return state?.queues.first?.pullRequests.count ?? 0
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let cell: PullRequestCell? = tableView.makeCell()
-        let pullRequest = state!.pullRequests[row]
+        let pullRequest = state!.queues.first!.pullRequests[row]
         cell?.title.stringValue = pullRequest.title
         cell?.subtitle.stringValue = "#\(pullRequest.number) by \(pullRequest.author.login)"
         return cell
@@ -93,7 +103,7 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
 
     func updateState() {
         guard let host = UserDefaults.standard.string(forKey: "Host") else {
-            state = State(current: nil, queue: [], error: "No host set")
+            state = .empty
             return
         }
 
@@ -103,13 +113,14 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
             DispatchQueue.main.async {
                 if let data = data {
                     do {
-                        let state = try JSONDecoder().decode(State.self, from: data)
-                        self?.state = state
+                        let queues = try JSONDecoder().decode([Queue].self, from: data)
+                        // TODO: filter only PRs targeting develop until branch selector is implemented in UI
+                        self?.state = State(queues: queues.filter { $0.targetBranch == "develop" })
                     } catch {
-                        self?.state = State(current: nil, queue: [], error: error)
+                        self?.state = .empty
                     }
                 } else {
-                    self?.state = State(current: nil, queue: [], error: error)
+                    self?.state = .empty
                 }
             }
         }).resume()
@@ -120,14 +131,15 @@ extension String: Error, LocalizedError {
     public var localizedDescription: String { self }
 }
 
-extension ViewController.State: Decodable {
+extension ViewController.Queue: Decodable {
     enum CodingKeys: String, CodingKey {
-        case status, queue, metadata, reference
+        case status, queue, metadata, reference, targetBranch
     }
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let status = try values.nestedContainer(keyedBy: CodingKeys.self, forKey: .status)
+        targetBranch = try status.decode(String.self, forKey: .targetBranch)
         current = try status.decodeIfPresent(Current.self, forKey: .metadata)
         queue = try values.decode([PullRequest].self, forKey: .queue)
         error = nil
