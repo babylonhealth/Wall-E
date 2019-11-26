@@ -151,7 +151,11 @@ extension DispatchService {
     }
 
     public var queueStates: [MergeService.State] {
-        return self.mergeServices.values.map { $0.state.value }
+        return self.mergeServices.values
+            .map { $0.state.value }
+            .sorted { (lhs, rhs) in
+                lhs.targetBranch < rhs.targetBranch
+        }
     }
 }
 

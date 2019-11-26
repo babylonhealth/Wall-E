@@ -768,12 +768,14 @@ extension MergeService.State: CustomStringConvertible {
 
 extension MergeService.State: Encodable {
     enum CodingKeys: String, CodingKey {
+        case targetBranch
         case status
         case queue
     }
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
 
+        try values.encode(targetBranch, forKey: .targetBranch)
         try values.encode(status, forKey: .status)
         try values.encode(pullRequests, forKey: .queue)
     }

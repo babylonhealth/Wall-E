@@ -142,6 +142,49 @@ class DispatchServiceTests: XCTestCase {
         )
     }
 
+    func test_json_queue_description() throws {
+        let (branch1, branch2) = ("branch1", "branch2")
+        let pr1 = PullRequestMetadata.stub(number: 1, headRef: MergeServiceFixture.defaultBranch, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .behind)
+        let pr2 = PullRequestMetadata.stub(number: 2, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .clean)
+        let pr3 = PullRequestMetadata.stub(number: 3, baseRef: branch2, labels: [LabelFixture.integrationLabel], mergeState: .behind)
+
+        let stubs: [MockGitHubAPI.Stubs] = [
+            .getPullRequests { [pr1.reference] },
+            .getPullRequest(checkReturnPR(pr1)),
+            .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+            .mergeIntoBranch { _, _ in .success },
+            .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `branch1` queue, hold tight ⏳")),
+            .getPullRequest(checkReturnPR(pr3)),
+            .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
+            .mergeIntoBranch { _, _ in .success },
+        ]
+
+        let scheduler = TestScheduler()
+        let gitHubAPI = MockGitHubAPI(stubs: stubs)
+        let gitHubEvents = MockGitHubEventsService()
+
+        let dispatchServiceContext = DispatchServiceContext(
+            requiresAllStatusChecks: true,
+            gitHubAPI: gitHubAPI,
+            gitHubEvents: gitHubEvents,
+            scheduler: scheduler
+        )
+
+        expect(dispatchServiceContext.dispatchService.queueStates) == []
+
+        scheduler.advance()
+        gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr2)
+        scheduler.advance()
+        gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr3)
+        scheduler.advance()
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let data = try encoder.encode(dispatchServiceContext.dispatchService.queueStates)
+        let json = String(data: data, encoding: .utf8)
+        expect(json) == DispatchServiceQueueStates
+    }
+
     // MARK: - Helpers
 
     private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String, file: FileString = #file, line: UInt = #line) -> (String, PullRequest) -> Void {
