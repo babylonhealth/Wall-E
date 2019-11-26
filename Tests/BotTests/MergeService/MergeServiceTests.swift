@@ -358,9 +358,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value:
-                    .pullRequest(.init(action: .unlabeled, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(labels: [])))
-                )
+                service.sendPullRequestEvent(action: .unlabeled, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(labels: []))
 
                 scheduler.advance()
             },
@@ -594,9 +592,7 @@ class MergeServiceTests: XCTestCase {
             when: { service, scheduler in
                 scheduler.advance()
 
-                service.eventsObserver.send(value:
-                    .pullRequest(.init(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
 
                 // 1.5 ensures we trigger the timeout
                 scheduler.advance(by: .minutes(1.5 * MergeServiceFixture.defaultStatusChecksTimeout))
@@ -700,15 +696,11 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value:
-                    .pullRequest(.init(action: .synchronize, pullRequestMetadata: first.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: first.with(mergeState: .blocked))
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value:
-                    .pullRequest(.init(action: .unlabeled, pullRequestMetadata: second.with(labels: [])))
-                )
+                service.sendPullRequestEvent(action: .unlabeled, pullRequestMetadata: second.with(labels: []))
 
                 scheduler.advance()
 
@@ -790,17 +782,13 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance() // #1
 
-                service.eventsObserver.send(value:
-                    .pullRequest(.init(action: .labeled, pullRequestMetadata: pr3.with(
-                        labels: [LabelFixture.integrationLabel, LabelFixture.topPriorityLabels[1]]
-                    )))
-                )
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr3.with(
+                    labels: [LabelFixture.integrationLabel, LabelFixture.topPriorityLabels[1]]
+                ))
 
                 scheduler.advance() // #2
 
-                service.eventsObserver.send(value:
-                    .pullRequest(.init(action: .synchronize, pullRequestMetadata: pr2.with(mergeState: .blocked)))
-                )
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: pr2.with(mergeState: .blocked))
 
                 scheduler.advance() // #3
 

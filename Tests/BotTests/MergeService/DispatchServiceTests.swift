@@ -104,9 +104,7 @@ class DispatchServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                service.eventsObserver.send(value: .pullRequest(
-                    .init(action: .labeled, pullRequestMetadata: rel3))
-                )
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: rel3)
 
                 scheduler.advance()
 
