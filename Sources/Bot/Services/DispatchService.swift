@@ -15,7 +15,7 @@ public final class DispatchService {
     private let scheduler: DateScheduler
 
     /// Merge services per target branch
-    private var mergeServices: [String: MergeService]
+    private var mergeServices: Atomic<[String: MergeService]>
     public let mergeServiceLifecycle: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>
     private let mergeServiceLifecycleObserver: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.Observer
 
@@ -40,7 +40,7 @@ public final class DispatchService {
         self.gitHubAPI = gitHubAPI
         self.scheduler = scheduler
 
-        self.mergeServices = [:]
+        self.mergeServices = Atomic([:])
         (mergeServiceLifecycle, mergeServiceLifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
 
         healthcheck = Healthcheck(scheduler: scheduler)
@@ -71,34 +71,43 @@ public final class DispatchService {
 
     private func dispatchInitial(pullRequests: [PullRequest]) {
         let dispatchTable = Dictionary(grouping: pullRequests) { $0.target.ref }
-        for (branch, pullRequestsForBranch) in dispatchTable {
-            makeMergeService(
-                targetBranch: branch,
-                scheduler: self.scheduler,
-                initialPullRequests: pullRequestsForBranch
-            )
+        mergeServices.modify { dict in
+            for (branch, pullRequestsForBranch) in dispatchTable {
+                dict[branch] = makeMergeService(
+                    targetBranch: branch,
+                    scheduler: self.scheduler,
+                    initialPullRequests: pullRequestsForBranch
+                )
+            }
         }
     }
 
     private func pullRequestDidChange(event: PullRequestEvent) {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
         let targetBranch = event.pullRequestMetadata.reference.target.ref
-        if let service = mergeServices[targetBranch] {
-            service.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
-        } else {
-            makeMergeService(targetBranch: targetBranch, scheduler: self.scheduler, initialPullRequests: [event.pullRequestMetadata.reference])
+        mergeServices.modify { dict in
+            if let service = dict[targetBranch] {
+                service.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+            } else {
+                dict[targetBranch] = makeMergeService(
+                    targetBranch: targetBranch,
+                    scheduler: self.scheduler,
+                    initialPullRequests: [event.pullRequestMetadata.reference]
+                )
+            }
         }
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
         // No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checks for head branch not target so not useful here
         // So we're sending it to all MergeServices, and they'll filter them themselves based on their own queues
-        for mergeServiceForBranch in mergeServices.values {
-            mergeServiceForBranch.statusChecksCompletionObserver.send(value: event)
+        mergeServices.withValue { currentMergeServices in
+            for mergeServiceForBranch in currentMergeServices.values {
+                mergeServiceForBranch.statusChecksCompletionObserver.send(value: event)
+            }
         }
     }
 
-    @discardableResult
     private func makeMergeService(targetBranch: String, scheduler: DateScheduler, initialPullRequests: [PullRequest] = []) -> MergeService {
         let mergeService = MergeService(
             targetBranch: targetBranch,
@@ -111,7 +120,6 @@ public final class DispatchService {
             gitHubAPI: gitHubAPI,
             scheduler: scheduler
         )
-        self.mergeServices[targetBranch] = mergeService
         self.healthcheck.startMonitoring(mergeServiceHealthcheck: mergeService.healthcheck)
         mergeServiceLifecycleObserver.send(value: .created(mergeService))
         mergeService.state.producer
@@ -119,7 +127,9 @@ public final class DispatchService {
             .startWithValues { [weak self, service = mergeService] state in
                 self?.mergeServiceLifecycleObserver.send(value: .stateChanged(service))
                 if state.status == .idle {
-                    self?.mergeServices[targetBranch] = nil
+                    self?.mergeServices.modify { dict in
+                        dict[targetBranch] = nil
+                    }
                     self?.mergeServiceLifecycleObserver.send(value: .destroyed(service))
                 }
             }
@@ -138,10 +148,11 @@ extension DispatchService {
 
 extension DispatchService {
     public var queuesDescription: String {
-        guard !mergeServices.isEmpty else {
+        let currentMergeServices = mergeServices.value
+        guard !currentMergeServices.isEmpty else {
             return "No PR pending, all queues empty."
         }
-        return mergeServices.map { (entry: (key: String, value: MergeService)) -> String in
+        return currentMergeServices.map { (entry: (key: String, value: MergeService)) -> String in
             """
             ## Merge Queue for target branch: \(entry.key) ##
 
@@ -151,7 +162,7 @@ extension DispatchService {
     }
 
     public var queueStates: [MergeService.State] {
-        return self.mergeServices.values
+        return self.mergeServices.value.values
             .map { $0.state.value }
             .sorted { (lhs, rhs) in
                 lhs.targetBranch < rhs.targetBranch
