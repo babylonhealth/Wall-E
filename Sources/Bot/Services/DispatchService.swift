@@ -19,8 +19,6 @@ public final class DispatchService {
     public let mergeServiceLifecycle: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>
     private let mergeServiceLifecycleObserver: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.Observer
 
-    public let healthcheck: Healthcheck
-
     public init(
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
@@ -42,8 +40,6 @@ public final class DispatchService {
 
         self.mergeServices = Atomic([:])
         (mergeServiceLifecycle, mergeServiceLifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.pipe()
-
-        healthcheck = Healthcheck(scheduler: scheduler)
 
         gitHubAPI.fetchPullRequests()
             .flatMapError { _ in .value([]) }
@@ -120,7 +116,6 @@ public final class DispatchService {
             gitHubAPI: gitHubAPI,
             scheduler: scheduler
         )
-        self.healthcheck.startMonitoring(mergeServiceHealthcheck: mergeService.healthcheck)
         mergeServiceLifecycleObserver.send(value: .created(mergeService))
         mergeService.state.producer
             .observe(on: scheduler)
@@ -173,47 +168,8 @@ extension DispatchService {
 // MARK: - Healthcheck
 
 extension DispatchService {
-    public final class Healthcheck {
-
-        public enum Reason: Error, Equatable {
-            case potentialDeadlock
-        }
-
-        public enum Status: Equatable {
-            case ok
-            case unhealthy(Reason)
-        }
-
-        public var status: Property<Status> { return Property(_status) }
-
-        private let scheduler: DateScheduler
-        private var producers: [String: SignalProducer<MergeService.Healthcheck.Status, NoError>] = [:]
-        private var statusProducerDisposable: Disposable?
-        private var _status: MutableProperty<Status> = MutableProperty(.ok)
-
-        internal init(
-            scheduler: DateScheduler
-        ) {
-            self.scheduler = scheduler
-        }
-
-        func startMonitoring(mergeServiceHealthcheck: MergeService.Healthcheck) {
-            let uuid = UUID().uuidString
-            producers[uuid] = mergeServiceHealthcheck.status.producer
-                .on(disposed: { [weak self] in
-                    self?.producers[uuid] = nil
-                })
-
-            statusProducerDisposable?.dispose()
-            statusProducerDisposable = SignalProducer
-                .combineLatest(producers.values)
-                .map({ (mergeServiceStatuses: [MergeService.Healthcheck.Status]) -> Healthcheck.Status in
-                   mergeServiceStatuses.contains(where: { $0 != .ok }) ? .unhealthy(.potentialDeadlock) : .ok
-                })
-                .observe(on: scheduler)
-                .startWithValues { [weak self] in
-                    self?._status.value = $0
-                }
-        }
+    public var healthcheckStatus: MergeService.Healthcheck.Status {
+        let currentStatuses = self.mergeServices.value.values.map { $0.healthcheck.status.value }
+        return currentStatuses.first(where: { $0 != .ok }) ?? .ok
     }
 }

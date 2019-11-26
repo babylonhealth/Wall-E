@@ -19,7 +19,7 @@ public func routes(
     }
 
     router.get("health") { request -> HTTPResponse in
-        switch dispatchService.healthcheck.status.value {
+        switch dispatchService.healthcheckStatus {
         case .ok: return HTTPResponse(status: .ok)
         default: return HTTPResponse(status: .serviceUnavailable)
         }
