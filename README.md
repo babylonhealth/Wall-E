@@ -23,3 +23,12 @@ Depending on the workflow of each team some of them may be disabled to suit thei
 👷‍♀️ **WIP, come back later** 👷‍♂️
 
 ![](https://media.giphy.com/media/26ybvJNaZZKpPONEc/giphy.gif)
+
+### Client app
+
+To install the client app:
+ - build it in Xcode and copy to your applications directory
+ - run `defaults write com.babylonhealth.WallEView Host <application address>` 
+ - launch the app
+
+Iconography © https://dribbble.com/shots/2772860-WALL-E-Movie-Icons
