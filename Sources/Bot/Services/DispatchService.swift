@@ -81,17 +81,23 @@ public final class DispatchService {
     private func pullRequestDidChange(event: PullRequestEvent) {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
         let targetBranch = event.pullRequestMetadata.reference.target.ref
-        mergeServices.modify { dict in
+        let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService? in
             if let service = dict[targetBranch] {
-                service.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+                // If service was already existing, return it so we'll send the pullRequestChangesObserver event outside this `modify` below
+                return service
             } else {
                 dict[targetBranch] = makeMergeService(
                     targetBranch: targetBranch,
                     scheduler: self.scheduler,
                     initialPullRequests: [event.pullRequestMetadata.reference]
                 )
+                // If MergeService didn't exist yet and we just created it, return nil so that we DON'T send the event on pullRequestChangesObserver
+                // outside this `modify` below (because we already passed the PR to initialPullRequests parameters when creating the service – and
+                // the service would still be `.starting` and it would not be ready to receive those events anyway)
+                return nil
             }
         }
+        existingService?.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
