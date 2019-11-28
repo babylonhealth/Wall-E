@@ -25,7 +25,6 @@ enum DispatchServiceEvent: Equatable {
         case .state(let state):
             return state.targetBranch
         }
-
     }
 }
 

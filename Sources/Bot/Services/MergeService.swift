@@ -5,6 +5,7 @@ import ReactiveFeedback
 
 public final class MergeService {
     public let state: Property<State>
+    public let healthcheck: Healthcheck
 
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
@@ -15,8 +16,6 @@ public final class MergeService {
 
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
     internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
-
-    public let healthcheck: Healthcheck
 
     public init(
         targetBranch: String,
@@ -107,6 +106,92 @@ extension MergeService {
     }
 
     public struct State: Equatable {
+        public let status: Status
+        public let pullRequests: [PullRequest]
+
+        internal let targetBranch: String
+        internal let integrationLabel: PullRequest.Label
+        internal let topPriorityLabels: [PullRequest.Label]
+        internal let statusChecksTimeout: TimeInterval
+
+        init(
+            targetBranch: String,
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval,
+            pullRequests: [PullRequest],
+            status: Status
+        ) {
+            self.targetBranch = targetBranch
+            self.integrationLabel = integrationLabel
+            self.topPriorityLabels = topPriorityLabels
+            self.statusChecksTimeout = statusChecksTimeout
+            self.pullRequests = pullRequests
+            self.status = status
+        }
+
+        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: [],
+                status: .starting
+            )
+        }
+
+        var isIntegrationOngoing: Bool {
+            switch status {
+            case .integrating, .runningStatusChecks:
+                return true
+            case .starting, .idle, .ready, .integrationFailed:
+                return false
+            }
+        }
+
+        func with(status: Status) -> State {
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests,
+                status: status
+            )
+        }
+
+        func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
+            let onlyNewPRs = pullRequestsToInclude.filter {
+                [currentQueue = self.pullRequests] pullRequest in
+                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
+            }
+            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
+                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
+            }
+            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
+                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
+            }
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: newQueue,
+                status: status
+            )
+        }
+
+        func exclude(pullRequest: PullRequest) -> State {
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests.filter { $0.number != pullRequest.number },
+                status: status
+            )
+        }
 
         public enum Status: Equatable, Encodable {
             case starting
@@ -162,92 +247,6 @@ extension MergeService {
                 }
 
             }
-        }
-
-        internal let targetBranch: String
-        internal let integrationLabel: PullRequest.Label
-        internal let topPriorityLabels: [PullRequest.Label]
-        internal let statusChecksTimeout: TimeInterval
-        public let pullRequests: [PullRequest]
-        public let status: Status
-
-        var isIntegrationOngoing: Bool {
-            switch status {
-            case .integrating, .runningStatusChecks:
-                return true
-            case .starting, .idle, .ready, .integrationFailed:
-                return false
-            }
-        }
-
-        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
-            return State(
-                targetBranch: targetBranch,
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: [],
-                status: .starting
-            )
-        }
-
-        init(
-            targetBranch: String,
-            integrationLabel: PullRequest.Label,
-            topPriorityLabels: [PullRequest.Label],
-            statusChecksTimeout: TimeInterval,
-            pullRequests: [PullRequest],
-            status: Status
-        ) {
-            self.targetBranch = targetBranch
-            self.integrationLabel = integrationLabel
-            self.topPriorityLabels = topPriorityLabels
-            self.statusChecksTimeout = statusChecksTimeout
-            self.pullRequests = pullRequests
-            self.status = status
-        }
-
-        func with(status: Status) -> State {
-            return State(
-                targetBranch: targetBranch,
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests,
-                status: status
-            )
-        }
-
-        func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
-            let onlyNewPRs = pullRequestsToInclude.filter {
-                [currentQueue = self.pullRequests] pullRequest in
-                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
-            }
-            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
-                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
-            }
-            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
-                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
-            }
-            return State(
-                targetBranch: targetBranch,
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: newQueue,
-                status: status
-            )
-        }
-
-        func exclude(pullRequest: PullRequest) -> State {
-            return State(
-                targetBranch: targetBranch,
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests.filter { $0.number != pullRequest.number },
-                status: status
-            )
         }
     }
 
@@ -699,6 +698,7 @@ extension MergeService.State {
 
 extension MergeService {
     public final class Healthcheck {
+        public let status: Property<Status>
 
         public enum Reason: Error, Equatable {
             case potentialDeadlock
@@ -708,8 +708,6 @@ extension MergeService {
             case ok
             case unhealthy(Reason)
         }
-
-        public let status: Property<Status>
 
         internal init(
             state: Signal<State, NoError>,
