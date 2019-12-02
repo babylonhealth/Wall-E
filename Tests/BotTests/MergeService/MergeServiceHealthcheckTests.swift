@@ -65,7 +65,7 @@ class MergeServiceHealthcheckTests: XCTestCase {
 
                 scheduler.advance(by: .minutes(2 * MergeServiceFixture.defaultStatusChecksTimeout))
 
-                input.send(value: MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget, .checksFailing)))
+                input.send(value: MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget, .checksFailing, .capture())))
 
                 scheduler.advance()
 

@@ -138,7 +138,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [target.reference]),
                     MergeService.State.stub(status: .integrating(target)),
-                    MergeService.State.stub(status: .integrationFailed(target, .conflicts)),
+                    MergeService.State.stub(status: .integrationFailed(target, .conflicts, .capture())),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
@@ -414,7 +414,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
-                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .checksFailing)),
+                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .checksFailing, .capture())),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
@@ -573,7 +573,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
-                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unstable), .checksFailing)),
+                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unstable), .checksFailing, .capture())),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
@@ -610,7 +610,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget)),
                     MergeService.State.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked))),
-                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .timedOut)),
+                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .blocked), .timedOut, .capture())),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
@@ -668,7 +668,7 @@ class MergeServiceTests: XCTestCase {
                     MergeService.State.stub(status: .starting),
                     MergeService.State.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference]),
                     MergeService.State.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .unknown))),
-                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unknown), .unknown)),
+                    MergeService.State.stub(status: .integrationFailed(MergeServiceFixture.defaultTarget.with(mergeState: .unknown), .unknown, .capture())),
                     MergeService.State.stub(status: .ready),
                     MergeService.State.stub(status: .idle)
                 ]
@@ -941,6 +941,29 @@ class MergeServiceTests: XCTestCase {
         )
     }
 
+    func test_extended_logging() {
+        let target = MergeServiceFixture.defaultTarget.with(mergeState: .dirty)
+        var lastMessage: String = ""
+        perform(
+            stubs: [
+                .getPullRequests { [target.reference] },
+                .getPullRequest { _ in target },
+                .postComment { _, _ in },
+                .postComment { message, _ in
+                    lastMessage = message
+                },
+                .removeLabel { _, _ in }
+            ],
+            when: { service, scheduler in
+                scheduler.advance()
+            },
+            assert: { _ in
+                XCTAssertTrue(lastMessage.contains("function: whenIntegrating") && lastMessage.contains("line: "))
+            },
+            extendedLogging: true
+        )
+    }
+
     // TODO: [CNSMR-2525] Add test for failure cases
 
     // MARK: - Helpers
@@ -974,7 +997,8 @@ class MergeServiceTests: XCTestCase {
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
         when: (MockGitHubEventsService, TestScheduler) -> Void,
-        assert: ([MergeService.State]) -> Void
+        assert: ([MergeService.State]) -> Void,
+        extendedLogging: Bool = false
     ) {
 
         let scheduler = TestScheduler()
@@ -989,7 +1013,8 @@ class MergeServiceTests: XCTestCase {
             logger: MockLogger(),
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
-            scheduler: scheduler
+            scheduler: scheduler,
+            extendedLogging: extendedLogging
         )
 
         var states: [MergeService.State] = []

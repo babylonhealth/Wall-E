@@ -6,7 +6,7 @@ import ReactiveFeedback
 public final class MergeService {
     public let state: Property<State>
 
-    private let logger: LoggerProtocol
+    fileprivate let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
@@ -26,7 +26,8 @@ public final class MergeService {
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
-        scheduler: DateScheduler = QueueScheduler()
+        scheduler: DateScheduler = QueueScheduler(),
+        extendedLogging: Bool = false
     ) {
 
         self.logger = logger
@@ -46,7 +47,7 @@ public final class MergeService {
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
-                Feedbacks.whenIntegrationFailed(github: self.gitHubAPI, logger: logger, scheduler: scheduler),
+                Feedbacks.whenIntegrationFailed(github: self.gitHubAPI, logger: logger, scheduler: scheduler, extendedLogging: extendedLogging),
                 Feedbacks.pullRequestChanges(pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenAddingPullRequests(github: self.gitHubAPI, scheduler: scheduler)
             ]
@@ -180,7 +181,6 @@ extension MergeService {
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
-
         enum IntegrationError: Error {
             case stateCouldNotBeDetermined
             case synchronizationFailed
@@ -200,7 +200,7 @@ extension MergeService {
                             .flatMapError { _ in .empty }
                     }
                     .then(SignalProducer<Event, NoError>.value(Event.integrationDidChangeStatus(.done, metadata)))
-                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.mergeFailed), metadata)) }
+                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.mergeFailed, .capture()), metadata)) }
                     .observe(on: scheduler)
             case .behind:
                 return github.merge(head: metadata.reference.target, into: metadata.reference.source)
@@ -224,10 +224,10 @@ extension MergeService {
                         case .upToDate:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .conflict:
-                            return .value(.integrationDidChangeStatus(.failed(.conflicts), metadata))
+                            return .value(.integrationDidChangeStatus(.failed(.conflicts, .capture()), metadata))
                         }
                     }
-                    .flatMapError { _ in .value(.integrationDidChangeStatus(.failed(.synchronizationFailed), metadata)) }
+                    .flatMapError { _ in .value(.integrationDidChangeStatus(.failed(.synchronizationFailed, .capture()), metadata)) }
                     .observe(on: scheduler)
             case .blocked,
                  .unstable:
@@ -237,23 +237,23 @@ extension MergeService {
                         case .pending:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
                         case .failure:
-                            return .value(.integrationDidChangeStatus(.failed(.checksFailing), metadata))
-                        case  .success:
+                            return .value(.integrationDidChangeStatus(.failed(.checksFailing, .capture()), metadata))
+                        case .success:
                             return github.fetchPullRequest(number: metadata.reference.number)
                                 .map { metadata in
                                     switch metadata.mergeState {
                                     case .clean:
                                         return .retryIntegration(metadata)
                                     default:
-                                        return .integrationDidChangeStatus(.failed(.blocked), metadata)
+                                        return .integrationDidChangeStatus(.failed(.blocked, .capture()), metadata)
                                     }
                             }
                         }
                     }
-                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed), metadata)) }
+                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed, .capture()), metadata)) }
                     .observe(on: scheduler)
             case .dirty:
-                return SignalProducer(value: Event.integrationDidChangeStatus(.failed(.conflicts), metadata))
+                return SignalProducer(value: Event.integrationDidChangeStatus(.failed(.conflicts, .capture()), metadata))
                     .observe(on: scheduler)
             case .unknown:
                 return SignalProducer<Event, IntegrationError> { observer, _ in
@@ -274,7 +274,7 @@ extension MergeService {
                         }
                     }
                     .retry(upTo: 4, interval: 30.0, on: scheduler)
-                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.unknown), metadata)) }
+                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.unknown, .capture()), metadata)) }
 
             }
         }
@@ -335,7 +335,7 @@ extension MergeService {
                             case .pending:
                                 return nil
                             case .failure:
-                                return .statusChecksDidComplete(.failed(pullRequestMetadataRefreshed))
+                                return .statusChecksDidComplete(.failed(pullRequestMetadataRefreshed, .capture()))
                             case .success:
                                 return .statusChecksDidComplete(.passed(pullRequestMetadataRefreshed))
                             }
@@ -344,7 +344,7 @@ extension MergeService {
                 .timeout(after: context.statusChecksTimeout, raising: TimeoutError.timedOut, on: scheduler)
                 .flatMapError { error in
                     switch error {
-                    case .timedOut: return .value(.statusChecksDidComplete(.timedOut(context.pullRequestMetadata)))
+                    case .timedOut: return .value(.statusChecksDidComplete(.timedOut(context.pullRequestMetadata, .capture())))
                     }
                 }
         }
@@ -353,28 +353,43 @@ extension MergeService {
     fileprivate static func whenIntegrationFailed(
         github: GitHubAPIProtocol,
         logger: LoggerProtocol,
-        scheduler: Scheduler
+        scheduler: Scheduler,
+        extendedLogging: Bool
     ) -> Feedback<State, Event> {
 
         struct IntegrationHandler: Equatable {
             let pullRequest: PullRequest
             let integrationLabel: PullRequest.Label
             let failureReason: FailureReason
+            let trace: Trace
+            let extendedLogging: Bool
 
             var failureMessage: String {
-                return "@\(pullRequest.author.login) unfortunately the integration failed with code: `\(failureReason)`."
+                let message = "@\(pullRequest.author.login) unfortunately the integration failed with code: `\(failureReason)`."
+                if extendedLogging {
+                    return message + "\nfunction: \(trace.function) line: \(trace.line)"
+                } else {
+                    return message
+                }
             }
 
-            init?(from state: State) {
-                guard case let .integrationFailed(metadata, reason) = state.status
-                    else { return nil }
-                self.pullRequest = metadata.reference
-                self.integrationLabel = state.integrationLabel
-                self.failureReason = reason
+            static func make(extendedLogging: Bool) -> (State) -> IntegrationHandler? {
+                return { state in
+                    guard case let .integrationFailed(metadata, reason, trace) = state.status
+                        else { return nil }
+
+                    return self.init(
+                        pullRequest: metadata.reference,
+                        integrationLabel: state.integrationLabel,
+                        failureReason: reason,
+                        trace: trace,
+                        extendedLogging: extendedLogging
+                    )
+                }
             }
         }
 
-        return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, NoError> in
+        return Feedback(skippingRepeated: IntegrationHandler.make(extendedLogging: extendedLogging)) { handler -> SignalProducer<Event, NoError> in
             return SignalProducer.merge(
                 github.postComment(handler.failureMessage, in: handler.pullRequest)
                     .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)") }),
@@ -483,6 +498,20 @@ extension MergeService {
 
 extension MergeService {
 
+    public struct Trace: Equatable {
+        let function: String
+        let line: UInt
+
+        static func capture(function: String = #function, line: UInt = #line) -> Trace {
+            return self.init(function: function, line: line)
+        }
+
+        public static func ==(lhs: Trace, rhs: Trace) -> Bool {
+            // we don't really want to compare this in tests
+            return true
+        }
+    }
+
     public enum FailureReason: String, Equatable, Encodable {
         case conflicts
         case mergeFailed
@@ -502,7 +531,7 @@ extension MergeService {
             case ready
             case integrating(PullRequestMetadata)
             case runningStatusChecks(PullRequestMetadata)
-            case integrationFailed(PullRequestMetadata, FailureReason)
+            case integrationFailed(PullRequestMetadata, FailureReason, Trace)
 
             internal var integrationMetadata: PullRequestMetadata? {
                 switch self {
@@ -543,7 +572,7 @@ extension MergeService {
                 case let .runningStatusChecks(metadata):
                     try values.encode("runningStatusChecks", forKey: .status)
                     try values.encode(metadata, forKey: .metadata)
-                case let .integrationFailed(metadata, error):
+                case let .integrationFailed(metadata, error, _):
                     try values.encode("integrationFailed", forKey: .status)
                     try values.encode(metadata, forKey: .metadata)
                     try values.encode(error, forKey: .error)
@@ -648,15 +677,15 @@ extension MergeService {
         }
 
         enum StatusChecksResult {
-            case failed(PullRequestMetadata)
+            case failed(PullRequestMetadata, Trace)
             case passed(PullRequestMetadata)
-            case timedOut(PullRequestMetadata)
+            case timedOut(PullRequestMetadata, Trace)
         }
 
         enum IntegrationStatus {
             case updating
             case done
-            case failed(FailureReason)
+            case failed(FailureReason, _ trace: Trace)
         }
     }
 }
@@ -702,8 +731,8 @@ extension MergeService.State {
         switch event {
         case .integrationDidChangeStatus(.done, _):
             return self.with(status: .ready)
-        case let .integrationDidChangeStatus(.failed(reason), metadata):
-            return self.with(status: .integrationFailed(metadata, reason))
+        case let .integrationDidChangeStatus(.failed(reason, trace), metadata):
+            return self.with(status: .integrationFailed(metadata, reason, trace))
         case let .integrationDidChangeStatus(.updating, metadata):
             return self.with(status: .runningStatusChecks(metadata))
         case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
@@ -719,10 +748,10 @@ extension MergeService.State {
         switch event {
         case let .statusChecksDidComplete(.passed(pullRequest)):
             return self.with(status: .integrating(pullRequest))
-        case let .statusChecksDidComplete(.failed(pullRequest)):
-            return self.with(status: .integrationFailed(pullRequest, .checksFailing))
-        case let .statusChecksDidComplete(.timedOut(pullRequest)):
-            return self.with(status: .integrationFailed(pullRequest, .timedOut))
+        case let .statusChecksDidComplete(.failed(pullRequest, trace)):
+            return self.with(status: .integrationFailed(pullRequest, .checksFailing, trace))
+        case let .statusChecksDidComplete(.timedOut(pullRequest, trace)):
+            return self.with(status: .integrationFailed(pullRequest, .timedOut, trace))
         case let .pullRequestDidChange(.exclude(pullRequestExcluded)) where metadata.reference.number == pullRequestExcluded.number:
             return self.with(status: .ready)
         default:

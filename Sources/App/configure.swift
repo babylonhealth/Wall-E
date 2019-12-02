@@ -46,7 +46,8 @@ private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService
         statusChecksTimeout: try Environment.statusChecksTimeout() ?? 90.minutes,
         logger: logger,
         gitHubAPI: gitHubAPI,
-        gitHubEvents: gitHubEventsService
+        gitHubEvents: gitHubEventsService,
+        extendedLogging: Environment.extendedLogging() ?? false
     )
 }
 

@@ -43,6 +43,10 @@ extension Environment {
         }
     }
 
+    static func extendedLogging() -> Bool? {
+        return (try? Environment.get("EXTENDED_LOGGING").bool) ?? false
+    }
+
     static func get(_ key: String) throws -> String {
         guard let value = Environment.get(key) as String?
             else { throw ConfigurationError.missingConfiguration(message: "💥 key `\(key)` not found in environment") }
