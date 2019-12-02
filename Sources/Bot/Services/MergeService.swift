@@ -367,7 +367,7 @@ extension MergeService {
             var failureMessage: String {
                 let message = "@\(pullRequest.author.login) unfortunately the integration failed with code: `\(failureReason)`."
                 if extendedLogging {
-                    return message + "\nfunction: \(trace.function) line: \(trace.line)"
+                    return message + "\n<details>function: \(trace.function) line: \(trace.line)</details>"
                 } else {
                     return message
                 }
