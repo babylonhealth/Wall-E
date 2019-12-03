@@ -34,6 +34,11 @@ public struct RepositoryAPI: GitHubAPIProtocol {
             .mapError(AnyError.init)
     }
 
+    public func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError> {
+        return client.request(repository.allStatusChecks(for: pullRequest))
+            .mapError(AnyError.init)
+    }
+
     public func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
         return client.request(repository.merge(head: head, into: base))
             .mapError(AnyError.init)

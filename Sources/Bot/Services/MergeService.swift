@@ -403,29 +403,35 @@ extension MergeService {
             case .blocked,
                  .unstable:
                 let pullRequest = metadata.reference
-                return github.fetchPullRequest(number: pullRequest.number)
-                    .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
-                    .flatMap(.latest) { commitStatus, pullRequestMetadataRefreshed in
-                        getRequiredChecksState(github: github, targetBranch: pullRequest.target, commitState: commitStatus)
-                            .zip(with: .value(pullRequestMetadataRefreshed.mergeState))
-                    }
-                    .map { commitStatus, mergeState -> Event in
-                        switch commitStatus {
-                        case .pending:
-                            return .integrationDidChangeStatus(.updating, metadata)
-                        case .failure:
-                            return .integrationDidChangeStatus(.failed(.checksFailing), metadata)
-                        case  .success:
-                            switch mergeState {
-                            case .clean:
-                                return .retryIntegration(metadata)
-                            default:
-                                return .integrationDidChangeStatus(.failed(.blocked), metadata)
-                            }
+                return github.fetchAllStatusChecks(for: pullRequest).map { statusChecks -> Bool in
+                    return statusChecks.map({ $0.state }).contains(.pending)
+                }.flatMap(.latest) { pendingStatusChecks -> SignalProducer<Event, AnyError> in
+                    if pendingStatusChecks {
+                        return .value(.integrationDidChangeStatus(.updating, metadata))
+                    } else {
+                        return github.fetchCommitStatus(for: metadata.reference)
+                            .flatMap(.latest) { commitStatus -> SignalProducer<Event, AnyError> in
+                                switch commitStatus.state {
+                                case .pending:
+                                    return .value(.integrationDidChangeStatus(.updating, metadata))
+                                case .failure:
+                                    return .value(.integrationDidChangeStatus(.failed(.checksFailing), metadata))
+                                case  .success:
+                                    return github.fetchPullRequest(number: metadata.reference.number)
+                                        .map { metadata in
+                                            switch metadata.mergeState {
+                                            case .clean:
+                                                return .retryIntegration(metadata)
+                                            default:
+                                                return .integrationDidChangeStatus(.failed(.blocked), metadata)
+                                            }
+                                    }
+                                }
                         }
                     }
-                    .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed), metadata)) }
-                    .observe(on: scheduler)
+                }
+                .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed), metadata)) }
+                .observe(on: scheduler)
             case .dirty:
                 return SignalProducer(value: Event.integrationDidChangeStatus(.failed(.conflicts), metadata))
                     .observe(on: scheduler)

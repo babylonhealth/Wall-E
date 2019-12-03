@@ -12,6 +12,8 @@ public protocol GitHubAPIProtocol {
 
     func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, AnyError>
 
+    func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError>
+
     /// Merges one branch into another.
     ///
     /// - SeeAlso: https://developer.github.com/v3/repos/merging/
