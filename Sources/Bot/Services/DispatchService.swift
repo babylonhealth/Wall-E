@@ -43,9 +43,6 @@ public final class DispatchService {
 
         gitHubAPI.fetchPullRequests()
             .flatMapError { _ in .value([]) }
-            .map { pullRequests in
-                pullRequests.filter { $0.isLabelled(with: self.integrationLabel) }
-            }
             .observe(on: scheduler)
             .startWithValues { pullRequests in
                 self.dispatchInitial(pullRequests: pullRequests)
@@ -82,33 +79,23 @@ public final class DispatchService {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
 
         let targetBranch = event.pullRequestMetadata.reference.target.ref
-        let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService? in
+        let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
             if let service = dict[targetBranch] {
-                // If service was already existing, return it so we'll send the pullRequestChangesObserver event outside this `modify` below
                 return service
             } else {
-                // Only create a new MergeService if the PullRequest for which we received an event is supposed to be included
-                guard case .include(let pullRequest)? = MergeService.Event.Outcome(event: event, integrationLabel: self.integrationLabel) else {
-                    return nil
-                }
-
-                dict[targetBranch] = makeMergeService(
+                let newService = makeMergeService(
                     targetBranch: targetBranch,
                     scheduler: self.scheduler,
-                    initialPullRequests: [pullRequest]
+                    initialPullRequests: [event.pullRequestMetadata.reference]
                 )
-                // If MergeService didn't exist yet and we just created it, return nil so that we DON'T send the event on pullRequestChangesObserver
-                // outside this `modify` below (because we already passed the PR to initialPullRequests parameters when creating the service – and
-                // the service would still be `.starting` and it would not be ready to receive those events anyway)
-                return nil
+                dict[targetBranch] = newService
+                return newService
             }
         }
-        existingService?.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+        existingService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
-        // No way to know which MergeService this event is supposed to be for – isRelative(toBranch:) only checks for head branch not target so not useful here
-        // So we're sending it to all MergeServices, and they'll filter them themselves based on their own queues
         mergeServices.withValue { currentMergeServices in
             for mergeServiceForBranch in currentMergeServices.values {
                 mergeServiceForBranch.statusChecksCompletionObserver.send(value: event)

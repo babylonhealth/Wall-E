@@ -43,12 +43,14 @@ public final class MergeService {
             statusChecksTimeout: statusChecksTimeout
         )
 
+        let pullRequestsReadyToInclude = initialPullRequests.filter { $0.isLabelled(with: integrationLabel) }
+
         state = Property<State>(
             initial: initialState,
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(initialPullRequests: initialPullRequests, scheduler: scheduler),
+                Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -275,27 +277,6 @@ extension MergeService {
             case updating
             case done
             case failed(FailureReason)
-        }
-    }
-}
-
-extension MergeService.Event.Outcome {
-    init?(event: PullRequestEvent, integrationLabel: PullRequest.Label) {
-        self.init(action: event.action, metadata: event.pullRequestMetadata, integrationLabel: integrationLabel)
-    }
-
-    fileprivate init?(action: PullRequest.Action, metadata: PullRequestMetadata, integrationLabel: PullRequest.Label) {
-        switch action {
-        case .opened where metadata.reference.isLabelled(with: integrationLabel):
-            self = .include(metadata.reference)
-        case .labeled where metadata.reference.isLabelled(with: integrationLabel) && metadata.isMerged == false:
-            self = .include(metadata.reference)
-        case .unlabeled where metadata.reference.isLabelled(with: integrationLabel) == false:
-            self = .exclude(metadata.reference)
-        case .closed:
-            self = .exclude(metadata.reference)
-        default:
-            return nil
         }
     }
 }
@@ -587,7 +568,18 @@ extension MergeService {
             return pullRequestChanges
                 .observe(on: scheduler)
                 .filterMap { metadata, action in
-                    MergeService.Event.Outcome(action: action, metadata: metadata, integrationLabel: state.integrationLabel)
+                    switch action {
+                    case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
+                        return Event.Outcome.include(metadata.reference)
+                    case .labeled where metadata.reference.isLabelled(with: state.integrationLabel) && metadata.isMerged == false:
+                        return Event.Outcome.include(metadata.reference)
+                    case .unlabeled where metadata.reference.isLabelled(with: state.integrationLabel) == false:
+                        return Event.Outcome.exclude(metadata.reference)
+                    case .closed:
+                        return Event.Outcome.exclude(metadata.reference)
+                    default:
+                        return nil
+                    }
                 }
                 .map(Event.pullRequestDidChange)
         }

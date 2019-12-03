@@ -39,7 +39,12 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance()
             },
             assert: {
-                expect($0) == []
+                expect($0) == [
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch),
+                ]
             }
         )
 
@@ -239,6 +244,12 @@ class MergeServiceTests: XCTestCase {
             },
             assert: {
                 expect($0) == [
+                    // First received new PR with no integration label, so we end up creating the MergeService but destroying it right away since the queue is empty
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch),
+                    // Then received PR event about adding integration label, so we end up creating the MergeService again but this time for good
                     .created(branch: MergeServiceFixture.defaultTargetBranch),
                     .state(.stub(status: .starting)),
                     .state(.stub(status: .ready, pullRequests: [targetLabeled.reference])),

@@ -68,8 +68,8 @@ class DispatchServiceTests: XCTestCase {
                 .getPullRequest(checkReturnPR(dev1)),
                 .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
                 .mergeIntoBranch { head, base in
-                    expect(head.ref) == MergeServiceFixture.defaultBranch
-                    expect(base.ref) == developBranch
+                    expect(head) == dev1.reference.source
+                    expect(base) == dev1.reference.target
                     return .success
                 },
 
@@ -203,7 +203,13 @@ class DispatchServiceTests: XCTestCase {
                     .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)))),
                     .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)), pullRequests: [dev2.reference])),
 
-                    // Note: here we want to be sure we don't create a new MergeService for release branch (since the new PR doesn't have the integration label
+                    // MergeService is always created when we receive a new PR event…
+                    .created(branch: releaseBranch),
+                    .state(.stub(targetBranch: releaseBranch, status: .starting)),
+                    // … but since that new PR got filtered out for not having the integration label…
+                    .state(.stub(targetBranch: releaseBranch, status: .idle)),
+                    // … then the service is destroyed right away.
+                    .destroyed(branch: releaseBranch),
 
                     .state(.stub(targetBranch: developBranch, status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
                     .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev2.reference])),
