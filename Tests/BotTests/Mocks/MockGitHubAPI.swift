@@ -5,12 +5,12 @@ import Nimble
 @testable import Bot
 
 struct MockGitHubAPI: GitHubAPIProtocol {
-
     enum Stubs {
         case getPullRequests(() -> [PullRequest])
         case getPullRequest((UInt) -> PullRequestMetadata)
         case getCommitStatus((PullRequest) -> CommitState)
         case getRequiredStatusChecks((PullRequest.Branch) -> RequiredStatusChecks)
+        case getAllStatusChecks((PullRequest) -> [PullRequest.StatusCheck])
         case mergePullRequest((PullRequest) -> Void)
         case mergeIntoBranch((PullRequest.Branch, PullRequest.Branch) -> MergeResult)
         case deleteBranch((PullRequest.Branch) -> Void)
@@ -57,6 +57,15 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         switch nextStub() {
         case let .getRequiredStatusChecks(handler):
             return SignalProducer(value: handler(branch))
+        default:
+            fatalError("Stub not found")
+        }
+    }
+
+    func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError> {
+        switch nextStub() {
+        case let .getAllStatusChecks(handler):
+            return SignalProducer(value: handler(pullRequest))
         default:
             fatalError("Stub not found")
         }
