@@ -87,7 +87,7 @@ public final class DispatchService {
                 // If service was already existing, return it so we'll send the pullRequestChangesObserver event outside this `modify` below
                 return service
             } else {
-                // Only create a new MergeService is the PullRequest for which we received an event is supposed to be included
+                // Only create a new MergeService if the PullRequest for which we received an event is supposed to be included
                 guard case .include(let pullRequest)? = MergeService.Event.Outcome(event: event, integrationLabel: self.integrationLabel) else {
                     return nil
                 }

@@ -586,10 +586,9 @@ extension MergeService {
         return Feedback(predicate: { $0.status != .starting }) { state in
             return pullRequestChanges
                 .observe(on: scheduler)
-                .map { metadata, action in
+                .filterMap { metadata, action in
                     MergeService.Event.Outcome(action: action, metadata: metadata, integrationLabel: state.integrationLabel)
                 }
-                .skipNil()
                 .map(Event.pullRequestDidChange)
         }
     }
