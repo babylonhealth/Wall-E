@@ -279,6 +279,27 @@ extension MergeService {
     }
 }
 
+extension MergeService.Event.Outcome {
+    init?(event: PullRequestEvent, integrationLabel: PullRequest.Label) {
+        self.init(action: event.action, metadata: event.pullRequestMetadata, integrationLabel: integrationLabel)
+    }
+
+    fileprivate init?(action: PullRequest.Action, metadata: PullRequestMetadata, integrationLabel: PullRequest.Label) {
+        switch action {
+        case .opened where metadata.reference.isLabelled(with: integrationLabel):
+            self = .include(metadata.reference)
+        case .labeled where metadata.reference.isLabelled(with: integrationLabel) && metadata.isMerged == false:
+            self = .include(metadata.reference)
+        case .unlabeled where metadata.reference.isLabelled(with: integrationLabel) == false:
+            self = .exclude(metadata.reference)
+        case .closed:
+            self = .exclude(metadata.reference)
+        default:
+            return nil
+        }
+    }
+}
+
 // MARK: - Feedbacks
 
 extension MergeService {
@@ -565,19 +586,8 @@ extension MergeService {
         return Feedback(predicate: { $0.status != .starting }) { state in
             return pullRequestChanges
                 .observe(on: scheduler)
-                .map { metadata, action -> Event.Outcome? in
-                    switch action {
-                    case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
-                        return Event.Outcome.include(metadata.reference)
-                    case .labeled where metadata.reference.isLabelled(with: state.integrationLabel) && metadata.isMerged == false:
-                        return Event.Outcome.include(metadata.reference)
-                    case .unlabeled where metadata.reference.isLabelled(with: state.integrationLabel) == false:
-                        return Event.Outcome.exclude(metadata.reference)
-                    case .closed:
-                        return Event.Outcome.exclude(metadata.reference)
-                    default:
-                        return nil
-                    }
+                .map { metadata, action in
+                    MergeService.Event.Outcome(action: action, metadata: metadata, integrationLabel: state.integrationLabel)
                 }
                 .skipNil()
                 .map(Event.pullRequestDidChange)
