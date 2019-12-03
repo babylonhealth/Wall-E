@@ -10,10 +10,12 @@ struct MergeServiceFixture {
     static let defaultStatusChecksTimeout = 30.minutes
 
     static let defaultBranch = "some-branch"
+    static let defaultTargetBranch = "master"
 
     static let defaultTarget = PullRequestMetadata.stub(
         number: 1,
         headRef: MergeServiceFixture.defaultBranch,
+        baseRef: MergeServiceFixture.defaultTargetBranch,
         labels: [LabelFixture.integrationLabel],
         mergeState: .behind
     )
@@ -23,6 +25,7 @@ struct MergeServiceFixture {
 
 extension MergeService.State {
     static func stub(
+        targetBranch: String = MergeServiceFixture.defaultTargetBranch,
         status: MergeService.State.Status,
         pullRequests: [PullRequest] = [],
         integrationLabel: PullRequest.Label = LabelFixture.integrationLabel,
@@ -30,6 +33,7 @@ extension MergeService.State {
         statusChecksTimeout: TimeInterval = MergeServiceFixture.defaultStatusChecksTimeout
     ) -> MergeService.State {
         return .init(
+            targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout,

@@ -3,5 +3,6 @@ Packages
 .swiftpm
 xcuserdata
 *.xcodeproj
+!WallEView.xcodeproj
 Config/secrets
 .DS_Store

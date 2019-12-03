@@ -5,30 +5,29 @@ import ReactiveFeedback
 
 public final class MergeService {
     public let state: Property<State>
+    public let healthcheck: Healthcheck
 
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
     private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
-    private let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
+    internal let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
 
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
-    private let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
-
-    public let healthcheck: Healthcheck
+    internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
     public init(
+        targetBranch: String,
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
+        initialPullRequests: [PullRequest],
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
-        gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
-
         self.logger = logger
         self.gitHubAPI = gitHubAPI
         self.scheduler = scheduler
@@ -37,12 +36,19 @@ public final class MergeService {
 
         (pullRequestChanges, pullRequestChangesObserver) = Signal.pipe()
 
+        let initialState = State.initial(
+            targetBranch: targetBranch,
+            integrationLabel: integrationLabel,
+            topPriorityLabels: topPriorityLabels,
+            statusChecksTimeout: statusChecksTimeout
+        )
+
         state = Property<State>(
-            initial: State.initial(integrationLabel: integrationLabel, topPriorityLabels: topPriorityLabels, statusChecksTimeout: statusChecksTimeout),
+            initial: initialState,
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(github: self.gitHubAPI, scheduler: scheduler),
+                Feedbacks.whenStarting(initialPullRequests: initialPullRequests, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -57,30 +63,8 @@ public final class MergeService {
         state.producer
             .combinePrevious()
             .startWithValues { old, new in
-                logger.log("♻️ Did change state\n - 📜 \(old) \n - 📄 \(new)")
+                logger.log("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
-
-        gitHubEvents.events
-            .observe(on: scheduler)
-            .observeValues { [weak self] event in
-                switch event {
-                case let .pullRequest(event):
-                    self?.pullRequestDidChange(event: event)
-                case let .status(event):
-                    self?.statusChecksDidChange(event: event)
-                case .ping:
-                    break
-                }
-            }
-    }
-
-    private func pullRequestDidChange(event: PullRequestEvent) {
-        logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
-        pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
-    }
-
-    private func statusChecksDidChange(event: StatusEvent) {
-        statusChecksCompletionObserver.send(value: event)
     }
 
     static func reduce(state: State, event: Event) -> State {
@@ -106,6 +90,195 @@ public final class MergeService {
     }
 }
 
+// MARK: - System types
+
+extension MergeService {
+
+    public enum FailureReason: String, Equatable, Encodable {
+        case conflicts
+        case mergeFailed
+        case synchronizationFailed
+        case checkingCommitChecksFailed
+        case checksFailing
+        case timedOut
+        case blocked
+        case unknown
+    }
+
+    public struct State: Equatable {
+        public let status: Status
+        public let pullRequests: [PullRequest]
+
+        internal let targetBranch: String
+        internal let integrationLabel: PullRequest.Label
+        internal let topPriorityLabels: [PullRequest.Label]
+        internal let statusChecksTimeout: TimeInterval
+
+        init(
+            targetBranch: String,
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval,
+            pullRequests: [PullRequest],
+            status: Status
+        ) {
+            self.targetBranch = targetBranch
+            self.integrationLabel = integrationLabel
+            self.topPriorityLabels = topPriorityLabels
+            self.statusChecksTimeout = statusChecksTimeout
+            self.pullRequests = pullRequests
+            self.status = status
+        }
+
+        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: [],
+                status: .starting
+            )
+        }
+
+        var isIntegrationOngoing: Bool {
+            switch status {
+            case .integrating, .runningStatusChecks:
+                return true
+            case .starting, .idle, .ready, .integrationFailed:
+                return false
+            }
+        }
+
+        func with(status: Status) -> State {
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests,
+                status: status
+            )
+        }
+
+        func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
+            let onlyNewPRs = pullRequestsToInclude.filter {
+                [currentQueue = self.pullRequests] pullRequest in
+                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
+            }
+            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
+                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
+            }
+            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
+                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
+            }
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: newQueue,
+                status: status
+            )
+        }
+
+        func exclude(pullRequest: PullRequest) -> State {
+            return State(
+                targetBranch: targetBranch,
+                integrationLabel: integrationLabel,
+                topPriorityLabels: topPriorityLabels,
+                statusChecksTimeout: statusChecksTimeout,
+                pullRequests: pullRequests.filter { $0.number != pullRequest.number },
+                status: status
+            )
+        }
+
+        public enum Status: Equatable, Encodable {
+            case starting
+            case idle
+            case ready
+            case integrating(PullRequestMetadata)
+            case runningStatusChecks(PullRequestMetadata)
+            case integrationFailed(PullRequestMetadata, FailureReason)
+
+            internal var integrationMetadata: PullRequestMetadata? {
+                switch self {
+                case let .integrating(metadata):
+                    return metadata
+                default:
+                    return nil
+                }
+            }
+
+            internal var statusChecksMetadata: PullRequestMetadata? {
+                switch self {
+                case let .runningStatusChecks(metadata):
+                    return metadata
+                default:
+                    return nil
+                }
+            }
+
+            enum CodingKeys: String, CodingKey {
+                case status
+                case metadata
+                case error
+            }
+
+            public func encode(to encoder: Encoder) throws {
+                var values = encoder.container(keyedBy: CodingKeys.self)
+                switch self {
+                case .starting:
+                    try values.encode("starting", forKey: .status)
+                case .idle:
+                    try values.encode("idle", forKey: .status)
+                case .ready:
+                    try values.encode("ready", forKey: .status)
+                case let .integrating(metadata):
+                    try values.encode("integrating", forKey: .status)
+                    try values.encode(metadata, forKey: .metadata)
+                case let .runningStatusChecks(metadata):
+                    try values.encode("runningStatusChecks", forKey: .status)
+                    try values.encode(metadata, forKey: .metadata)
+                case let .integrationFailed(metadata, error):
+                    try values.encode("integrationFailed", forKey: .status)
+                    try values.encode(metadata, forKey: .metadata)
+                    try values.encode(error, forKey: .error)
+                }
+
+            }
+        }
+    }
+
+    enum Event {
+        case noMorePullRequests
+        case pullRequestsLoaded([PullRequest])
+        case pullRequestDidChange(Outcome)
+        case statusChecksDidComplete(StatusChecksResult)
+        case integrate(PullRequestMetadata)
+        case retryIntegration(PullRequestMetadata)
+        case integrationDidChangeStatus(IntegrationStatus, PullRequestMetadata)
+        case integrationFailureHandled
+
+        enum Outcome {
+            case include(PullRequest)
+            case exclude(PullRequest)
+        }
+
+        enum StatusChecksResult {
+            case failed(PullRequestMetadata)
+            case passed(PullRequestMetadata)
+            case timedOut(PullRequestMetadata)
+        }
+
+        enum IntegrationStatus {
+            case updating
+            case done
+            case failed(FailureReason)
+        }
+    }
+}
+
 // MARK: - Feedbacks
 
 extension MergeService {
@@ -124,7 +297,7 @@ extension MergeService {
                     .enumerated()
                     .map { index, pullRequest -> SignalProducer<(), NoError> in
 
-                        guard previous.pullRequests.firstIndex(of: pullRequest) == nil
+                        guard previous.status == .starting || previous.pullRequests.firstIndex(of: pullRequest) == nil
                             else { return .empty }
 
                         if index == 0 && current.isIntegrationOngoing == false {
@@ -135,7 +308,7 @@ extension MergeService {
                             .flatMapError { _ in .empty }
                         } else {
                             return github.postComment(
-                                "Your pull request was accepted and it's currently `#\(index + 1)` in the queue, hold tight ⏳",
+                                "Your pull request was accepted and it's currently `#\(index + 1)` in the `\(current.targetBranch)` queue, hold tight ⏳",
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
@@ -147,24 +320,22 @@ extension MergeService {
         })
     }
 
-    fileprivate static func whenStarting(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
+    fileprivate static func whenStarting(initialPullRequests: [PullRequest], scheduler: DateScheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, NoError> in
-
-            return github.fetchPullRequests()
-                .flatMapError { _ in .value([]) }
-                .map { pullRequests in
-                    pullRequests.filter { $0.isLabelled(with: state.integrationLabel) }
-                }
-                .map(Event.pullRequestsLoaded)
-                .start(on: scheduler)
+            return SignalProducer
+                .value(Event.pullRequestsLoaded(initialPullRequests))
+                .observe(on: scheduler)
         }
     }
 
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
 
-            guard let next = state.pullRequests.first
-                else { return .value(.noMorePullRequests) }
+            guard let next = state.pullRequests.first else {
+                return SignalProducer
+                    .value(.noMorePullRequests)
+                    .observe(on: scheduler)
+            }
 
             // Refresh pull request to ensure an up-to-date state
             return github.fetchPullRequest(number: next.number)
@@ -433,234 +604,6 @@ extension MergeService {
     }
 }
 
-// MARK: - System types
-
-extension MergeService {
-    public final class Healthcheck {
-
-        public enum Reason: Error, Equatable {
-            case potentialDeadlock
-        }
-
-        public enum Status: Equatable {
-            case ok
-            case unhealthy(Reason)
-        }
-
-        public let status: Property<Status>
-
-        internal init(
-            state: Signal<State, NoError>,
-            statusChecksTimeout: TimeInterval,
-            scheduler: DateScheduler
-        ) {
-            status = Property(
-                initial: .ok,
-                then: state.combinePrevious()
-                    .skipRepeats { lhs, rhs in
-                        return lhs == rhs
-                    }
-                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
-                        switch current.status {
-                        case .starting, .idle:
-                            return SignalProducer(value: .ok)
-                        default:
-                            return SignalProducer(value: .unhealthy(.potentialDeadlock))
-                                // Status checks have a configurable timeout that is used to prevent blocking the queue
-                                // if for some reason there's an issue with them, we are following a strategy where we
-                                // plan the potential failure and delay it for the expected amount of time that they
-                                // should have take at most (timeout) plus a sensible leeway. Due how `flatMap(.latest)`
-                                // works, any new `state` triggered before this delay will interrupt this signal and
-                                // prevent the false failure otherwise there's something blocking the queue longer than
-                                // we antecipated and we should flag the failure.
-                                .delay(1.5 * statusChecksTimeout, on: scheduler)
-                        }
-                }
-            )
-        }
-    }
-}
-
-extension MergeService {
-
-    public enum FailureReason: String, Equatable, Encodable {
-        case conflicts
-        case mergeFailed
-        case synchronizationFailed
-        case checkingCommitChecksFailed
-        case checksFailing
-        case timedOut
-        case blocked
-        case unknown
-    }
-
-    public struct State: Equatable {
-
-        public enum Status: Equatable, Encodable {
-            case starting
-            case idle
-            case ready
-            case integrating(PullRequestMetadata)
-            case runningStatusChecks(PullRequestMetadata)
-            case integrationFailed(PullRequestMetadata, FailureReason)
-
-            internal var integrationMetadata: PullRequestMetadata? {
-                switch self {
-                case let .integrating(metadata):
-                    return metadata
-                default:
-                    return nil
-                }
-            }
-
-            internal var statusChecksMetadata: PullRequestMetadata? {
-                switch self {
-                case let .runningStatusChecks(metadata):
-                    return metadata
-                default:
-                    return nil
-                }
-            }
-
-            enum CodingKeys: String, CodingKey {
-                case status
-                case metadata
-                case error
-            }
-
-            public func encode(to encoder: Encoder) throws {
-                var values = encoder.container(keyedBy: CodingKeys.self)
-                switch self {
-                case .starting:
-                    try values.encode("starting", forKey: .status)
-                case .idle:
-                    try values.encode("idle", forKey: .status)
-                case .ready:
-                    try values.encode("ready", forKey: .status)
-                case let .integrating(metadata):
-                    try values.encode("integrating", forKey: .status)
-                    try values.encode(metadata, forKey: .metadata)
-                case let .runningStatusChecks(metadata):
-                    try values.encode("runningStatusChecks", forKey: .status)
-                    try values.encode(metadata, forKey: .metadata)
-                case let .integrationFailed(metadata, error):
-                    try values.encode("integrationFailed", forKey: .status)
-                    try values.encode(metadata, forKey: .metadata)
-                    try values.encode(error, forKey: .error)
-                }
-
-            }
-        }
-
-        internal let integrationLabel: PullRequest.Label
-        internal let topPriorityLabels: [PullRequest.Label]
-        internal let statusChecksTimeout: TimeInterval
-        public let pullRequests: [PullRequest]
-        public let status: Status
-
-        var isIntegrationOngoing: Bool {
-            switch status {
-            case .integrating, .runningStatusChecks:
-                return true
-            case .starting, .idle, .ready, .integrationFailed:
-                return false
-            }
-        }
-
-        static func initial(integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: [],
-                status: .starting
-            )
-        }
-
-        init(
-            integrationLabel: PullRequest.Label,
-            topPriorityLabels: [PullRequest.Label],
-            statusChecksTimeout: TimeInterval,
-            pullRequests: [PullRequest],
-            status: Status
-        ) {
-            self.integrationLabel = integrationLabel
-            self.topPriorityLabels = topPriorityLabels
-            self.statusChecksTimeout = statusChecksTimeout
-            self.pullRequests = pullRequests
-            self.status = status
-        }
-
-        func with(status: Status) -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests,
-                status: status
-            )
-        }
-
-        func include(pullRequests pullRequestsToInclude: [PullRequest]) -> State {
-            let onlyNewPRs = pullRequestsToInclude.filter {
-                [currentQueue = self.pullRequests] pullRequest in
-                currentQueue.map({ $0.number }).contains(pullRequest.number) == false
-            }
-            let updatedOldPRs = pullRequests.map { (pr: PullRequest) -> PullRequest in
-                pullRequestsToInclude.first { $0.number == pr.number } ?? pr
-            }
-            let newQueue = (updatedOldPRs + onlyNewPRs).slowStablePartition { (pullRequest: PullRequest) in
-                !pullRequest.isLabelled(withOneOf: topPriorityLabels)
-            }
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: newQueue,
-                status: status
-            )
-        }
-
-        func exclude(pullRequest: PullRequest) -> State {
-            return State(
-                integrationLabel: integrationLabel,
-                topPriorityLabels: topPriorityLabels,
-                statusChecksTimeout: statusChecksTimeout,
-                pullRequests: pullRequests.filter { $0.number != pullRequest.number },
-                status: status
-            )
-        }
-    }
-
-    enum Event {
-        case noMorePullRequests
-        case pullRequestsLoaded([PullRequest])
-        case pullRequestDidChange(Outcome)
-        case statusChecksDidComplete(StatusChecksResult)
-        case integrate(PullRequestMetadata)
-        case retryIntegration(PullRequestMetadata)
-        case integrationDidChangeStatus(IntegrationStatus, PullRequestMetadata)
-        case integrationFailureHandled
-
-        enum Outcome {
-            case include(PullRequest)
-            case exclude(PullRequest)
-        }
-
-        enum StatusChecksResult {
-            case failed(PullRequestMetadata)
-            case passed(PullRequestMetadata)
-            case timedOut(PullRequestMetadata)
-        }
-
-        enum IntegrationStatus {
-            case updating
-            case done
-            case failed(FailureReason)
-        }
-    }
-}
-
 // MARK: - Reducers
 
 extension MergeService.State {
@@ -751,17 +694,55 @@ extension MergeService.State {
     }
 }
 
-// MARK: - Helpers
+// MARK: - Healthcheck
 
-private extension PullRequest {
+extension MergeService {
+    public final class Healthcheck {
+        public let status: Property<Status>
 
-    func isLabelled(with label: PullRequest.Label) -> Bool {
-        return labels.contains(label)
-    }
-    func isLabelled(withOneOf possibleLabels: [PullRequest.Label]) -> Bool {
-        return labels.contains(where: possibleLabels.contains)
+        public enum Reason: Error, Equatable {
+            case potentialDeadlock
+        }
+
+        public enum Status: Equatable {
+            case ok
+            case unhealthy(Reason)
+        }
+
+        internal init(
+            state: Signal<State, NoError>,
+            statusChecksTimeout: TimeInterval,
+            scheduler: DateScheduler
+        ) {
+            status = Property(
+                initial: .ok,
+                then: state.combinePrevious()
+                    // Can't just use skipRepeats() as (at least as of Swift 4), tuple of Equatable is not itself Equatable
+                    .skipRepeats { lhs, rhs in
+                        return lhs == rhs
+                    }
+                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
+                        switch current.status {
+                        case .starting, .idle:
+                            return SignalProducer(value: .ok)
+                        default:
+                            return SignalProducer(value: .unhealthy(.potentialDeadlock))
+                                // Status checks have a configurable timeout that is used to prevent blocking the queue
+                                // if for some reason there's an issue with them, we are following a strategy where we
+                                // plan the potential failure and delay it for the expected amount of time that they
+                                // should have take at most (timeout) plus a sensible leeway. Due how `flatMap(.latest)`
+                                // works, any new `state` triggered before this delay will interrupt this signal and
+                                // prevent the false failure otherwise there's something blocking the queue longer than
+                                // we antecipated and we should flag the failure.
+                                .delay(1.5 * statusChecksTimeout, on: scheduler)
+                        }
+                }
+            )
+        }
     }
 }
+
+// MARK: - Helpers
 
 extension MergeService.State: CustomStringConvertible {
 
@@ -785,12 +766,14 @@ extension MergeService.State: CustomStringConvertible {
 
 extension MergeService.State: Encodable {
     enum CodingKeys: String, CodingKey {
+        case targetBranch
         case status
         case queue
     }
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
 
+        try values.encode(targetBranch, forKey: .targetBranch)
         try values.encode(status, forKey: .status)
         try values.encode(pullRequests, forKey: .queue)
     }

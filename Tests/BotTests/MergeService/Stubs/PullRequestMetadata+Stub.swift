@@ -5,6 +5,7 @@ extension PullRequestMetadata {
     static func stub(
         number: UInt,
         headRef: String = "abcdef",
+        baseRef: String = "master",
         labels: [PullRequest.Label] = [],
         mergeState: PullRequestMetadata.MergeState = .clean
     ) -> PullRequestMetadata {
@@ -14,7 +15,7 @@ extension PullRequestMetadata {
                 title: "Best Pull Request",
                 author: .init(login: "John Doe"),
                 source: .init(ref: headRef, sha: "abcdef"),
-                target: .init(ref: "master", sha: "abc"),
+                target: .init(ref: baseRef, sha: "abc"),
                 labels: labels
             ),
             isMerged: false,
