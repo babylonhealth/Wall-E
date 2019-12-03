@@ -88,7 +88,7 @@ public final class DispatchService {
                 return service
             } else {
                 // Only create a new MergeService is the PullRequest for which we received an event is supposed to be included
-                guard case .include(let pullRequest) = MergeService.Event.Outcome(event: event, integrationLabel: self.integrationLabel) else {
+                guard case .include(let pullRequest)? = MergeService.Event.Outcome(event: event, integrationLabel: self.integrationLabel) else {
                     return nil
                 }
 
