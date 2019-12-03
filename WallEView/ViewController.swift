@@ -15,6 +15,12 @@ extension NSTableView {
     }
 }
 
+class GridClipTableView: NSTableView {
+    // workaround to hide separators for non populated rows
+    // https://stackoverflow.com/questions/5606796/draw-grid-lines-in-nstableview-only-for-populated-rows
+    override func drawGrid(inClipRect clipRect: NSRect) { }
+}
+
 class PullRequestCell: NSTableCellView {
     @IBOutlet weak var title: NSTextField!
     @IBOutlet weak var subtitle: NSTextField!
@@ -25,7 +31,8 @@ class PullRequestCell: NSTableCellView {
 }
 
 class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate {
-    @IBOutlet weak var tableViewContainer: NSScrollView!
+    @IBOutlet weak var branchSelector: NSPopUpButton!
+    @IBOutlet weak var tableViewContainer: NSView!
     @IBOutlet weak var tableView: NSTableView!
     @IBOutlet weak var backgroundImage: NSImageView!
     @IBOutlet weak var backgroundLabel: NSTextField!
@@ -35,20 +42,17 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
         }
     }
     
-    private var state: State? {
+    private var state: State = .empty {
         didSet {
             tableView.reloadData()
 
-            // TODO: this logic should pick the queue depending on user selection of target branch
-            let queue = state?.queues.first
-
-            let hideContent = queue?.isIdle == true || queue?.isFailing == true
+            let hideContent = targetQueue?.isIdle == true || state.isFailing == true
             background.isHidden = !hideContent
             tableViewContainer.isHidden = hideContent
 
-            if state?.queues.first?.isFailing == true {
+            if state.isFailing == true {
                 backgroundImage.image = #imageLiteral(resourceName: "foot")
-                backgroundLabel.stringValue = "Something failin':\n\n\(queue?.error.map(String.init(describing:)) ?? "")"
+                backgroundLabel.stringValue = "Something failin':\n\n\(state.error.map(String.init(describing:)) ?? "")"
             } else {
                 backgroundImage.image = #imageLiteral(resourceName: "green")
                 backgroundLabel.stringValue = "Doin' nothin', just chillin'"
@@ -56,10 +60,18 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
         }
     }
 
+    var targetQueue: Queue? {
+        state.queues.first { $0.targetBranch == state.targetBranch }
+    }
+
     struct State: Decodable {
         let queues: [Queue]
+        let error: Error?
+        var targetBranch: String?
 
-        static let empty = State(queues: [])
+        var isFailing: Bool { error != nil }
+
+        static let empty = State(queues: [], error: nil, targetBranch: nil)
     }
 
     struct Queue {
@@ -69,7 +81,6 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
         let targetBranch: String
         let current: Current?
         let queue: [PullRequest]
-        let error: Error?
 
         var pullRequests: [PullRequest] {
             if let current = current {
@@ -81,16 +92,15 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
 
         // TODO: actually parse status
         var isIdle: Bool { queue.count == 0 && current == nil }
-        var isFailing: Bool { error != nil }
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        return state?.queues.first?.pullRequests.count ?? 0
+        return targetQueue?.pullRequests.count ?? 0
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let cell: PullRequestCell? = tableView.makeCell()
-        let pullRequest = state!.queues.first!.pullRequests[row]
+        let pullRequest = targetQueue!.pullRequests[row]
         cell?.title.stringValue = pullRequest.title
         cell?.subtitle.stringValue = "#\(pullRequest.number) by \(pullRequest.author.login)"
         return cell
@@ -111,19 +121,27 @@ class ViewController: NSViewController, NSTableViewDataSource, NSTableViewDelega
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         URLSession.shared.dataTask(with: request, completionHandler: { [weak self] (data, response, error) in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+
                 if let data = data {
                     do {
                         let queues = try JSONDecoder().decode([Queue].self, from: data)
-                        // TODO: filter only PRs targeting develop until branch selector is implemented in UI
-                        self?.state = State(queues: queues.filter { $0.targetBranch == "develop" })
+                        self.state = State(queues: queues, error: nil, targetBranch: queues.first?.targetBranch)
+                        self.branchSelector.menu?.items = queues.map {
+                            NSMenuItem(title: $0.targetBranch, action: #selector(self.switchBranch(_:)), keyEquivalent: "")
+                        }
                     } catch {
-                        self?.state = .empty
+                        self.state = State(queues: [], error: error, targetBranch: nil)
                     }
                 } else {
-                    self?.state = .empty
+                    self.state = State(queues: [], error: error, targetBranch: nil)
                 }
             }
         }).resume()
+    }
+
+    @objc func switchBranch(_ sender: NSMenuItem) {
+        state.targetBranch = sender.title
     }
 }
 
@@ -139,10 +157,20 @@ extension ViewController.Queue: Decodable {
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let status = try values.nestedContainer(keyedBy: CodingKeys.self, forKey: .status)
-        targetBranch = try status.decode(String.self, forKey: .targetBranch)
         current = try status.decodeIfPresent(Current.self, forKey: .metadata)
         queue = try values.decode([PullRequest].self, forKey: .queue)
-        error = nil
+        targetBranch = try values.decode(String.self, forKey: .targetBranch)
     }
 }
 
+extension ViewController.State {
+    enum CodingKeys: String, CodingKey {
+        case queues
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        queues = try values.decode([ViewController.Queue].self, forKey: .queues)
+        error = nil
+    }
+}
