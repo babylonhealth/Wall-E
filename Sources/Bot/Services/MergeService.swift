@@ -402,22 +402,25 @@ extension MergeService {
                     .observe(on: scheduler)
             case .blocked,
                  .unstable:
-                return github.fetchCommitStatus(for: metadata.reference)
-                    .flatMap(.latest) { commitStatus -> SignalProducer<Event, AnyError> in
-                        switch commitStatus.state {
+                let pullRequest = metadata.reference
+                return github.fetchPullRequest(number: pullRequest.number)
+                    .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
+                    .flatMap(.latest) { commitStatus, pullRequestMetadataRefreshed in
+                        getRequiredChecksState(github: github, targetBranch: pullRequest.target, commitState: commitStatus)
+                            .zip(with: .value(pullRequestMetadataRefreshed.mergeState))
+                    }
+                    .map { commitStatus, mergeState -> Event in
+                        switch commitStatus {
                         case .pending:
-                            return .value(.integrationDidChangeStatus(.updating, metadata))
+                            return .integrationDidChangeStatus(.updating, metadata)
                         case .failure:
-                            return .value(.integrationDidChangeStatus(.failed(.checksFailing), metadata))
+                            return .integrationDidChangeStatus(.failed(.checksFailing), metadata)
                         case  .success:
-                            return github.fetchPullRequest(number: metadata.reference.number)
-                                .map { metadata in
-                                    switch metadata.mergeState {
-                                    case .clean:
-                                        return .retryIntegration(metadata)
-                                    default:
-                                        return .integrationDidChangeStatus(.failed(.blocked), metadata)
-                                    }
+                            switch mergeState {
+                            case .clean:
+                                return .retryIntegration(metadata)
+                            default:
+                                return .integrationDidChangeStatus(.failed(.blocked), metadata)
                             }
                         }
                     }
