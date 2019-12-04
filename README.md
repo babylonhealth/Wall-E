@@ -35,11 +35,11 @@ Iconography © https://dribbble.com/shots/2772860-WALL-E-Movie-Icons
 
 ### Debugging
 
-Using https://dashboard.ngrok.com/get-started you can run the app locally and still get all incoming events from GitHub webhooks.
+Using [the ngrok tool](https://dashboard.ngrok.com/get-started) you can run the app locally and still get all incoming events from GitHub webhooks.
 
 - setup ngrok and start it, it will print out the public address from which all requests will be redirected to your localhost, i.e. https://randomnumber.ngrok.io
 
-- add a webhook to the repository where you want to test the app (https://github.com/babylonhealth/walle-debug):
+- add a webhook to the repository where you want to test the app (https://github.com/babylonhealth/walle-debug for use by Babylon team members):
  - set webhook url to https://randomnumber.ngrok.io/github
  - set content type to `application/json`
  - set a webhook secret to some random value
