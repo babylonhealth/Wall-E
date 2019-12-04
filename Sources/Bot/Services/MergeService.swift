@@ -43,12 +43,14 @@ public final class MergeService {
             statusChecksTimeout: statusChecksTimeout
         )
 
+        let pullRequestsReadyToInclude = initialPullRequests.filter { $0.isLabelled(with: integrationLabel) }
+
         state = Property<State>(
             initial: initialState,
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(initialPullRequests: initialPullRequests, scheduler: scheduler),
+                Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -565,7 +567,7 @@ extension MergeService {
         return Feedback(predicate: { $0.status != .starting }) { state in
             return pullRequestChanges
                 .observe(on: scheduler)
-                .map { metadata, action -> Event.Outcome? in
+                .filterMap { metadata, action in
                     switch action {
                     case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
                         return Event.Outcome.include(metadata.reference)
@@ -579,7 +581,6 @@ extension MergeService {
                         return nil
                     }
                 }
-                .skipNil()
                 .map(Event.pullRequestDidChange)
         }
     }

@@ -68,8 +68,8 @@ class DispatchServiceTests: XCTestCase {
                 .getPullRequest(checkReturnPR(dev1)),
                 .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
                 .mergeIntoBranch { head, base in
-                    expect(head.ref) == MergeServiceFixture.defaultBranch
-                    expect(base.ref) == developBranch
+                    expect(head) == dev1.reference.source
+                    expect(base) == dev1.reference.target
                     return .success
                 },
 
@@ -127,6 +127,88 @@ class DispatchServiceTests: XCTestCase {
                     .state(.stub(targetBranch: releaseBranch, status: .integrating(rel3))),
                     .state(.stub(targetBranch: releaseBranch, status: .ready)),
                     .state(.stub(targetBranch: releaseBranch, status: .idle)),
+                    .destroyed(branch: releaseBranch),
+
+                    .state(.stub(targetBranch: developBranch, status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev2.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .integrating(dev2))),
+                    .state(.stub(targetBranch: developBranch, status: .ready)),
+                    .state(.stub(targetBranch: developBranch, status: .idle)),
+                    .destroyed(branch: developBranch)
+                ]
+            }
+        )
+    }
+
+    func test_creating_new_pull_requests_to_new_target_branch_without_label() {
+        let (developBranch, releaseBranch) = ("develop", "release/app/1.2.3")
+
+        let dev1 = PullRequestMetadata.stub(number: 1, headRef: MergeServiceFixture.defaultBranch, baseRef: developBranch, labels: [LabelFixture.integrationLabel], mergeState: .behind)
+        let dev2 = PullRequestMetadata.stub(number: 2, baseRef: developBranch, labels: [LabelFixture.integrationLabel], mergeState: .clean)
+        let rel3 = PullRequestMetadata.stub(number: 3, baseRef: releaseBranch, mergeState: .clean)
+
+        perform(
+            stubs: [
+                .getPullRequests { [dev1.reference] },
+                .getPullRequest(checkReturnPR(dev1)),
+                .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .mergeIntoBranch { head, base in
+                    expect(head.ref) == MergeServiceFixture.defaultBranch
+                    expect(base.ref) == developBranch
+                    return .success
+                },
+
+                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
+
+                // Note that here we shouldn't have any API call for PR#3 since it doesn't have the integration label
+                
+                .getPullRequest(checkReturnPR(dev1.with(mergeState: .clean))),
+                .getCommitStatus { pullRequest in
+                    expect(pullRequest.number) == 1
+                    return CommitState.stub(states: [.success])
+                },
+
+                .mergePullRequest(checkPRNumber(1)),
+                .deleteBranch(checkBranch(dev1.reference.source)),
+                .getPullRequest(checkReturnPR(dev2)),
+                .mergePullRequest(checkPRNumber(2)),
+                .deleteBranch(checkBranch(dev2.reference.source)),
+            ],
+            when: { service, scheduler in
+
+                scheduler.advance()
+
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked))
+
+                scheduler.advance()
+
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: dev2)
+
+                scheduler.advance()
+
+                service.sendPullRequestEvent(action: .opened, pullRequestMetadata: rel3)
+
+                scheduler.advance()
+
+                service.sendStatusEvent(state: .success)
+
+                scheduler.advance(by: .seconds(60))
+            },
+            assert: {
+                expect($0) == [
+                    .created(branch: developBranch),
+                    .state(.stub(targetBranch: developBranch, status: .starting)),
+                    .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev1.reference])),
+                    .state(.stub(targetBranch: developBranch, status: .integrating(dev1))),
+                    .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)))),
+                    .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)), pullRequests: [dev2.reference])),
+
+                    // MergeService is always created when we receive a new PR event…
+                    .created(branch: releaseBranch),
+                    .state(.stub(targetBranch: releaseBranch, status: .starting)),
+                    // … but since that new PR got filtered out for not having the integration label…
+                    .state(.stub(targetBranch: releaseBranch, status: .idle)),
+                    // … then the service is destroyed right away.
                     .destroyed(branch: releaseBranch),
 
                     .state(.stub(targetBranch: developBranch, status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
