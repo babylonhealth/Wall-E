@@ -27,9 +27,9 @@ Depending on the workflow of each team some of them may be disabled to suit thei
 ### Client app
 
 To install the client app:
- - build it in Xcode and copy to your applications directory or download the app attached to the latest GitHub release
+ - build WallEView.xcodeproj in Xcode and copy the app from build products directory to your applications directory or download the app attached to the latest GitHub release
  - run `defaults write com.babylonhealth.WallEView Host <application address>` to set the url to the app
- - launch the app
+ - launch the app and enjoy
 
 Iconography © https://dribbble.com/shots/2772860-WALL-E-Movie-Icons
 
