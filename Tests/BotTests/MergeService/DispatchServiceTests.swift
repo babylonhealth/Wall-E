@@ -382,11 +382,8 @@ class DispatchServiceTests: XCTestCase {
         gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr3)
         scheduler.advance()
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(dispatchServiceContext.dispatchService.queueStates)
-        let json = String(data: data, encoding: .utf8)
-        expect(json) == DispatchServiceQueueStates
+        let jsonData = try JSONEncoder().encode(dispatchServiceContext.dispatchService.queueStates)
+        XCTAssertEqualJSON(jsonData, DispatchServiceQueueStates)
     }
 
     // MARK: - Helpers
