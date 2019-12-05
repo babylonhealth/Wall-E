@@ -1,4 +1,6 @@
-let DispatchServiceQueueStates: String = """
+import Foundation
+
+let DispatchServiceQueueStates: Data = """
 [
   {
     "targetBranch" : "branch1",
@@ -86,4 +88,4 @@ let DispatchServiceQueueStates: String = """
     ]
   }
 ]
-"""
+""".data(using: .utf8)!
