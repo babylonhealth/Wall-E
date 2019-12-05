@@ -27,8 +27,22 @@ Depending on the workflow of each team some of them may be disabled to suit thei
 ### Client app
 
 To install the client app:
- - build it in Xcode and copy to your applications directory
- - run `defaults write com.babylonhealth.WallEView Host <application address>` 
- - launch the app
+ - build `WallEView.xcodeproj` in Xcode and copy the app from build products directory to your applications directory or download the app attached to the [latest GitHub release](https://github.com/babylonhealth/Wall-E/releases)
+ - run `defaults write com.babylonhealth.WallEView Host <application address>` to set the url to the app
+ - launch the app and enjoy
 
 Iconography © https://dribbble.com/shots/2772860-WALL-E-Movie-Icons
+
+### Debugging
+
+Using [the ngrok tool](https://dashboard.ngrok.com/get-started) you can run the app locally and still get all incoming events from GitHub webhooks.
+
+- setup ngrok and start it, it will print out the public address from which all requests will be redirected to your localhost, i.e. https://randomnumber.ngrok.io
+
+- add a webhook to the repository where you want to test the app (https://github.com/babylonhealth/walle-debug for use by Babylon team members):
+ - set webhook url to https://randomnumber.ngrok.io/github
+ - set content type to `application/json`
+ - set a webhook secret to some random value
+ - enabled status and pull request events
+
+Then you can start the app locally setting its environment variables to point to the testing repository. You need to set `GITHUB_WEBHOOK_SECRET`, `GITHUB_TOKEN`, `GITHUB_ORGANIZATION` and `GITHUB_REPOSITORY` as environment variables in the `Run` scheme. You also need to set few other environment variables: `MERGE_LABEL` and `TOP_PRIORITY_LABELS`
