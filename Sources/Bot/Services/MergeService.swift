@@ -430,6 +430,7 @@ extension MergeService {
                                     }
                                 }
                         }
+                        .observe(on: scheduler)
                     }
                 }
                 .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed), metadata)) }
@@ -457,7 +458,7 @@ extension MergeService {
                     }
                     .retry(upTo: 4, interval: 30.0, on: scheduler)
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.unknown), metadata)) }
-
+                    .observe(on: scheduler)
             }
         }
     }
