@@ -33,6 +33,7 @@ class DispatchServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
+                scheduler.advance(by: .seconds(5))
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }

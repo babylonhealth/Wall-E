@@ -361,13 +361,18 @@ extension MergeService {
 
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
-
+            print("=== Feedback.whenReady")
             guard let next = state.pullRequests.first else {
+                print("=== Feedback.whenReady: noMorePRs")
                 return SignalProducer
                     .value(.noMorePullRequests)
+                    .on(value: { v in
+                        print("===> \(v) event sent")
+                    })
                     .observe(on: scheduler)
             }
 
+            print("=== Feedback.whenReady: fetchPR \(next.number)")
             // Refresh pull request to ensure an up-to-date state
             return github.fetchPullRequest(number: next.number)
                 .flatMapError { _ in .empty }
@@ -671,6 +676,7 @@ extension MergeService.State {
     }
 
     fileprivate func reduceReady(with event: Event) -> MergeService.State? {
+        print("=== reduceReady(event: \(event))")
         switch event {
         case .noMorePullRequests:
             return self.with(status: .idle)
