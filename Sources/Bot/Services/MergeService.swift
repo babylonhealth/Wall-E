@@ -92,7 +92,7 @@ public final class MergeService {
     }
 
     static func reduce(state: State, event: Event) -> State {
-
+        print("=== reduce(state: \(state.status), event: \(event))")
         let reducedState: State? = {
             switch state.status {
             case .idle:
