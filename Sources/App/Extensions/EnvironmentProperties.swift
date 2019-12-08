@@ -43,7 +43,7 @@ extension Environment {
         }
     }
 
-    static func extendedLogging() -> Bool? {
+    static func extendedLogging() -> Bool {
         return (try? Environment.get("EXTENDED_LOGGING").bool) ?? false
     }
 

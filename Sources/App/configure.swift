@@ -47,7 +47,7 @@ private func makeMergeService(with logger: LoggerProtocol, _ gitHubEventsService
         logger: logger,
         gitHubAPI: gitHubAPI,
         gitHubEvents: gitHubEventsService,
-        extendedLogging: Environment.extendedLogging() ?? false
+        extendedLogging: Environment.extendedLogging()
     )
 }
 
