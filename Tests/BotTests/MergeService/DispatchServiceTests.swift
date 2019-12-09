@@ -414,18 +414,20 @@ class DispatchServiceTests: XCTestCase {
         }
     }
 
+    var dispatchServiceContext: DispatchServiceContext?
+
     private func perform(
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
         when: (MockGitHubEventsService, TestScheduler) -> Void,
-        assert: ([DispatchServiceEvent]) -> Void
+        assert: @escaping ([DispatchServiceEvent]) -> Void
     ) {
 
         let scheduler = TestScheduler()
         let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        let dispatchServiceContext = DispatchServiceContext(
+        self.dispatchServiceContext = DispatchServiceContext(
             requiresAllStatusChecks: requiresAllStatusChecks,
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
@@ -434,9 +436,18 @@ class DispatchServiceTests: XCTestCase {
 
         when(gitHubEvents, scheduler)
 
-        assert(dispatchServiceContext.events)
+        let expectation = self.expectation(description: "Assertion checked")
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(5)) {
+            assert(self.dispatchServiceContext!.events)
 
-        expect(gitHubAPI.assert()) == true
+            expect(gitHubAPI.assert()) == true
+
+            expectation.fulfill()
+        }
+
+        self.wait(for: [expectation], timeout: 10)
+
+        self.dispatchServiceContext = nil
     }
     
 }

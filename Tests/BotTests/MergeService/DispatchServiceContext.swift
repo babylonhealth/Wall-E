@@ -63,9 +63,8 @@ class DispatchServiceContext {
             })
             .map(DispatchServiceEvent.init)
             .observe(on: scheduler)
-            .observeValues { event in
-                // Retain cycle here, but just to quickly test on Linux if this is the cause for the stream interrupted too early
-                self.events.append(event)
+            .observeValues { [weak self] event in
+                self?.events.append(event)
             }
     }
 
