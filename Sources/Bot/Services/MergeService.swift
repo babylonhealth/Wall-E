@@ -428,7 +428,7 @@ extension MergeService {
                                                 return .integrationDidChangeStatus(.failed(.blocked), metadata)
                                             }
                                     }
-                                }
+                            }
                         }
                         .observe(on: scheduler)
                     }
