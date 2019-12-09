@@ -436,16 +436,17 @@ class DispatchServiceTests: XCTestCase {
 
         when(gitHubEvents, scheduler)
 
-        let expectation = self.expectation(description: "Assertion checked")
-        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(5)) {
+        let sema = DispatchSemaphore.init(value: 0)
+        DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(3)) {
             assert(self.dispatchServiceContext!.events)
 
             expect(gitHubAPI.assert()) == true
 
-            expectation.fulfill()
+            sema.signal()
         }
 
-        self.wait(for: [expectation], timeout: 10)
+        let semaRes = sema.wait(timeout: .now() + .seconds(15))
+        expect(semaRes) == .success
 
         self.dispatchServiceContext = nil
     }
