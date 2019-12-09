@@ -49,6 +49,9 @@ class DispatchServiceContext {
         self.dispatchService.mergeServiceLifecycle
             .on(event: { (event: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.Event) in
                 print("Lifecycle Event: \(event)")
+                if case .value(.stateChanged(let ms)) = event {
+                    print("Lifecycle Event: New state is \(ms.state.value)")
+                }
             }, completed: {
                 print("Lifecycle .completed")
             }, interrupted: {
