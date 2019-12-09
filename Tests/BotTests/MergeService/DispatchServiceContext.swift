@@ -47,12 +47,27 @@ class DispatchServiceContext {
         )
 
         self.dispatchService.mergeServiceLifecycle
+            .on(event: { (event: Signal<DispatchService.MergeServiceLifecycleEvent, NoError>.Event) in
+                print("Lifecycle Event: \(event)")
+            }, completed: {
+                print("Lifecycle .completed")
+            }, interrupted: {
+                print("Lifecycle .interupted")
+            }, terminated: {
+                print("Lifecycle .terminated")
+            }, disposed: {
+                print("Lifecycle .disposed")
+            })
             .map(DispatchServiceEvent.init)
             .observe(on: scheduler)
-            .observeValues { [weak self] event in
-                self?.events.append(event)
+            .observeValues { event in
+                // Retain cycle here, but just to quickly test on Linux if this is the cause for the stream interrupted too early
+                self.events.append(event)
             }
     }
 
+    deinit {
+        print("DispatchServiceContext deinit")
+    }
     static let idleCleanupDelay: DispatchTimeInterval = .seconds(Int(MergeServiceFixture.defaultIdleCleanupDelay))
 }
