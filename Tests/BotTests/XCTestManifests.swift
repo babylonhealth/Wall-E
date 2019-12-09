@@ -6,9 +6,9 @@ extension DispatchServiceTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__DispatchServiceTests = [
-        ("test_adding_new_pull_requests_during_integration", test_adding_new_pull_requests_during_integration),
-        ("test_creating_new_pull_requests_to_new_target_branch_without_label", test_creating_new_pull_requests_to_new_target_branch_without_label),
-        ("test_json_queue_description", test_json_queue_description),
+//        ("test_adding_new_pull_requests_during_integration", test_adding_new_pull_requests_during_integration),
+//        ("test_creating_new_pull_requests_to_new_target_branch_without_label", test_creating_new_pull_requests_to_new_target_branch_without_label),
+//        ("test_json_queue_description", test_json_queue_description),
         ("test_multiple_pull_requests_with_different_target_branches", test_multiple_pull_requests_with_different_target_branches),
     ]
 }
