@@ -59,6 +59,14 @@ extension Repository {
         )
     }
 
+    func allStatusChecks(for pullRequest: PullRequest) -> Resource<[PullRequest.StatusCheck]> {
+        return Resource(
+            method: .GET,
+            path: path(for: "commits/\(pullRequest.source.sha)/statuses"),
+            decoder: decode
+        )
+    }
+
     func deleteBranch(branch: PullRequest.Branch) -> Resource<Void> {
         return Resource(
             method: .DELETE,

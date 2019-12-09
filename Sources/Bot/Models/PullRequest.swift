@@ -33,6 +33,14 @@ extension PullRequest {
 }
 
 extension PullRequest {
+    public struct StatusCheck: Equatable, Decodable {
+        public let state: CommitState.State
+        public let context: String
+        public let description: String
+    }
+}
+
+extension PullRequest {
     public enum Action: String, Decodable {
         case assigned
         case unassigned

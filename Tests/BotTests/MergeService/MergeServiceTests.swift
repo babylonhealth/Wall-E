@@ -191,12 +191,13 @@ class MergeServiceTests: XCTestCase {
         )
     }
 
-    func test_pull_request_blocked_with_successful_status() {
+    func test_pull_request_blocked_with_successful_status_no_pending_checks() {
         perform(
             stubs: [
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
                 .postComment { _, _ in },
+                .getAllStatusChecks { _ in [.init(state: .success, context: "", description: "")]},
                 .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
                 .mergePullRequest { _ in },
@@ -215,6 +216,47 @@ class MergeServiceTests: XCTestCase {
                     .state(.stub(status: .starting)),
                     .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
                     .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
+                ]
+            }
+        )
+    }
+
+    func test_pull_request_blocked_with_successful_status_pending_checks() {
+        perform(
+            stubs: [
+                .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
+                .postComment { _, _ in },
+                .getAllStatusChecks { _ in
+                    [
+                        .init(state: .pending, context: "test", description: ""),
+                        .init(state: .success, context: "build", description: "")
+                    ]
+                },
+                .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in }
+            ],
+            when: { service, scheduler in
+                scheduler.advance()
+
+                service.sendStatusEvent(state: .success)
+
+                scheduler.advance(by: .seconds(90))
+
+            },
+            assert: {
+                expect($0) == [
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
                     .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
                     .state(.stub(status: .ready)),
                     .state(.stub(status: .idle)),
