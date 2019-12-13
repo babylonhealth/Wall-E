@@ -50,6 +50,30 @@ class MergeServiceTests: XCTestCase {
 
     }
 
+    func test_pull_request_not_included_on_close() {
+        perform(
+            stubs: [
+                .getPullRequests { [] },
+            ],
+            when: { service, scheduler in
+                scheduler.advance()
+
+                service.sendPullRequestEvent(action: .closed, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .clean))
+
+                scheduler.advance()
+            },
+            assert: {
+                expect($0) == [
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .idle)),
+                    .destroyed(branch: MergeServiceFixture.defaultTargetBranch),
+                ]
+            }
+        )
+
+    }
+
     func test_pull_request_with_integration_label_and_ready_to_merge() {
         perform(
             stubs: [
@@ -300,7 +324,7 @@ class MergeServiceTests: XCTestCase {
                     .state(.stub(status: .idle)),
                     .destroyed(branch: MergeServiceFixture.defaultTargetBranch)
                 ]
-        }
+            }
         )
     }
 
