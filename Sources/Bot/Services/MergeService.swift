@@ -23,7 +23,7 @@ public final class MergeService {
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
-        initialPullRequests: [PullRequest],
+        initialTrigger: InitialTrigger,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -43,7 +43,9 @@ public final class MergeService {
             statusChecksTimeout: statusChecksTimeout
         )
 
-        let pullRequestsReadyToInclude = initialPullRequests.filter { $0.isLabelled(with: integrationLabel) }
+        let pullRequestsReadyToInclude = initialTrigger
+            .filterOpenPullRequests()
+            .filter { $0.isLabelled(with: integrationLabel) }
 
         state = Property<State>(
             initial: initialState,
@@ -95,6 +97,23 @@ public final class MergeService {
 // MARK: - System types
 
 extension MergeService {
+
+    /// Reason for which the MergeService was created: either right after initial boot of the bot or after an event routed to the service's targetBranch
+    public enum InitialTrigger {
+        /// The bot was just booted so we got a full list of all the open pull requests after fetching them
+        case booting(openPullRequests: [PullRequest])
+        /// The bot was already running and received a GitHub event which was routed to that new MergeService
+        case gitHubEvent(PullRequestEvent)
+
+        func filterOpenPullRequests() -> [PullRequest] {
+            switch self {
+            case .booting(let initialOpenPullRequests):
+                return initialOpenPullRequests
+            case .gitHubEvent(let event):
+                return event.action == .closed ? [] : [event.pullRequestMetadata.reference]
+            }
+        }
+    }
 
     public enum FailureReason: String, Equatable, Encodable {
         case conflicts

@@ -69,7 +69,7 @@ public final class DispatchService {
                 dict[branch] = makeMergeService(
                     targetBranch: branch,
                     scheduler: self.scheduler,
-                    initialPullRequests: pullRequestsForBranch
+                    initialTrigger: .booting(openPullRequests: pullRequestsForBranch)
                 )
             }
         }
@@ -77,7 +77,6 @@ public final class DispatchService {
 
     private func pullRequestDidChange(event: PullRequestEvent) {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
-        guard event.action != .closed else { return }
 
         let targetBranch = event.pullRequestMetadata.reference.target.ref
         let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
@@ -87,7 +86,7 @@ public final class DispatchService {
                 let newService = makeMergeService(
                     targetBranch: targetBranch,
                     scheduler: self.scheduler,
-                    initialPullRequests: [event.pullRequestMetadata.reference]
+                    initialTrigger: .gitHubEvent(event)
                 )
                 dict[targetBranch] = newService
                 return newService
@@ -104,7 +103,11 @@ public final class DispatchService {
         }
     }
 
-    private func makeMergeService(targetBranch: String, scheduler: DateScheduler, initialPullRequests: [PullRequest] = []) -> MergeService {
+    private func makeMergeService(
+        targetBranch: String,
+        scheduler: DateScheduler,
+        initialTrigger: MergeService.InitialTrigger
+    ) -> MergeService {
         logger.log("🆕 New MergeService created for target branch `\(targetBranch)`")
         let mergeService = MergeService(
             targetBranch: targetBranch,
@@ -112,7 +115,7 @@ public final class DispatchService {
             topPriorityLabels: topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
             statusChecksTimeout: statusChecksTimeout,
-            initialPullRequests: initialPullRequests,
+            initialTrigger: initialTrigger,
             logger: logger,
             gitHubAPI: gitHubAPI,
             scheduler: scheduler
