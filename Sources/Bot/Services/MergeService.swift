@@ -23,7 +23,7 @@ public final class MergeService {
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
-        initialTrigger: InitialTrigger,
+        initialPullRequests: [PullRequest],
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -95,28 +95,6 @@ public final class MergeService {
 // MARK: - System types
 
 extension MergeService {
-
-    /// Reason for which the MergeService was created: either right after initial boot of the bot or after an event routed to the service's targetBranch
-    public enum InitialTrigger {
-        /// The bot was just booted so we got a full list of all the open pull requests after fetching them
-        case booting(openPullRequests: [PullRequest])
-        /// The bot was already running and received a GitHub event which was routed to that new MergeService
-        case gitHubEvent(PullRequestEvent)
-
-        func filteredPullRequests(integrationLabel: PullRequest.Label) -> [PullRequest] {
-            switch self {
-            case .booting(let initialOpenPullRequests):
-                return initialOpenPullRequests.filter { $0.isLabelled(with: integrationLabel) }
-            case .gitHubEvent(let event):
-                let outcome = eventOutcome(metadata: event.pullRequestMetadata, action: event.action, integrationLabel: integrationLabel)
-                if case .include(let pullRequest)? = outcome {
-                    return [pullRequest]
-                } else {
-                    return []
-                }
-            }
-        }
-    }
 
     public enum FailureReason: String, Equatable, Encodable {
         case conflicts
@@ -600,7 +578,18 @@ extension MergeService {
             return pullRequestChanges
                 .observe(on: scheduler)
                 .filterMap { metadata, action in
-                    eventOutcome(metadata: metadata, action: action, integrationLabel: state.integrationLabel)
+                    switch action {
+                    case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
+                        return .include(metadata.reference)
+                    case .labeled where metadata.reference.isLabelled(with: state.integrationLabel) && metadata.isMerged == false:
+                        return .include(metadata.reference)
+                    case .unlabeled where metadata.reference.isLabelled(with: state.integrationLabel) == false:
+                        return .exclude(metadata.reference)
+                    case .closed:
+                        return .exclude(metadata.reference)
+                    default:
+                        return nil
+                    }
                 }
                 .map(Event.pullRequestDidChange)
         }
@@ -765,25 +754,6 @@ extension MergeService {
 }
 
 // MARK: - Helpers
-
-fileprivate func eventOutcome(
-    metadata: PullRequestMetadata,
-    action: PullRequest.Action,
-    integrationLabel: PullRequest.Label
-) -> MergeService.State.Event.Outcome? {
-    switch action {
-    case .opened where metadata.reference.isLabelled(with: integrationLabel):
-        return .include(metadata.reference)
-    case .labeled where metadata.reference.isLabelled(with: integrationLabel) && metadata.isMerged == false:
-        return .include(metadata.reference)
-    case .unlabeled where metadata.reference.isLabelled(with: integrationLabel) == false:
-        return .exclude(metadata.reference)
-    case .closed:
-        return .exclude(metadata.reference)
-    default:
-        return nil
-    }
-}
 
 extension MergeService.State: CustomStringConvertible {
 

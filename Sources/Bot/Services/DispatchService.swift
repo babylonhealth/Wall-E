@@ -69,7 +69,7 @@ public final class DispatchService {
                 dict[branch] = makeMergeService(
                     targetBranch: branch,
                     scheduler: self.scheduler,
-                    initialTrigger: .booting(openPullRequests: pullRequestsForBranch)
+                    initialPullRequests: pullRequestsForBranch
                 )
             }
         }
@@ -85,8 +85,7 @@ public final class DispatchService {
             } else {
                 let newService = makeMergeService(
                     targetBranch: targetBranch,
-                    scheduler: self.scheduler,
-                    initialTrigger: .gitHubEvent(event)
+                    scheduler: self.scheduler
                 )
                 dict[targetBranch] = newService
                 return newService
@@ -106,7 +105,7 @@ public final class DispatchService {
     private func makeMergeService(
         targetBranch: String,
         scheduler: DateScheduler,
-        initialTrigger: MergeService.InitialTrigger
+        initialPullRequests: [PullRequest] = []
     ) -> MergeService {
         logger.log("🆕 New MergeService created for target branch `\(targetBranch)`")
         let mergeService = MergeService(
@@ -115,7 +114,7 @@ public final class DispatchService {
             topPriorityLabels: topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
             statusChecksTimeout: statusChecksTimeout,
-            initialTrigger: initialTrigger,
+            initialPullRequests: initialPullRequests,
             logger: logger,
             gitHubAPI: gitHubAPI,
             scheduler: scheduler

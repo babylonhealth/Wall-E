@@ -74,7 +74,6 @@ class DispatchServiceTests: XCTestCase {
                 },
 
                 .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
-
                 .getPullRequest(checkReturnPR(rel3)),
                 .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
                 .mergePullRequest(checkPRNumber(3)),
