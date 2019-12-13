@@ -77,6 +77,7 @@ public final class DispatchService {
 
     private func pullRequestDidChange(event: PullRequestEvent) {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
+        guard event.action != .closed else { return }
 
         let targetBranch = event.pullRequestMetadata.reference.target.ref
         let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
