@@ -109,7 +109,7 @@ extension MergeService {
                 return initialOpenPullRequests.filter { $0.isLabelled(with: integrationLabel) }
             case .gitHubEvent(let event):
                 let outcome = eventOutcome(metadata: event.pullRequestMetadata, action: event.action, integrationLabel: integrationLabel)
-                if case .include(let pullRequest) = outcome {
+                if case .include(let pullRequest)? = outcome {
                     return [pullRequest]
                 } else {
                     return []
