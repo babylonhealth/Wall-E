@@ -17,13 +17,33 @@ public final class MergeService {
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
     internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
+    /// Instantiate a MergeService for a given target branch.
+    ///
+    /// A MergeService is a state machine responsible for handling a queue of Pull Requests,
+    /// merging them in the right order to avoid multiple PRs from conflicting or affecting one another once merged.
+    ///
+    /// An instance of a MergeService is responsible for all the Pull Requests targeting the branch it is responsible for.
+    /// There can be multiple MergeServices instances in parallel, each handling the PRs for a different target branch,
+    /// (since it's still safe to merge Pull Requests targeting different branches in parallel).
+    /// Those different MergeServices per target branch are typically managed by a `DispatchService`
+    ///
+    /// - Parameter targetBranch: The target branch this MergeService is responsible for
+    /// - Parameter integrationLabel: The GitHub label we want to use to ask the bot to add a PR to the queue
+    /// - Parameter topPriorityLabels: The GitHub label(s) which can be used to bump a PR at the front of the queue
+    /// - Parameter requiresAllStatusChecks: Only merge a PR if _all_ GitHub status checks pass, or only the ones marked as "Required" by GitHub?
+    /// - Parameter statusChecksTimeout: The maximum time to wait for status checks to finish running and update their status
+    /// - Parameter initialPullRequests: Pass the list of open pull requests that are retrieved when the bot starts from scratch, to properly configure its initial state.
+    ///      When creating a MergeService as a result of having received a GitHub event (webhook), keep this parameter empty (then just forward said GitHub event to the `pullRequestsChangesObserver` as usual)
+    /// - Parameter logger: The logger to use to log informative and debug messages
+    /// - Parameter gitHubAPI: The object allowing us to do GitHub API calls
+    /// - Parameter scheduler: RAS DateScheduler
     public init(
         targetBranch: String,
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
-        initialPullRequests: [PullRequest],
+        initialPullRequests: [PullRequest] = [],
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -43,7 +63,7 @@ public final class MergeService {
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout,
-            hasInitialPullRequests: !pullRequestsReadyToInclude.isEmpty
+            isWaitingForInitialPullRequests: !pullRequestsReadyToInclude.isEmpty
         )
 
         state = Property<State>(
@@ -133,14 +153,20 @@ extension MergeService {
             self.status = status
         }
 
-        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval, hasInitialPullRequests: Bool) -> State {
+        static func initial(
+            targetBranch: String,
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval,
+            isWaitingForInitialPullRequests: Bool
+        ) -> State {
             return State(
                 targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: [],
-                status: hasInitialPullRequests ? .starting : .idle
+                status: isWaitingForInitialPullRequests ? .starting : .idle
             )
         }
 
