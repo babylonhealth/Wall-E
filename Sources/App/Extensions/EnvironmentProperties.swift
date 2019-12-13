@@ -31,6 +31,12 @@ extension Environment {
         return TimeInterval(value)
     }
 
+    /// Delay to wait after a MergeService is back in idle state before destroying it
+    static func idleMergeServiceCleanupDelay() throws -> TimeInterval? {
+        let value: String = try Environment.get("IDLE_BRANCH_QUEUE_CLEANUP_DELAY")
+        return TimeInterval(value)
+    }
+
     static func mergeLabel() throws -> PullRequest.Label {
         return PullRequest.Label(name: try Environment.get("MERGE_LABEL"))
     }

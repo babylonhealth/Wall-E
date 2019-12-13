@@ -36,14 +36,15 @@ public final class MergeService {
 
         (pullRequestChanges, pullRequestChangesObserver) = Signal.pipe()
 
+        let pullRequestsReadyToInclude = initialPullRequests.filter { $0.isLabelled(with: integrationLabel) }
+
         let initialState = State.initial(
             targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
-            statusChecksTimeout: statusChecksTimeout
+            statusChecksTimeout: statusChecksTimeout,
+            hasInitialPullRequests: !pullRequestsReadyToInclude.isEmpty
         )
-
-        let pullRequestsReadyToInclude = initialTrigger.filteredPullRequests(integrationLabel: integrationLabel)
 
         state = Property<State>(
             initial: initialState,
@@ -132,14 +133,14 @@ extension MergeService {
             self.status = status
         }
 
-        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval, hasInitialPullRequests: Bool) -> State {
             return State(
                 targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: [],
-                status: .starting
+                status: hasInitialPullRequests ? .starting : .idle
             )
         }
 
@@ -299,7 +300,7 @@ extension MergeService {
                     .enumerated()
                     .map { index, pullRequest -> SignalProducer<(), NoError> in
 
-                        guard previous.status == .starting || previous.pullRequests.firstIndex(of: pullRequest) == nil
+                        guard previous.pullRequests.firstIndex(of: pullRequest) == nil
                             else { return .empty }
 
                         if index == 0 && current.isIntegrationOngoing == false {
@@ -574,7 +575,7 @@ extension MergeService {
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
-        return Feedback(predicate: { $0.status != .starting }) { state in
+        return Feedback { state in
             return pullRequestChanges
                 .observe(on: scheduler)
                 .filterMap { metadata, action in

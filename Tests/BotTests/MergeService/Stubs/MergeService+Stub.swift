@@ -8,6 +8,7 @@ struct LabelFixture {
 
 struct MergeServiceFixture {
     static let defaultStatusChecksTimeout = 30.minutes
+    static let defaultIdleCleanupDelay = 10.minutes
 
     static let defaultBranch = "some-branch"
     static let defaultTargetBranch = "master"
