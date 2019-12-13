@@ -82,7 +82,7 @@ public final class DispatchService {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
 
         let targetBranch = event.pullRequestMetadata.reference.target.ref
-        let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
+        let mergeService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
             if let service = dict[targetBranch] {
                 return service
             } else {
@@ -94,7 +94,7 @@ public final class DispatchService {
                 return newService
             }
         }
-        existingService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+        mergeService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
@@ -123,7 +123,7 @@ public final class DispatchService {
             scheduler: scheduler
         )
 
-        // Forward creation and subsequent state changes of the new MS to our lifecycleObserver
+        // Forward events about creation and subsequent state changes of the new MS to our lifecycleObserver
         mergeServiceLifecycleObserver.send(value: .created(mergeService))
         mergeService.state.producer
             .skipRepeats()
@@ -131,7 +131,7 @@ public final class DispatchService {
             .startWithValues { [weak self, service = mergeService] state in
                 self?.mergeServiceLifecycleObserver.send(value: .stateChanged(service))
             }
-        // Clean up stale idle MergeServices after a configured delay
+        // Observe idle states to clean up dormant MergeServices only after they have been idle for too long
         mergeService.state.producer
             .filter { $0.status == .idle }
             .skipRepeats()
