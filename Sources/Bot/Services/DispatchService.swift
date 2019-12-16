@@ -123,7 +123,7 @@ public final class DispatchService {
             scheduler: scheduler
         )
 
-        // Forward events about creation and subsequent state changes of the new MS to our lifecycleObserver
+        // Forward events about creation and subsequent state changes of the new MergeService to our lifecycleObserver
         mergeServiceLifecycleObserver.send(value: .created(mergeService))
         mergeService.state.producer
             .skipRepeats()

@@ -17,26 +17,27 @@ public final class MergeService {
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
     internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
-    /// Instantiate a MergeService for a given target branch.
+    /// Instantiates a `MergeService` for a given target branch.
     ///
-    /// A MergeService is a state machine responsible for handling a queue of Pull Requests,
+    /// A `MergeService` is a state machine responsible for handling a queue of Pull Requests,
     /// merging them in the right order to avoid multiple PRs from conflicting or affecting one another once merged.
     ///
-    /// An instance of a MergeService is responsible for all the Pull Requests targeting the branch it is responsible for.
-    /// There can be multiple MergeServices instances in parallel, each handling the PRs for a different target branch,
-    /// (since it's still safe to merge Pull Requests targeting different branches in parallel).
-    /// Those different MergeServices per target branch are typically managed by a `DispatchService`
+    /// * An instance of a `MergeService` is responsible for all the Pull Requests **targeting a given git branch**.
+    /// * There can be multiple `MergeService` instances in parallel, each handling the PRs for a different target branch,
+    ///   (since it's still safe to merge Pull Requests targeting different branches in parallel).
+    /// * Those different `MergeServices` per target branch are typically managed by a `DispatchService`
     ///
-    /// - Parameter targetBranch: The target branch this MergeService is responsible for
-    /// - Parameter integrationLabel: The GitHub label we want to use to ask the bot to add a PR to the queue
-    /// - Parameter topPriorityLabels: The GitHub label(s) which can be used to bump a PR at the front of the queue
-    /// - Parameter requiresAllStatusChecks: Only merge a PR if _all_ GitHub status checks pass, or only the ones marked as "Required" by GitHub?
-    /// - Parameter statusChecksTimeout: The maximum time to wait for status checks to finish running and update their status
-    /// - Parameter initialPullRequests: Pass the list of open pull requests that are retrieved when the bot starts from scratch, to properly configure its initial state.
-    ///      When creating a MergeService as a result of having received a GitHub event (webhook), keep this parameter empty (then just forward said GitHub event to the `pullRequestsChangesObserver` as usual)
-    /// - Parameter logger: The logger to use to log informative and debug messages
-    /// - Parameter gitHubAPI: The object allowing us to do GitHub API calls
-    /// - Parameter scheduler: RAS DateScheduler
+    /// - Parameters:
+    ///   - targetBranch: The target branch this MergeService is responsible for
+    ///   - integrationLabel: The GitHub label we want to use to ask the bot to add a PR to the queue
+    ///   - topPriorityLabels: The GitHub label(s) which can be used to bump a PR at the front of the queue
+    ///   - requiresAllStatusChecks: Only merge a PR if _all_ GitHub status checks pass, or only the ones marked as "Required" by GitHub?
+    ///   - statusChecksTimeout: The maximum time to wait for status checks to finish running and update their status
+    ///   - initialPullRequests: Pass the list of open pull requests that are retrieved when the bot starts from scratch, to properly configure its initial state.
+    ///      When creating a `MergeService` as a result of having received a GitHub event (webhook), keep this parameter empty (then just forward said GitHub event to the `pullRequestsChangesObserver` as usual)
+    ///   - logger: The logger to use to log informative and debug messages
+    ///   - gitHubAPI: The object allowing us to do GitHub API calls
+    ///   - scheduler: RAS DateScheduler
     public init(
         targetBranch: String,
         integrationLabel: PullRequest.Label,
