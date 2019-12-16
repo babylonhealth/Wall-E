@@ -37,7 +37,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { _, scheduler in
                 scheduler.advance()
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -62,7 +62,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -300,7 +300,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: targetLabeled)
                 scheduler.advance()
@@ -362,7 +362,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -402,7 +402,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -669,7 +669,7 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance(by: .seconds(Int(1.5 * MergeServiceFixture.defaultStatusChecksTimeout)))
 
                 // ensure MergeService cleanup
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay(times: 1.5))
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -701,7 +701,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance(by: .seconds(60))
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay(times: 1.5))
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -734,7 +734,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance(by: .seconds(5 * 30))
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -784,7 +784,7 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay())
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [

@@ -111,9 +111,10 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance()
 
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay(times: 1.5))
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
 
-                scheduler.advance()
+                // Be sure to go way past the cleanup of both MergeServices
+                scheduler.advance(by: .seconds(60))
             },
             assert: {
                 expect($0) == [
@@ -198,7 +199,7 @@ class DispatchServiceTests: XCTestCase {
 
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay(times: 1.5))
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
