@@ -64,7 +64,7 @@ public final class MergeService {
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
             statusChecksTimeout: statusChecksTimeout,
-            isWaitingForInitialPullRequests: !pullRequestsReadyToInclude.isEmpty
+            isStarting: !pullRequestsReadyToInclude.isEmpty
         )
 
         state = Property<State>(
@@ -154,12 +154,13 @@ extension MergeService {
             self.status = status
         }
 
+        /// - Parameter isStarting: Should only be true if `MergeService` was created as result of a bot reboot, not after a GH event.
         static func initial(
             targetBranch: String,
             integrationLabel: PullRequest.Label,
             topPriorityLabels: [PullRequest.Label],
             statusChecksTimeout: TimeInterval,
-            isWaitingForInitialPullRequests: Bool
+            isStarting: Bool
         ) -> State {
             return State(
                 targetBranch: targetBranch,
@@ -167,7 +168,7 @@ extension MergeService {
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: [],
-                status: isWaitingForInitialPullRequests ? .starting : .idle
+                status: isStarting ? .starting : .idle
             )
         }
 
