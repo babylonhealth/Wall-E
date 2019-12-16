@@ -133,8 +133,8 @@ public final class DispatchService {
             }
         // Observe idle states to clean up dormant MergeServices only after they have been idle for too long
         mergeService.state.producer
-            .filter { $0.status == .idle }
             .debounce(self.idleMergeServiceCleanupDelay, on: scheduler)
+            .filter { $0.status == .idle }
             .startWithValues { [weak self, service = mergeService, logger = logger] state in
                 guard let self = self else { return }
 
