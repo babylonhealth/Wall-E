@@ -228,6 +228,89 @@ class DispatchServiceTests: XCTestCase {
         )
     }
 
+    func test_mergeservice_watchdog(advancePastTheDelay: Bool) {
+        let pr = PullRequestMetadata.stub(number: 1, mergeState: .blocked)
+        let labeledPR = pr.with(labels: [LabelFixture.integrationLabel])
+        let branch = pr.reference.target.ref
+
+        // 3/4th of cleanup time (i.e. a little less than the delay but would still go past the delay once advanced a second time)
+        let almostCleanupDelay: DispatchTimeInterval = .milliseconds(Int(MergeServiceFixture.defaultIdleCleanupDelay * 750.0))
+
+        perform(
+            stubs: [
+                .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getPullRequest { _ in MergeServiceFixture.defaultTarget },
+                .postComment { _, _ in },
+                .mergeIntoBranch { _, _ in .success },
+                .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
+                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in }
+            ],
+            when: { service, scheduler in
+
+                scheduler.advance()
+
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
+
+                scheduler.advance(by: almostCleanupDelay)
+
+                service.sendStatusEvent(state: .success)
+
+                scheduler.advance(by: almostCleanupDelay)
+
+                if (advancePastTheDelay) {
+                    scheduler.advance(by: almostCleanupDelay)
+                }
+            },
+            assert: {
+                var expected: [DispatchServiceEvent] = [
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
+                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
+                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle))
+                ]
+                if advancePastTheDelay {
+                    expected.append(.destroyed(branch: MergeServiceFixture.defaultTargetBranch))
+                }
+                expect($0) == expected
+            }
+        )
+    }
+
+    func test_mergeservice_not_destroyed_if_not_idle_long_enough() {
+        test_mergeservice_watchdog(advancePastTheDelay: false)
+    }
+
+    func test_mergeservice_destroyed_if_idle_long_enough() {
+        test_mergeservice_watchdog(advancePastTheDelay: true)
+    }
+
+    func test_mergeservice_destroyed_when_idle_after_boot() {
+        let pr = PullRequestMetadata.stub(number: 1)
+        let branch = pr.reference.target.ref
+
+        perform(
+            stubs: [
+                .getPullRequests { [pr.reference] },
+            ],
+            when: { service, scheduler in
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
+            },
+            assert: {
+                expect($0) == [
+                    .created(branch: branch),
+                    .state(.stub(targetBranch: branch, status: .idle)),
+                    .destroyed(branch: branch)
+                ]
+            }
+        )
+    }
+
     func test_json_queue_description() throws {
         let (branch1, branch2) = ("branch1", "branch2")
         let pr1 = PullRequestMetadata.stub(number: 1, headRef: MergeServiceFixture.defaultBranch, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .behind)
