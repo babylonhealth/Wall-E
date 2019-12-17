@@ -229,37 +229,65 @@ class DispatchServiceTests: XCTestCase {
     }
 
     func test_mergeservice_watchdog(advancePastTheDelay: Bool) {
-        let pr = PullRequestMetadata.stub(number: 1, mergeState: .blocked)
-        let labeledPR = pr.with(labels: [LabelFixture.integrationLabel])
-        let branch = pr.reference.target.ref
-
         // 3/4th of cleanup time (i.e. a little less than the delay but would still go past the delay once advanced a second time)
         let almostCleanupDelay: DispatchTimeInterval = .milliseconds(Int(MergeServiceFixture.defaultIdleCleanupDelay * 750.0))
 
+        let prs = [1,2,3].map { PullRequestMetadata.stub(number: UInt($0), labels: [LabelFixture.integrationLabel], mergeState: .clean) }
+
         perform(
             stubs: [
-                .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
-                .getPullRequest { _ in MergeServiceFixture.defaultTarget },
+                .getPullRequests { [prs[0].reference] },
+
+                .getPullRequest { _ in prs[0] },
                 .postComment { _, _ in },
-                .mergeIntoBranch { _, _ in .success },
-                .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
-                .getCommitStatus { _ in CommitState.stub(states: [.success]) },
                 .mergePullRequest { _ in },
-                .deleteBranch { _ in }
+                .deleteBranch { _ in },
+
+                .getPullRequest { _ in prs[1].with(mergeState: .blocked) },
+                .postComment { _, _ in },
+                .getAllStatusChecks { _ in [.init(state: .pending, context: "Test 1", description: "")] },
+
+                .getPullRequest { _ in prs[2] },
+                .postComment { _, _ in },
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in },
             ],
             when: { service, scheduler in
 
+                // Start the state machine and integrate PR #1 (starting -> ready -> integrating -> ready -> idle)
+                scheduler.advance()
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: prs[0])
                 scheduler.advance()
 
-                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(mergeState: .blocked))
+                // Current state: idle
+
+                // Wait a bit before labelling the next PR
+                scheduler.advance(by: almostCleanupDelay)
+
+                // Start integrating PR #2 but keep it too long in status checks
+                // ( -> ready -> integrating -> runningStatusChecks -> 🕓 -> ❌ -> ready -> idle)
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: prs[1].with(mergeState: .blocked))
+                scheduler.advance()
+
+                // Stay a bit in state .runningStatusChecks
+                scheduler.advance(by: almostCleanupDelay)
+                scheduler.advance(by: almostCleanupDelay)
+
+                // Then close it
+                service.sendPullRequestEvent(action: .closed, pullRequestMetadata: prs[1])
+                scheduler.advance()
+
+                // Current state: idle
+
+                // Wait a bit before labelling the next PR
+                scheduler.advance(by: almostCleanupDelay)
+
+                // Integrate PR #3 ( -> ready -> integrating -> ready -> idle)
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: prs[2])
 
                 scheduler.advance(by: almostCleanupDelay)
 
-                service.sendStatusEvent(state: .success)
-
-                scheduler.advance(by: almostCleanupDelay)
-
-                if (advancePastTheDelay) {
+                if advancePastTheDelay {
                     scheduler.advance(by: almostCleanupDelay)
                 }
             },
@@ -267,10 +295,21 @@ class DispatchServiceTests: XCTestCase {
                 var expected: [DispatchServiceEvent] = [
                     .created(branch: MergeServiceFixture.defaultTargetBranch),
                     .state(.stub(status: .starting)),
-                    .state(.stub(status: .ready, pullRequests: [MergeServiceFixture.defaultTarget.reference])),
-                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget))),
-                    .state(.stub(status: .runningStatusChecks(MergeServiceFixture.defaultTarget.with(mergeState: .blocked)))),
-                    .state(.stub(status: .integrating(MergeServiceFixture.defaultTarget.with(mergeState: .clean)))),
+
+                    .state(.stub(status: .ready, pullRequests: [prs[0].reference])),
+                    .state(.stub(status: .integrating(prs[0]))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+
+                    .state(.stub(status: .ready, pullRequests: [prs[1].reference])),
+                    .state(.stub(status: .integrating(prs[1].with(mergeState: .blocked)))),
+                    .state(.stub(status: .runningStatusChecks(prs[1].with(mergeState: .blocked)))),
+                    // The main point of the test is to ensure we DONT .destroy the MergeService at this point
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+
+                    .state(.stub(status: .ready, pullRequests: [prs[2].reference])),
+                    .state(.stub(status: .integrating(prs[2]))),
                     .state(.stub(status: .ready)),
                     .state(.stub(status: .idle))
                 ]
