@@ -54,5 +54,5 @@ class DispatchServiceContext {
             }
     }
 
-    static let idleCleanupDelay: DispatchTimeInterval = .milliseconds(Int(MergeServiceFixture.defaultIdleCleanupDelay * 1000))
+    static let idleCleanupDelay: DispatchTimeInterval = .seconds(Int(MergeServiceFixture.defaultIdleCleanupDelay))
 }
