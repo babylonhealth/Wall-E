@@ -107,14 +107,10 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.sendStatusEvent(state: .success)
-
-                scheduler.advance()
+                scheduler.advance(by: .seconds(60))
 
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
-
-                // Be sure to go way past the cleanup of both MergeServices
-                scheduler.advance(by: .seconds(60))
             },
             assert: {
                 expect($0) == [
@@ -228,7 +224,15 @@ class DispatchServiceTests: XCTestCase {
         )
     }
 
-    func test_mergeservice_watchdog(advancePastTheDelay: Bool) {
+    func test_mergeservice_not_destroyed_if_not_idle_long_enough() {
+        test_mergeservice_watchdog(advancePastTheDelay: false)
+    }
+
+    func test_mergeservice_destroyed_if_idle_long_enough() {
+        test_mergeservice_watchdog(advancePastTheDelay: true)
+    }
+
+    fileprivate func test_mergeservice_watchdog(advancePastTheDelay: Bool) {
         // 3/4th of cleanup time (i.e. a little less than the delay but would still go past the delay once advanced a second time)
         let almostCleanupDelay: DispatchTimeInterval = .milliseconds(Int(MergeServiceFixture.defaultIdleCleanupDelay * 750.0))
 
@@ -319,14 +323,6 @@ class DispatchServiceTests: XCTestCase {
                 expect($0) == expected
             }
         )
-    }
-
-    func test_mergeservice_not_destroyed_if_not_idle_long_enough() {
-        test_mergeservice_watchdog(advancePastTheDelay: false)
-    }
-
-    func test_mergeservice_destroyed_if_idle_long_enough() {
-        test_mergeservice_watchdog(advancePastTheDelay: true)
     }
 
     func test_mergeservice_destroyed_when_idle_after_boot() {
