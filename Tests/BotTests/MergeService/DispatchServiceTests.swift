@@ -48,7 +48,6 @@ class DispatchServiceTests: XCTestCase {
                         .state(.stub(targetBranch: branch, status: .integrating(prForBranch))),
                         .state(.stub(targetBranch: branch, status: .ready)),
                         .state(.stub(targetBranch: branch, status: .idle)),
-                        .destroyed(branch: branch),
                     ]
                 }
             }
@@ -74,7 +73,6 @@ class DispatchServiceTests: XCTestCase {
                 },
 
                 .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
-
                 .getPullRequest(checkReturnPR(rel3)),
                 .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
                 .mergePullRequest(checkPRNumber(3)),
@@ -109,8 +107,10 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.sendStatusEvent(state: .success)
-
                 scheduler.advance(by: .seconds(60))
+
+                // Let the services stay .idle for the cleanup delay so they end up being destroyed
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -122,19 +122,20 @@ class DispatchServiceTests: XCTestCase {
                     .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)), pullRequests: [dev2.reference])),
 
                     .created(branch: releaseBranch),
-                    .state(.stub(targetBranch: releaseBranch, status: .starting)),
+                    .state(.stub(targetBranch: releaseBranch, status: .idle)),
                     .state(.stub(targetBranch: releaseBranch, status: .ready, pullRequests: [rel3.reference])),
                     .state(.stub(targetBranch: releaseBranch, status: .integrating(rel3))),
                     .state(.stub(targetBranch: releaseBranch, status: .ready)),
                     .state(.stub(targetBranch: releaseBranch, status: .idle)),
-                    .destroyed(branch: releaseBranch),
 
                     .state(.stub(targetBranch: developBranch, status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
                     .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev2.reference])),
                     .state(.stub(targetBranch: developBranch, status: .integrating(dev2))),
                     .state(.stub(targetBranch: developBranch, status: .ready)),
                     .state(.stub(targetBranch: developBranch, status: .idle)),
-                    .destroyed(branch: developBranch)
+
+                    .destroyed(branch: releaseBranch),
+                    .destroyed(branch: developBranch),
                 ]
             }
         )
@@ -193,6 +194,8 @@ class DispatchServiceTests: XCTestCase {
                 service.sendStatusEvent(state: .success)
 
                 scheduler.advance(by: .seconds(60))
+
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
                 expect($0) == [
@@ -203,20 +206,141 @@ class DispatchServiceTests: XCTestCase {
                     .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)))),
                     .state(.stub(targetBranch: developBranch, status: .runningStatusChecks(dev1.with(mergeState: .blocked)), pullRequests: [dev2.reference])),
 
-                    // MergeService is always created when we receive a new PR event…
                     .created(branch: releaseBranch),
-                    .state(.stub(targetBranch: releaseBranch, status: .starting)),
-                    // … but since that new PR got filtered out for not having the integration label…
+                    // Since the new PR got filtered out for not having the integration label, there's nothing to be done
+                    // and this new MergeService for that release branch will soon be destroyed at the end for inactivity
                     .state(.stub(targetBranch: releaseBranch, status: .idle)),
-                    // … then the service is destroyed right away.
-                    .destroyed(branch: releaseBranch),
 
                     .state(.stub(targetBranch: developBranch, status: .integrating(dev1.with(mergeState: .clean)), pullRequests: [dev2.reference])),
                     .state(.stub(targetBranch: developBranch, status: .ready, pullRequests: [dev2.reference])),
                     .state(.stub(targetBranch: developBranch, status: .integrating(dev2))),
                     .state(.stub(targetBranch: developBranch, status: .ready)),
                     .state(.stub(targetBranch: developBranch, status: .idle)),
+
+                    .destroyed(branch: releaseBranch),
                     .destroyed(branch: developBranch)
+                ]
+            }
+        )
+    }
+
+    func test_mergeservice_not_destroyed_if_not_idle_long_enough() {
+        test_mergeservice_watchdog(advancePastTheDelay: false)
+    }
+
+    func test_mergeservice_destroyed_if_idle_long_enough() {
+        test_mergeservice_watchdog(advancePastTheDelay: true)
+    }
+
+    fileprivate func test_mergeservice_watchdog(advancePastTheDelay: Bool) {
+        // 3/4th of cleanup time (i.e. a little less than the delay but would still go past the delay once advanced a second time)
+        let almostCleanupDelay: DispatchTimeInterval = .milliseconds(Int(MergeServiceFixture.defaultIdleCleanupDelay * 750.0))
+
+        let prs = [1,2,3].map { PullRequestMetadata.stub(number: UInt($0), labels: [LabelFixture.integrationLabel], mergeState: .clean) }
+
+        perform(
+            stubs: [
+                .getPullRequests { [prs[0].reference] },
+
+                .getPullRequest { _ in prs[0] },
+                .postComment { _, _ in },
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in },
+
+                .getPullRequest { _ in prs[1].with(mergeState: .blocked) },
+                .postComment { _, _ in },
+                .getAllStatusChecks { _ in [.init(state: .pending, context: "Test 1", description: "")] },
+
+                .getPullRequest { _ in prs[2] },
+                .postComment { _, _ in },
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in },
+            ],
+            when: { service, scheduler in
+
+                // Start the state machine and integrate PR #1 (starting -> ready -> integrating -> ready -> idle)
+                scheduler.advance()
+                service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: prs[0])
+                scheduler.advance()
+
+                // Current state: idle
+
+                // Wait a bit before labelling the next PR
+                scheduler.advance(by: almostCleanupDelay)
+
+                // Start integrating PR #2 but keep it too long in status checks
+                // ( -> ready -> integrating -> runningStatusChecks -> 🕓 -> ❌ -> ready -> idle)
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: prs[1].with(mergeState: .blocked))
+                scheduler.advance()
+
+                // Stay a bit in state .runningStatusChecks
+                scheduler.advance(by: almostCleanupDelay)
+                scheduler.advance(by: almostCleanupDelay)
+
+                // Then close it
+                service.sendPullRequestEvent(action: .closed, pullRequestMetadata: prs[1])
+                scheduler.advance()
+
+                // Current state: idle
+
+                // Wait a bit before labelling the next PR
+                scheduler.advance(by: almostCleanupDelay)
+
+                // Integrate PR #3 ( -> ready -> integrating -> ready -> idle)
+                service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: prs[2])
+
+                scheduler.advance(by: almostCleanupDelay)
+
+                if advancePastTheDelay {
+                    scheduler.advance(by: almostCleanupDelay)
+                }
+            },
+            assert: {
+                var expected: [DispatchServiceEvent] = [
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+
+                    .state(.stub(status: .ready, pullRequests: [prs[0].reference])),
+                    .state(.stub(status: .integrating(prs[0]))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+
+                    .state(.stub(status: .ready, pullRequests: [prs[1].reference])),
+                    .state(.stub(status: .integrating(prs[1].with(mergeState: .blocked)))),
+                    .state(.stub(status: .runningStatusChecks(prs[1].with(mergeState: .blocked)))),
+                    // The main point of the test is to ensure we DONT .destroy the MergeService at this point
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle)),
+
+                    .state(.stub(status: .ready, pullRequests: [prs[2].reference])),
+                    .state(.stub(status: .integrating(prs[2]))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle))
+                ]
+                if advancePastTheDelay {
+                    expected.append(.destroyed(branch: MergeServiceFixture.defaultTargetBranch))
+                }
+                expect($0) == expected
+            }
+        )
+    }
+
+    func test_mergeservice_destroyed_when_idle_after_boot() {
+        let pr = PullRequestMetadata.stub(number: 1)
+        let branch = pr.reference.target.ref
+
+        perform(
+            stubs: [
+                .getPullRequests { [pr.reference] },
+            ],
+            when: { service, scheduler in
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
+            },
+            assert: {
+                expect($0) == [
+                    .created(branch: branch),
+                    .state(.stub(targetBranch: branch, status: .idle)),
+                    .destroyed(branch: branch)
                 ]
             }
         )

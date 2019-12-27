@@ -9,6 +9,7 @@ public final class DispatchService {
     private let topPriorityLabels: [PullRequest.Label]
     private let requiresAllStatusChecks: Bool
     private let statusChecksTimeout: TimeInterval
+    private let idleMergeServiceCleanupDelay: TimeInterval
 
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
@@ -24,6 +25,7 @@ public final class DispatchService {
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
+        idleMergeServiceCleanupDelay: TimeInterval,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
@@ -33,6 +35,7 @@ public final class DispatchService {
         self.topPriorityLabels = topPriorityLabels
         self.requiresAllStatusChecks = requiresAllStatusChecks
         self.statusChecksTimeout = statusChecksTimeout
+        self.idleMergeServiceCleanupDelay = idleMergeServiceCleanupDelay
 
         self.logger = logger
         self.gitHubAPI = gitHubAPI
@@ -79,20 +82,19 @@ public final class DispatchService {
         logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
 
         let targetBranch = event.pullRequestMetadata.reference.target.ref
-        let existingService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
+        let mergeService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
             if let service = dict[targetBranch] {
                 return service
             } else {
                 let newService = makeMergeService(
                     targetBranch: targetBranch,
-                    scheduler: self.scheduler,
-                    initialPullRequests: [event.pullRequestMetadata.reference]
+                    scheduler: self.scheduler
                 )
                 dict[targetBranch] = newService
                 return newService
             }
         }
-        existingService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
+        mergeService.pullRequestChangesObserver.send(value: (event.pullRequestMetadata, event.action))
     }
 
     private func statusChecksDidChange(event: StatusEvent) {
@@ -103,7 +105,11 @@ public final class DispatchService {
         }
     }
 
-    private func makeMergeService(targetBranch: String, scheduler: DateScheduler, initialPullRequests: [PullRequest] = []) -> MergeService {
+    private func makeMergeService(
+        targetBranch: String,
+        scheduler: DateScheduler,
+        initialPullRequests: [PullRequest] = []
+    ) -> MergeService {
         logger.log("🆕 New MergeService created for target branch `\(targetBranch)`")
         let mergeService = MergeService(
             targetBranch: targetBranch,
@@ -116,18 +122,27 @@ public final class DispatchService {
             gitHubAPI: gitHubAPI,
             scheduler: scheduler
         )
+
+        // Forward events about creation and subsequent state changes of the new MergeService to our lifecycleObserver
         mergeServiceLifecycleObserver.send(value: .created(mergeService))
         mergeService.state.producer
+            .skipRepeats()
             .observe(on: scheduler)
-            .startWithValues { [weak self, service = mergeService, logger = logger] state in
+            .startWithValues { [weak self, service = mergeService] state in
                 self?.mergeServiceLifecycleObserver.send(value: .stateChanged(service))
-                if state.status == .idle {
-                    logger.log("👋 MergeService for target branch `\(targetBranch)` is idle, destroying")
-                    self?.mergeServices.modify { dict in
-                        dict[targetBranch] = nil
-                    }
-                    self?.mergeServiceLifecycleObserver.send(value: .destroyed(service))
+            }
+        // Observe idle states to clean up dormant MergeServices only after they have been idle for too long
+        mergeService.state.producer
+            .debounce(self.idleMergeServiceCleanupDelay, on: scheduler)
+            .filter { $0.status == .idle }
+            .startWithValues { [weak self, service = mergeService, logger = logger] state in
+                guard let self = self else { return }
+
+                logger.log("👋 MergeService for target branch `\(targetBranch)` has been idle for \(self.idleMergeServiceCleanupDelay)s, destroying")
+                self.mergeServices.modify { dict in
+                    dict[targetBranch] = nil
                 }
+                self.mergeServiceLifecycleObserver.send(value: .destroyed(service))
             }
 
         return mergeService

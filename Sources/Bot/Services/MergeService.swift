@@ -17,13 +17,34 @@ public final class MergeService {
     private let statusChecksCompletion: Signal<StatusEvent, NoError>
     internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
 
+    /// Instantiates a `MergeService` for a given target branch.
+    ///
+    /// A `MergeService` is a state machine responsible for handling a queue of Pull Requests,
+    /// merging them in the right order to avoid multiple PRs from conflicting or affecting one another once merged.
+    ///
+    /// * An instance of a `MergeService` is responsible for all the Pull Requests **targeting a given git branch**.
+    /// * There can be multiple `MergeService` instances in parallel, each handling the PRs for a different target branch,
+    ///   (since it's still safe to merge Pull Requests targeting different branches in parallel).
+    /// * Those different `MergeServices` per target branch are typically managed by a `DispatchService`
+    ///
+    /// - Parameters:
+    ///   - targetBranch: The target branch this MergeService is responsible for
+    ///   - integrationLabel: The GitHub label we want to use to ask the bot to add a PR to the queue
+    ///   - topPriorityLabels: The GitHub label(s) which can be used to bump a PR at the front of the queue
+    ///   - requiresAllStatusChecks: Only merge a PR if _all_ GitHub status checks pass, or only the ones marked as "Required" by GitHub?
+    ///   - statusChecksTimeout: The maximum time to wait for status checks to finish running and update their status
+    ///   - initialPullRequests: Pass the list of open pull requests that are retrieved when the bot starts from scratch, to properly configure its initial state.
+    ///      When creating a `MergeService` as a result of having received a GitHub event (webhook), keep this parameter empty (then just forward said GitHub event to the `pullRequestsChangesObserver` as usual)
+    ///   - logger: The logger to use to log informative and debug messages
+    ///   - gitHubAPI: The object allowing us to do GitHub API calls
+    ///   - scheduler: RAS DateScheduler
     public init(
         targetBranch: String,
         integrationLabel: PullRequest.Label,
         topPriorityLabels: [PullRequest.Label],
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
-        initialPullRequests: [PullRequest],
+        initialPullRequests: [PullRequest] = [],
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -36,14 +57,15 @@ public final class MergeService {
 
         (pullRequestChanges, pullRequestChangesObserver) = Signal.pipe()
 
+        let pullRequestsReadyToInclude = initialPullRequests.filter { $0.isLabelled(with: integrationLabel) }
+
         let initialState = State.initial(
             targetBranch: targetBranch,
             integrationLabel: integrationLabel,
             topPriorityLabels: topPriorityLabels,
-            statusChecksTimeout: statusChecksTimeout
+            statusChecksTimeout: statusChecksTimeout,
+            isStarting: !pullRequestsReadyToInclude.isEmpty
         )
-
-        let pullRequestsReadyToInclude = initialPullRequests.filter { $0.isLabelled(with: integrationLabel) }
 
         state = Property<State>(
             initial: initialState,
@@ -132,14 +154,21 @@ extension MergeService {
             self.status = status
         }
 
-        static func initial(targetBranch: String, integrationLabel: PullRequest.Label, topPriorityLabels: [PullRequest.Label], statusChecksTimeout: TimeInterval) -> State {
+        /// - Parameter isStarting: Should only be true if `MergeService` was created as result of a bot reboot, not after a GH event.
+        static func initial(
+            targetBranch: String,
+            integrationLabel: PullRequest.Label,
+            topPriorityLabels: [PullRequest.Label],
+            statusChecksTimeout: TimeInterval,
+            isStarting: Bool
+        ) -> State {
             return State(
                 targetBranch: targetBranch,
                 integrationLabel: integrationLabel,
                 topPriorityLabels: topPriorityLabels,
                 statusChecksTimeout: statusChecksTimeout,
                 pullRequests: [],
-                status: .starting
+                status: isStarting ? .starting : .idle
             )
         }
 
@@ -299,7 +328,7 @@ extension MergeService {
                     .enumerated()
                     .map { index, pullRequest -> SignalProducer<(), NoError> in
 
-                        guard previous.status == .starting || previous.pullRequests.firstIndex(of: pullRequest) == nil
+                        guard previous.pullRequests.firstIndex(of: pullRequest) == nil
                             else { return .empty }
 
                         if index == 0 && current.isIntegrationOngoing == false {
@@ -574,19 +603,19 @@ extension MergeService {
         pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
-        return Feedback(predicate: { $0.status != .starting }) { state in
+        return Feedback { state in
             return pullRequestChanges
                 .observe(on: scheduler)
                 .filterMap { metadata, action in
                     switch action {
                     case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
-                        return Event.Outcome.include(metadata.reference)
+                        return .include(metadata.reference)
                     case .labeled where metadata.reference.isLabelled(with: state.integrationLabel) && metadata.isMerged == false:
-                        return Event.Outcome.include(metadata.reference)
+                        return .include(metadata.reference)
                     case .unlabeled where metadata.reference.isLabelled(with: state.integrationLabel) == false:
-                        return Event.Outcome.exclude(metadata.reference)
+                        return .exclude(metadata.reference)
                     case .closed:
-                        return Event.Outcome.exclude(metadata.reference)
+                        return .exclude(metadata.reference)
                     default:
                         return nil
                     }

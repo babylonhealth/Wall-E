@@ -1,5 +1,6 @@
 import ReactiveSwift
 import Result
+import Dispatch
 @testable import Bot
 
 enum DispatchServiceEvent: Equatable {
@@ -38,6 +39,7 @@ class DispatchServiceContext {
             topPriorityLabels: LabelFixture.topPriorityLabels,
             requiresAllStatusChecks: requiresAllStatusChecks,
             statusChecksTimeout: MergeServiceFixture.defaultStatusChecksTimeout,
+            idleMergeServiceCleanupDelay: MergeServiceFixture.defaultIdleCleanupDelay,
             logger: MockLogger(),
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
@@ -51,4 +53,6 @@ class DispatchServiceContext {
                 self?.events.append(event)
             }
     }
+
+    static let idleCleanupDelay: DispatchTimeInterval = .seconds(Int(MergeServiceFixture.defaultIdleCleanupDelay))
 }
