@@ -790,6 +790,12 @@ extension MergeService {
 
 // MARK: - Helpers
 
+extension MergeService: CustomStringConvertible {
+    public var description: String {
+        return "<MergeService for '\(state.value.targetBranch): \(state)>"
+    }
+}
+
 extension MergeService.State: CustomStringConvertible {
 
     private var queueDescription: String {

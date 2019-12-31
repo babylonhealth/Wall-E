@@ -11,6 +11,7 @@ class DispatchServiceTests: XCTestCase {
             PullRequestMetadata.stub(number: $0, baseRef: "branch\($0)", labels: [LabelFixture.integrationLabel])
                 .with(mergeState: .clean)
         }
+
         func returnPR() -> (UInt) -> PullRequestMetadata {
             return { number in pullRequests[Int(number-1)] }
         }
@@ -424,7 +425,7 @@ class DispatchServiceTests: XCTestCase {
     ) {
 
         let scheduler = TestScheduler()
-        let gitHubAPI = MockGitHubAPI(stubs: stubs)
+        let gitHubAPI = MockGitHubAPI(stubs: stubs, enforceOrder: false)
         let gitHubEvents = MockGitHubEventsService()
 
         self.dispatchServiceContext = DispatchServiceContext(
@@ -436,17 +437,10 @@ class DispatchServiceTests: XCTestCase {
 
         when(gitHubEvents, scheduler)
 
-        let sema = DispatchSemaphore.init(value: 0)
-        DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(3)) {
-            assert(self.dispatchServiceContext!.events)
+        assert(self.dispatchServiceContext!.events)
 
-            expect(gitHubAPI.assert()) == true
+        expect(gitHubAPI.assert()) == true
 
-            sema.signal()
-        }
-
-        let semaRes = sema.wait(timeout: .now() + .seconds(15))
-        expect(semaRes) == .success
 
         self.dispatchServiceContext = nil
     }
