@@ -19,10 +19,14 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     }
 
     var stubs: Atomic<[Stubs]>
+    let scheduler: DateScheduler?
+    let apiMaxDelay: TimeInterval
     let enforceOrder: Bool
 
-    init(stubs: [Stubs], enforceOrder: Bool = true) {
+    init(stubs: [Stubs], scheduler: DateScheduler? = nil, apiMaxDelay: TimeInterval = 0, enforceOrder: Bool = true) {
         self.stubs = Atomic(stubs)
+        self.scheduler = scheduler
+        self.apiMaxDelay = apiMaxDelay
         self.enforceOrder = enforceOrder
     }
 
@@ -33,7 +37,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func fetchPullRequests() -> SignalProducer<[PullRequest], AnyError> {
         return nextStub { stub in
             if case let .getPullRequests(handler) = stub {
-                return SignalProducer(value: handler())
+                return handler()
             } else {
                 return nil
             }
@@ -43,7 +47,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, AnyError> {
         return nextStub { stub in
             if case let .getPullRequest(handler) = stub {
-                return SignalProducer(value: handler(number))
+                return handler(number)
             } else {
                 return nil
             }
@@ -53,7 +57,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError> {
         return nextStub { stub in
             if case let .getCommitStatus(handler) = stub {
-                return SignalProducer(value: handler(pullRequest))
+                return handler(pullRequest)
             } else {
                 return nil
             }
@@ -63,7 +67,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, AnyError> {
         return nextStub { stub in
             if case let .getRequiredStatusChecks(handler) = stub {
-                return SignalProducer(value: handler(branch))
+                return handler(branch)
             } else {
                 return nil
             }
@@ -73,7 +77,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError> {
         return nextStub { stub in
             if case let .getAllStatusChecks(handler) = stub {
-                return SignalProducer(value: handler(pullRequest))
+                return handler(pullRequest)
             } else {
                 return nil
             }
@@ -83,7 +87,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
         return nextStub { stub in
             if case let .mergeIntoBranch(handler) = stub {
-                return SignalProducer(value: handler(base, head))
+                return handler(base, head)
             } else {
                 return nil
             }
@@ -93,7 +97,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
         return nextStub { stub in
             if case let .mergePullRequest(handler) = stub {
-                return SignalProducer(value: handler(pullRequest))
+                return handler(pullRequest)
             } else {
                 return nil
             }
@@ -103,7 +107,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
         return nextStub { stub in
             if case let .deleteBranch(handler) = stub {
-                return SignalProducer(value: handler(branch))
+                return handler(branch)
             } else {
                 return nil
             }
@@ -113,7 +117,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
         return nextStub { stub in
             if case let .postComment(handler) = stub {
-                return SignalProducer(value: handler(comment, pullRequest))
+                return handler(comment, pullRequest)
             } else {
                 return nil
             }
@@ -123,15 +127,15 @@ struct MockGitHubAPI: GitHubAPIProtocol {
     func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
         return nextStub { stub in
             if case let .removeLabel(handler) = stub {
-                return SignalProducer(value: handler(label, pullRequest))
+                return handler(label, pullRequest)
             } else {
                 return nil
             }
         }
     }
 
-    private func nextStub<T>(matching: (Stubs) -> T?) -> T {
-        return stubs.modify { stubs -> T in
+    private func nextStub<T>(matching: (Stubs) -> T?) -> SignalProducer<T, AnyError> {
+        let value = stubs.modify { stubs -> T in
             for idx in stubs.indices {
                 if let t = matching(stubs[idx]) {
                     stubs.remove(at: idx)
@@ -141,6 +145,12 @@ struct MockGitHubAPI: GitHubAPIProtocol {
                 }
             }
             fatalError("Stub not found")
+        }
+        let signal = SignalProducer<T, AnyError>.value(value)
+        if let scheduler = scheduler, apiMaxDelay>0 {
+            return signal.delay(TimeInterval.random(in: 0..<apiMaxDelay), on: scheduler)
+        } else {
+            return signal
         }
     }
 }

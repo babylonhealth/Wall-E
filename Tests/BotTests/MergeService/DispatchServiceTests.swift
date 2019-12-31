@@ -16,6 +16,8 @@ class DispatchServiceTests: XCTestCase {
             return { number in pullRequests[Int(number-1)] }
         }
 
+        let GitHubAPIDelayForTests: TimeInterval = 100
+
         perform(
             stubs: [
                 .getPullRequests { pullRequests.map { $0.reference } },
@@ -32,8 +34,12 @@ class DispatchServiceTests: XCTestCase {
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
             ],
+            enforceOrder: false,
+            apiMaxDelay: GitHubAPIDelayForTests,
             when: { service, scheduler in
-                scheduler.advance()
+                scheduler.advance(by: .seconds(Int(GitHubAPIDelayForTests) * 15)) // enough for the number of tests * max delay
+                scheduler.advance(by: .seconds(10))
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }
@@ -49,6 +55,7 @@ class DispatchServiceTests: XCTestCase {
                         .state(.stub(targetBranch: branch, status: .integrating(prForBranch))),
                         .state(.stub(targetBranch: branch, status: .ready)),
                         .state(.stub(targetBranch: branch, status: .idle)),
+                        .destroyed(branch: branch),
                     ]
                 }
             }
@@ -420,12 +427,14 @@ class DispatchServiceTests: XCTestCase {
     private func perform(
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
+        enforceOrder: Bool = true,
+        apiMaxDelay: TimeInterval = 0,
         when: (MockGitHubEventsService, TestScheduler) -> Void,
         assert: @escaping ([DispatchServiceEvent]) -> Void
     ) {
 
         let scheduler = TestScheduler()
-        let gitHubAPI = MockGitHubAPI(stubs: stubs, enforceOrder: false)
+        let gitHubAPI = MockGitHubAPI(stubs: stubs, scheduler: scheduler, apiMaxDelay: apiMaxDelay, enforceOrder: enforceOrder)
         let gitHubEvents = MockGitHubEventsService()
 
         self.dispatchServiceContext = DispatchServiceContext(
