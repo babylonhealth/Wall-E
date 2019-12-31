@@ -792,7 +792,7 @@ extension MergeService {
 
 extension MergeService: CustomStringConvertible {
     public var description: String {
-        return "<MergeService for '\(state.value.targetBranch): \(state)>"
+        return "<MergeService for '\(state.value.targetBranch): \(state.value)>"
     }
 }
 
