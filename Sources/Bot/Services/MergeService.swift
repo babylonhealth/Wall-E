@@ -95,7 +95,6 @@ public final class MergeService {
     }
 
     static func reduce(state: State, event: Event) -> State {
-        print("=== reduce(state: \(state.status), event: \(event))")
         let reducedState: State? = {
             switch state.status {
             case .idle:
@@ -364,19 +363,13 @@ extension MergeService {
 
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: DateScheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
-            print("=== Feedback.whenReady")
             guard let next = state.pullRequests.first else {
-                print("=== Feedback.whenReady: noMorePRs")
                 return SignalProducer
                     .value(.noMorePullRequests)
                     .delay(0.1, on: scheduler) // IOSP-443 theory-testing
-                    .on(value: { v in
-                        print("===> \(v) event sent")
-                    })
                     .observe(on: scheduler)
             }
 
-            print("=== Feedback.whenReady: fetchPR \(next.number)")
             // Refresh pull request to ensure an up-to-date state
             return github.fetchPullRequest(number: next.number)
                 .flatMapError { _ in .empty }
@@ -680,7 +673,6 @@ extension MergeService.State {
     }
 
     fileprivate func reduceReady(with event: Event) -> MergeService.State? {
-        print("=== reduceReady(event: \(event))")
         switch event {
         case .noMorePullRequests:
             return self.with(status: .idle)

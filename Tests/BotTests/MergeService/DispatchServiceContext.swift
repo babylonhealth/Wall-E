@@ -47,16 +47,11 @@ class DispatchServiceContext {
         )
 
         self.dispatchService.mergeServiceLifecycle
-            .logEvents(identifier: "Lifecycle")
             .map(DispatchServiceEvent.init)
             .observe(on: scheduler)
             .observeValues { [weak self] event in
                 self?.events.append(event)
             }
-    }
-
-    deinit {
-        print("DispatchServiceContext deinit")
     }
 
     static let idleCleanupDelay: DispatchTimeInterval = .seconds(Int(MergeServiceFixture.defaultIdleCleanupDelay))
