@@ -366,8 +366,10 @@ extension MergeService {
             guard let next = state.pullRequests.first else {
                 return SignalProducer
                     .value(.noMorePullRequests)
-                    .delay(0.1, on: scheduler) // IOSP-443 theory-testing
-                    .observe(on: scheduler)
+                    // IOSP-443: Delay so that the RAF State machine doesn't receive 2 events at the exact same time on the same Signal
+                    // Otherwise the order on which they are processed can behave differently depending on the platform (macOS vs Linux)
+                    // And consequently make it non-deterministic (and non-testable either)
+                    .delay(0.001, on: scheduler)
             }
 
             // Refresh pull request to ensure an up-to-date state
