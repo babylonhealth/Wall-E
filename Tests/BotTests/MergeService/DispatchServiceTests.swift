@@ -32,8 +32,9 @@ class DispatchServiceTests: XCTestCase {
                 .deleteBranch { _ in },
             ],
             when: { service, scheduler in
-                scheduler.advance()
-                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
+                scheduler.advance(by: Self.mergeServiceStep)
+                scheduler.advance(by: Self.mergeServiceStep)
+                scheduler.advance(by: Self.mergeServiceStep)
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }
@@ -93,26 +94,27 @@ class DispatchServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked))
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: dev2)
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: rel3)
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendStatusEvent(state: .success)
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -180,26 +182,27 @@ class DispatchServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked))
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: dev2)
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendPullRequestEvent(action: .opened, pullRequestMetadata: rel3)
 
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 service.sendStatusEvent(state: .success)
 
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
+                scheduler.advance(by: Self.mergeServiceStep)
 
+                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -264,9 +267,9 @@ class DispatchServiceTests: XCTestCase {
             when: { service, scheduler in
 
                 // Start the state machine and integrate PR #1 (starting -> ready -> integrating -> ready -> idle)
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
                 service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: prs[0])
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 // Current state: idle
 
@@ -276,7 +279,7 @@ class DispatchServiceTests: XCTestCase {
                 // Start integrating PR #2 but keep it too long in status checks
                 // ( -> ready -> integrating -> runningStatusChecks -> 🕓 -> ❌ -> ready -> idle)
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: prs[1].with(mergeState: .blocked))
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 // Stay a bit in state .runningStatusChecks
                 scheduler.advance(by: almostCleanupDelay)
@@ -284,7 +287,7 @@ class DispatchServiceTests: XCTestCase {
 
                 // Then close it
                 service.sendPullRequestEvent(action: .closed, pullRequestMetadata: prs[1])
-                scheduler.advance()
+                scheduler.advance(by: Self.mergeServiceStep)
 
                 // Current state: idle
 
@@ -381,17 +384,19 @@ class DispatchServiceTests: XCTestCase {
 
         expect(dispatchServiceContext.dispatchService.queueStates) == []
 
-        scheduler.advance()
+        scheduler.advance(by: Self.mergeServiceStep)
         gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr2)
-        scheduler.advance()
+        scheduler.advance(by: Self.mergeServiceStep)
         gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr3)
-        scheduler.advance()
+        scheduler.advance(by: Self.mergeServiceStep)
 
         let jsonData = try JSONEncoder().encode(dispatchServiceContext.dispatchService.queueStates)
         XCTAssertEqualJSON(jsonData, DispatchServiceQueueStates)
     }
 
     // MARK: - Helpers
+
+    static let mergeServiceStep = DispatchTimeInterval.milliseconds(Int(1000*MergeService.delayToAvoidSimultaneousEventsInRAF))
 
     private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String, file: FileString = #file, line: UInt = #line) -> (String, PullRequest) -> Void {
         return { message, pullRequest in
