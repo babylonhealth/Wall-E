@@ -119,6 +119,7 @@ class DispatchServiceTests: XCTestCase {
 
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
+                scheduler.advance(by: .milliseconds(100)) // IOSP-443 now inner delay between ready -> idle
             },
             assert: {
                 expect($0) == [
@@ -204,6 +205,7 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance(by: .seconds(60))
 
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
+                scheduler.advance(by: .milliseconds(100)) // IOSP-443 now inner delay between ready -> idle
             },
             assert: {
                 expect($0) == [

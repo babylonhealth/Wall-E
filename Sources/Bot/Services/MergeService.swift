@@ -84,6 +84,9 @@ public final class MergeService {
 
         healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
 
+        state.producer.startWithValues { state in
+            logger.log(">>>> [\(state.targetBranch)].state.status = \(state.status)")
+        }
         state.producer
             .combinePrevious()
             .startWithValues { old, new in
@@ -359,13 +362,14 @@ extension MergeService {
         }
     }
 
-    fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
+    fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: DateScheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
             print("=== Feedback.whenReady")
             guard let next = state.pullRequests.first else {
                 print("=== Feedback.whenReady: noMorePRs")
                 return SignalProducer
                     .value(.noMorePullRequests)
+                    .delay(0.1, on: scheduler) // IOSP-443 theory-testing
                     .on(value: { v in
                         print("===> \(v) event sent")
                     })
