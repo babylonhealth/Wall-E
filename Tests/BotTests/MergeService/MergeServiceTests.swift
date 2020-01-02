@@ -86,6 +86,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -126,6 +127,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -158,6 +160,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -195,7 +198,9 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: .seconds(60)) // to go past the delay waiting for potential new CI checks to pop up
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -230,6 +235,8 @@ class MergeServiceTests: XCTestCase {
                 service.sendStatusEvent(state: .success)
 
                 scheduler.advance()
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -267,8 +274,9 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(90))
+                scheduler.advance(by: .seconds(60))
 
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -304,6 +312,8 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: targetLabeled)
                 scheduler.advance()
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -362,6 +372,8 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance(by: .seconds(60))
 
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
+
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -402,6 +414,8 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance()
 
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
+
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -437,6 +451,8 @@ class MergeServiceTests: XCTestCase {
                 service.sendPullRequestEvent(action: .unlabeled, pullRequestMetadata: MergeServiceFixture.defaultTarget.with(labels: []))
 
                 scheduler.advance()
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -475,6 +491,8 @@ class MergeServiceTests: XCTestCase {
                 service.sendStatusEvent(state: .failure)
 
                 scheduler.advance(by: .seconds(60))
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -522,6 +540,8 @@ class MergeServiceTests: XCTestCase {
                     service.sendStatusEvent(state: .success)
                     scheduler.advance(by: .seconds(60))
                 }
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -579,6 +599,8 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance(by: .seconds(60)) // 4
                 service.sendStatusEvent(index: 2, state: .failure)
                 scheduler.advance(by: .seconds(60)) // 5
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -631,6 +653,8 @@ class MergeServiceTests: XCTestCase {
                 scheduler.advance(by: .seconds(60)) // 4
                 service.sendStatusEvent(index: 2, state: .failure)
                 scheduler.advance(by: .seconds(60)) // 5
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
         },
             assert: {
                 expect($0) == [
@@ -668,6 +692,8 @@ class MergeServiceTests: XCTestCase {
                 // 1.5 ensures we trigger the timeout
                 scheduler.advance(by: .seconds(Int(1.5 * MergeServiceFixture.defaultStatusChecksTimeout)))
 
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
+
                 // ensure MergeService cleanup
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
@@ -701,6 +727,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -734,6 +761,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance(by: .seconds(5 * 30))
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -783,6 +811,8 @@ class MergeServiceTests: XCTestCase {
                 service.sendStatusEvent(state: .failure)
 
                 scheduler.advance(by: .seconds(60))
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
 
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
@@ -873,6 +903,8 @@ class MergeServiceTests: XCTestCase {
                 service.sendStatusEvent(state: .success, branches: [.init(name: pr2.reference.source.ref)])
 
                 scheduler.advance(by: .seconds(60)) // #4
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
         },
             assert: {
                 let pr3_tp = pr3.with(labels: [LabelFixture.integrationLabel, LabelFixture.topPriorityLabels[1]])
@@ -934,6 +966,7 @@ class MergeServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
                 scheduler.advance()
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
@@ -997,6 +1030,8 @@ class MergeServiceTests: XCTestCase {
                 expectedCommitStatus = CommitState.stub(states: [.success, .success])
 
                 scheduler.advance(by: .seconds(60))
+
+                scheduler.advance(by: .milliseconds(1)) // To go past ready -> idle transition
             },
             assert: {
                 expect($0) == [
