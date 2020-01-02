@@ -11,12 +11,9 @@ class DispatchServiceTests: XCTestCase {
             PullRequestMetadata.stub(number: $0, baseRef: "branch\($0)", labels: [LabelFixture.integrationLabel])
                 .with(mergeState: .clean)
         }
-
         func returnPR() -> (UInt) -> PullRequestMetadata {
             return { number in pullRequests[Int(number-1)] }
         }
-
-        let GitHubAPIDelayForTests: TimeInterval = 100
 
         perform(
             stubs: [
@@ -34,13 +31,8 @@ class DispatchServiceTests: XCTestCase {
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
             ],
-            enforceOrder: false,
-            apiMaxDelay: GitHubAPIDelayForTests,
             when: { service, scheduler in
-                scheduler.advance(by: .seconds(Int(GitHubAPIDelayForTests) * 15)) // enough for the number of tests * max delay
-                scheduler.advance(by: .seconds(10))
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
-                scheduler.advance(by: .seconds(1000)) // IOSP-443 delay
+                scheduler.advance()
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }
@@ -56,7 +48,6 @@ class DispatchServiceTests: XCTestCase {
                         .state(.stub(targetBranch: branch, status: .integrating(prForBranch))),
                         .state(.stub(targetBranch: branch, status: .ready)),
                         .state(.stub(targetBranch: branch, status: .idle)),
-                        .destroyed(branch: branch),
                     ]
                 }
             }
@@ -425,22 +416,18 @@ class DispatchServiceTests: XCTestCase {
         }
     }
 
-    var dispatchServiceContext: DispatchServiceContext?
-
     private func perform(
         requiresAllStatusChecks: Bool = false,
         stubs: [MockGitHubAPI.Stubs],
-        enforceOrder: Bool = true,
-        apiMaxDelay: TimeInterval = 0,
         when: (MockGitHubEventsService, TestScheduler) -> Void,
-        assert: @escaping ([DispatchServiceEvent]) -> Void
+        assert: ([DispatchServiceEvent]) -> Void
     ) {
 
         let scheduler = TestScheduler()
-        let gitHubAPI = MockGitHubAPI(stubs: stubs, scheduler: scheduler, apiMaxDelay: apiMaxDelay, enforceOrder: enforceOrder)
+        let gitHubAPI = MockGitHubAPI(stubs: stubs)
         let gitHubEvents = MockGitHubEventsService()
 
-        self.dispatchServiceContext = DispatchServiceContext(
+        let dispatchServiceContext = DispatchServiceContext(
             requiresAllStatusChecks: requiresAllStatusChecks,
             gitHubAPI: gitHubAPI,
             gitHubEvents: gitHubEvents,
@@ -449,12 +436,9 @@ class DispatchServiceTests: XCTestCase {
 
         when(gitHubEvents, scheduler)
 
-        assert(self.dispatchServiceContext!.events)
+        assert(dispatchServiceContext.events)
 
         expect(gitHubAPI.assert()) == true
-
-
-        self.dispatchServiceContext = nil
     }
     
 }

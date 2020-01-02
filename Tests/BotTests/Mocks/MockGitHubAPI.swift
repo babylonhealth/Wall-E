@@ -18,139 +18,109 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         case removeLabel((PullRequest.Label, PullRequest) -> Void)
     }
 
-    var stubs: Atomic<[Stubs]>
-    let scheduler: DateScheduler?
-    let apiMaxDelay: TimeInterval
-    let enforceOrder: Bool
+    let stubs: [Stubs]
 
-    init(stubs: [Stubs], scheduler: DateScheduler? = nil, apiMaxDelay: TimeInterval = 0, enforceOrder: Bool = true) {
-        self.stubs = Atomic(stubs)
-        self.scheduler = scheduler
-        self.apiMaxDelay = apiMaxDelay
-        self.enforceOrder = enforceOrder
-    }
+    private let stubCount = Atomic(0)
 
     func assert() -> Bool {
-        return stubs.value.isEmpty
+        return stubCount.value == stubs.count
     }
 
     func fetchPullRequests() -> SignalProducer<[PullRequest], AnyError> {
-        return nextStub { stub in
-            if case let .getPullRequests(handler) = stub {
-                return handler()
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .getPullRequests(handler):
+            return SignalProducer(value: handler())
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, AnyError> {
-        return nextStub { stub in
-            if case let .getPullRequest(handler) = stub {
-                return handler(number)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .getPullRequest(handler):
+            return SignalProducer(value: handler(number))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError> {
-        return nextStub { stub in
-            if case let .getCommitStatus(handler) = stub {
-                return handler(pullRequest)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .getCommitStatus(handler):
+            return SignalProducer(value: handler(pullRequest))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, AnyError> {
-        return nextStub { stub in
-            if case let .getRequiredStatusChecks(handler) = stub {
-                return handler(branch)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .getRequiredStatusChecks(handler):
+            return SignalProducer(value: handler(branch))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError> {
-        return nextStub { stub in
-            if case let .getAllStatusChecks(handler) = stub {
-                return handler(pullRequest)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .getAllStatusChecks(handler):
+            return SignalProducer(value: handler(pullRequest))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
-        return nextStub { stub in
-            if case let .mergeIntoBranch(handler) = stub {
-                return handler(base, head)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .mergeIntoBranch(handler):
+            return SignalProducer(value: handler(base, head))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
-        return nextStub { stub in
-            if case let .mergePullRequest(handler) = stub {
-                return handler(pullRequest)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .mergePullRequest(handler):
+            return SignalProducer(value: handler(pullRequest))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
-        return nextStub { stub in
-            if case let .deleteBranch(handler) = stub {
-                return handler(branch)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .deleteBranch(handler):
+            return SignalProducer(value: handler(branch))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
-        return nextStub { stub in
-            if case let .postComment(handler) = stub {
-                return handler(comment, pullRequest)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .postComment(handler):
+            return SignalProducer(value: handler(comment, pullRequest))
+        default:
+            fatalError("Stub not found")
         }
     }
 
     func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
-        return nextStub { stub in
-            if case let .removeLabel(handler) = stub {
-                return handler(label, pullRequest)
-            } else {
-                return nil
-            }
+        switch nextStub() {
+        case let .removeLabel(handler):
+            return SignalProducer(value: handler(label, pullRequest))
+        default:
+            fatalError("Stub not found")
         }
     }
 
-    private func nextStub<T>(matching: (Stubs) -> T?) -> SignalProducer<T, AnyError> {
-        let value = stubs.modify { stubs -> T in
-            for idx in stubs.indices {
-                if let t = matching(stubs[idx]) {
-                    stubs.remove(at: idx)
-                    return t
-                } else if enforceOrder {
-                    break
-                }
-            }
-            fatalError("Stub not found")
-        }
-        let signal = SignalProducer<T, AnyError>.value(value)
-        if let scheduler = scheduler, apiMaxDelay>0 {
-            return signal.delay(TimeInterval.random(in: 0..<apiMaxDelay), on: scheduler)
-        } else {
-            return signal
+    private func nextStub() -> Stubs {
+        return stubCount.modify { stubCount -> Stubs in
+            let nextStub = stubs[stubCount]
+            stubCount = stubCount + 1
+            return nextStub
         }
     }
 }
