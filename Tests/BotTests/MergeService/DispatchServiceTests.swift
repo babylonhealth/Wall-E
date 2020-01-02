@@ -40,6 +40,7 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance(by: .seconds(Int(GitHubAPIDelayForTests) * 15)) // enough for the number of tests * max delay
                 scheduler.advance(by: .seconds(10))
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
+                scheduler.advance(by: .seconds(1000)) // IOSP-443 delay
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }

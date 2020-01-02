@@ -109,12 +109,12 @@ extension ResponseTests {
 public func __allTests() -> [XCTestCaseEntry] {
     return [
         testCase(DispatchServiceTests.__allTests__DispatchServiceTests),
-        testCase(GitHubAPITests.__allTests__GitHubAPITests),
-        testCase(GitHubDecodingTests.__allTests__GitHubDecodingTests),
-        testCase(GitHubEventsTests.__allTests__GitHubEventsTests),
-        testCase(MergeServiceHealthcheckTests.__allTests__MergeServiceHealthcheckTests),
-        testCase(MergeServiceTests.__allTests__MergeServiceTests),
-        testCase(ResponseTests.__allTests__ResponseTests),
+//        testCase(GitHubAPITests.__allTests__GitHubAPITests),
+//        testCase(GitHubDecodingTests.__allTests__GitHubDecodingTests),
+//        testCase(GitHubEventsTests.__allTests__GitHubEventsTests),
+//        testCase(MergeServiceHealthcheckTests.__allTests__MergeServiceHealthcheckTests),
+//        testCase(MergeServiceTests.__allTests__MergeServiceTests),
+//        testCase(ResponseTests.__allTests__ResponseTests),
     ]
 }
 #endif
