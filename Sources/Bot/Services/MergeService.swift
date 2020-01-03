@@ -314,7 +314,7 @@ extension MergeService {
     // IOSP-443: Delay so that the RAF State machine doesn't receive 2 events at the exact same time on the same Signal
     // Otherwise the order on which they are processed can behave differently depending on the platform (macOS vs Linux)
     // And consequently make it non-deterministic (and non-testable either)
-    static let delayToAvoidSimultaneousEventsInRAF: TimeInterval = 0.001
+    static let delayToAvoidSimultaneousEventsInRAF: TimeInterval = 0
 }
 
 // MARK: - Feedbacks

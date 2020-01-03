@@ -35,6 +35,7 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance(by: mergeServiceStep)
                 scheduler.advance(by: mergeServiceStep)
                 scheduler.advance(by: mergeServiceStep)
+                scheduler.run()
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }
@@ -50,6 +51,7 @@ class DispatchServiceTests: XCTestCase {
                         .state(.stub(targetBranch: branch, status: .integrating(prForBranch))),
                         .state(.stub(targetBranch: branch, status: .ready)),
                         .state(.stub(targetBranch: branch, status: .idle)),
+                        .destroyed(branch: branch),
                     ]
                 }
             }
