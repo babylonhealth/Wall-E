@@ -70,7 +70,7 @@ public final class MergeService {
         state = Property<State>(
             initial: initialState,
             scheduler: scheduler,
-            reduce: MergeService.reduce,
+            reduce: MergeService.reduce(logger),
             feedbacks: [
                 Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
@@ -94,7 +94,8 @@ public final class MergeService {
             }
     }
 
-    static func reduce(state: State, event: Event) -> State {
+    static func reduce(_ logger: LoggerProtocol) -> (State, Event) -> State { return { (state: State, event: Event) -> State in
+        logger.log(">==> [\(state.targetBranch)]: reduce \(state.status) using event \(event)")
         let reducedState: State? = {
             switch state.status {
             case .idle:
@@ -113,7 +114,7 @@ public final class MergeService {
         }()
 
         return reducedState ?? state.reduceDefault(with: event)
-    }
+    } }
 }
 
 // MARK: - System types
