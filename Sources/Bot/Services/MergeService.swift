@@ -73,7 +73,7 @@ public final class MergeService {
             reduce: MergeService.reduce(logger),
             feedbacks: [
                 Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
-                Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler, logger: logger),
+                Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
                 Feedbacks.whenIntegrationFailed(github: self.gitHubAPI, logger: logger, scheduler: scheduler),
@@ -84,12 +84,11 @@ public final class MergeService {
 
         healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
 
-        state.producer.observe(on: scheduler).startWithValues { state in
+        state.producer.startWithValues { state in
             logger.log(">>>> [\(state.targetBranch)].state.status = \(state.status)")
         }
         state.producer
             .combinePrevious()
-            .observe(on: scheduler)
             .startWithValues { old, new in
                 logger.log("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
@@ -368,25 +367,16 @@ extension MergeService {
         }
     }
 
-    fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: DateScheduler, logger: LoggerProtocol) -> Feedback<State, Event> {
+    fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: DateScheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
-            logger.log("[\(state.targetBranch)] Feedbacks.whenReady")
             guard let next = state.pullRequests.first else {
                 return SignalProducer
                     .value(.noMorePullRequests)
-//                    .observe(on: scheduler)
-                    .logEvents { (identifier, message, _, _, _) in
-                        logger.log(" -> [\(state.targetBranch)] whenReady.noMorePullRequests: \(message)")
-                    }
                     .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
             }
 
             // Refresh pull request to ensure an up-to-date state
             return github.fetchPullRequest(number: next.number)
-//                .observe(on: scheduler)
-                .logEvents { (identifier, message, _, _, _) in
-                    logger.log(" -> [\(state.targetBranch)] whenReady.fetchPullRequest(\(next.number)): \(message)")
-                }
                 .flatMapError { _ in .empty }
                 .map(Event.integrate)
                 .observe(on: scheduler)
