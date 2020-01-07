@@ -374,7 +374,7 @@ extension MergeService {
             guard let next = state.pullRequests.first else {
                 return SignalProducer
                     .value(.noMorePullRequests)
-                    .observe(on: scheduler)
+//                    .observe(on: scheduler)
                     .logEvents { (identifier, message, _, _, _) in
                         logger.log(" -> [\(state.targetBranch)] whenReady.noMorePullRequests: \(message)")
                     }
@@ -383,7 +383,7 @@ extension MergeService {
 
             // Refresh pull request to ensure an up-to-date state
             return github.fetchPullRequest(number: next.number)
-                .observe(on: scheduler)
+//                .observe(on: scheduler)
                 .logEvents { (identifier, message, _, _, _) in
                     logger.log(" -> [\(state.targetBranch)] whenReady.fetchPullRequest(\(next.number)): \(message)")
                 }
