@@ -19,7 +19,7 @@ references:
 jobs:
   test:
     docker:
-      - image: vapor/swift:5.0
+      - image: vapor/swift:5.1
     steps:
       - checkout
       - run:
