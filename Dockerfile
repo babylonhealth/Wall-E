@@ -1,9 +1,9 @@
-FROM swift:5.1
+FROM vapor/swift:5.1
 
 WORKDIR /Wall-E
 COPY . /Wall-E
 
-RUN swift build -c release
+RUN swift build --jobs 1 -c release
 
 EXPOSE 2008
 
