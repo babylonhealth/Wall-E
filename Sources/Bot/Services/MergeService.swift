@@ -612,7 +612,7 @@ extension MergeService {
         return Feedback { state in
             return pullRequestChanges
                 .observe(on: scheduler)
-                .filterMap { metadata, action in
+                .compactMap { metadata, action in
                     switch action {
                     case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
                         return .include(metadata.reference)
