@@ -69,7 +69,7 @@ public final class MergeService {
         state = Property<State>(
             initial: initialState,
             scheduler: scheduler,
-            reduce: MergeService.reduce(logger),
+            reduce: MergeService.reduce,
             feedbacks: [
                 Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
@@ -83,9 +83,6 @@ public final class MergeService {
 
         healthcheck = Healthcheck(state: state.signal, statusChecksTimeout: statusChecksTimeout, scheduler: scheduler)
 
-        state.producer.startWithValues { state in
-            logger.log(">>>> [\(state.targetBranch)].state.status = \(state.status)")
-        }
         state.producer
             .combinePrevious()
             .startWithValues { old, new in
@@ -93,8 +90,7 @@ public final class MergeService {
             }
     }
 
-    static func reduce(_ logger: LoggerProtocol) -> (State, Event) -> State { return { (state: State, event: Event) -> State in
-        logger.log(">==> [\(state.targetBranch)]: reduce \(state.status) using event \(event)")
+    static func reduce(state: State, event: Event) -> State {
         let reducedState: State? = {
             switch state.status {
             case .idle:
@@ -113,7 +109,7 @@ public final class MergeService {
         }()
 
         return reducedState ?? state.reduceDefault(with: event)
-    } }
+    }
 }
 
 // MARK: - System types
