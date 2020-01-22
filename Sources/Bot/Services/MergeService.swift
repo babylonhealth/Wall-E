@@ -1,5 +1,4 @@
 import Foundation
-import Result
 import ReactiveSwift
 import ReactiveFeedback
 
@@ -11,11 +10,11 @@ public final class MergeService {
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
-    private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>
-    internal let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), NoError>.Observer
+    private let pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), Never>
+    internal let pullRequestChangesObserver: Signal<(PullRequestMetadata, PullRequest.Action), Never>.Observer
 
-    private let statusChecksCompletion: Signal<StatusEvent, NoError>
-    internal let statusChecksCompletionObserver: Signal<StatusEvent, NoError>.Observer
+    private let statusChecksCompletion: Signal<StatusEvent, Never>
+    internal let statusChecksCompletionObserver: Signal<StatusEvent, Never>.Observer
 
     /// Instantiates a `MergeService` for a given target branch.
     ///
@@ -330,11 +329,11 @@ extension MergeService {
 
         return Feedback(
             deriving: { state in state.combinePrevious() },
-            effects: { previous, current -> SignalProducer<Event, NoError> in
+            effects: { previous, current -> SignalProducer<Event, Never> in
 
                 let actions = current.pullRequests
                     .enumerated()
-                    .map { index, pullRequest -> SignalProducer<(), NoError> in
+                    .map { index, pullRequest -> SignalProducer<(), Never> in
 
                         guard previous.pullRequests.firstIndex(of: pullRequest) == nil
                             else { return .empty }
@@ -360,7 +359,7 @@ extension MergeService {
     }
 
     fileprivate static func whenStarting(initialPullRequests: [PullRequest], scheduler: DateScheduler) -> Feedback<State, Event> {
-        return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, NoError> in
+        return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, Never> in
             return SignalProducer
                 .value(Event.pullRequestsLoaded(initialPullRequests))
                 .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
@@ -368,7 +367,7 @@ extension MergeService {
     }
 
     fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: DateScheduler) -> Feedback<State, Event> {
-        return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, NoError> in
+        return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, Never> in
             guard let next = state.pullRequests.first else {
                 return SignalProducer
                     .value(.noMorePullRequests)
@@ -386,16 +385,17 @@ extension MergeService {
     fileprivate static func whenIntegrating(
         github: GitHubAPIProtocol,
         requiresAllStatusChecks: Bool,
-        pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
+        pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), Never>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
 
         enum IntegrationError: Error {
+            case mergeFailed(GitHubClient.Error)
             case stateCouldNotBeDetermined
             case synchronizationFailed
         }
 
-        return Feedback(skippingRepeated: { $0.status.integrationMetadata }) { metadata -> SignalProducer<Event, NoError> in
+        return Feedback(skippingRepeated: { $0.status.integrationMetadata }) { metadata -> SignalProducer<Event, Never> in
 
             guard metadata.isMerged == false else {
                 return SignalProducer
@@ -407,16 +407,17 @@ extension MergeService {
             case .clean,
                  .unstable where !requiresAllStatusChecks:
                 return github.mergePullRequest(metadata.reference)
-                    .flatMap(.latest) { () -> SignalProducer<(), NoError> in
+                    .flatMap(.latest) { () -> SignalProducer<(), Never> in
                         github.deleteBranch(named: metadata.reference.source)
                             .flatMapError { _ in .empty }
                     }
-                    .then(SignalProducer<Event, NoError>.value(Event.integrationDidChangeStatus(.done, metadata)))
+                    .then(SignalProducer<Event, Never>.value(Event.integrationDidChangeStatus(.done, metadata)))
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.mergeFailed), metadata)) }
                     .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
             case .behind:
                 return github.merge(head: metadata.reference.target, into: metadata.reference.source)
-                    .flatMap(.latest) { result -> SignalProducer<Event, AnyError> in
+                    .mapError(IntegrationError.mergeFailed)
+                    .flatMap(.latest) { result -> SignalProducer<Event, IntegrationError> in
                         switch result {
                         case .success:
                             return pullRequestChanges.filter { changedMetadata, action in
@@ -431,7 +432,7 @@ extension MergeService {
                                 .promoteError()
                                 .timeout(
                                     after: 60.0,
-                                    raising: AnyError(IntegrationError.synchronizationFailed), on: scheduler
+                                    raising: IntegrationError.synchronizationFailed, on: scheduler
                                 )
                         case .upToDate:
                             return .value(.integrationDidChangeStatus(.updating, metadata))
@@ -446,14 +447,14 @@ extension MergeService {
                 let pullRequest = metadata.reference
                 return github.fetchAllStatusChecks(for: pullRequest).map { statusChecks -> Bool in
                     return statusChecks.map({ $0.state }).contains(.pending)
-                }.flatMap(.latest) { pendingStatusChecks -> SignalProducer<Event, AnyError> in
+                }.flatMap(.latest) { pendingStatusChecks -> SignalProducer<Event, GitHubClient.Error> in
                     if pendingStatusChecks {
                         return SignalProducer
                             .value(.integrationDidChangeStatus(.updating, metadata))
                             .observe(on: scheduler)
                     } else {
                         return github.fetchCommitStatus(for: metadata.reference)
-                            .flatMap(.latest) { commitStatus -> SignalProducer<Event, AnyError> in
+                            .flatMap(.latest) { commitStatus -> SignalProducer<Event, GitHubClient.Error> in
                                 switch commitStatus.state {
                                 case .pending:
                                     return .value(.integrationDidChangeStatus(.updating, metadata))
@@ -508,7 +509,7 @@ extension MergeService {
         github: GitHubAPIProtocol,
         logger: LoggerProtocol,
         requiresAllStatusChecks: Bool,
-        statusChecksCompletion: Signal<StatusEvent, NoError>,
+        statusChecksCompletion: Signal<StatusEvent, Never>,
         scheduler: DateScheduler
     ) -> Feedback<State, Event> {
 
@@ -525,7 +526,7 @@ extension MergeService {
             }
         }
 
-        return Feedback(skippingRepeated: Context.init) { context -> Signal<Event, NoError> in
+        return Feedback(skippingRepeated: Context.init) { context -> Signal<Event, Never> in
 
             enum TimeoutError: Error {
                 case timedOut
@@ -547,7 +548,7 @@ extension MergeService {
                 .flatMap(.latest) { change in
                     github.fetchPullRequest(number: pullRequest.number)
                         .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
-                        .flatMap(.latest) { commitStatus, pullRequestMetadataRefreshed -> SignalProducer<(CommitState.State, PullRequestMetadata), AnyError> in
+                        .flatMap(.latest) { commitStatus, pullRequestMetadataRefreshed -> SignalProducer<(CommitState.State, PullRequestMetadata), GitHubClient.Error> in
                             let requiredStateProducer = requiresAllStatusChecks
                                 ? .value(commitStatus.state)
                                 : getRequiredChecksState(github: github, targetBranch: pullRequest.target, commitState: commitStatus)
@@ -598,7 +599,7 @@ extension MergeService {
             }
         }
 
-        return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, NoError> in
+        return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, Never> in
             return SignalProducer.merge(
                 github.postComment(handler.failureMessage, in: handler.pullRequest)
                     .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)") }),
@@ -612,7 +613,7 @@ extension MergeService {
     }
 
     fileprivate static func pullRequestChanges(
-        pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), NoError>,
+        pullRequestChanges: Signal<(PullRequestMetadata, PullRequest.Action), Never>,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
         return Feedback { state in
@@ -643,7 +644,7 @@ extension MergeService {
         github: GitHubAPIProtocol,
         targetBranch: PullRequest.Branch,
         commitState: CommitState
-    ) -> SignalProducer<CommitState.State, AnyError> {
+    ) -> SignalProducer<CommitState.State, GitHubClient.Error> {
         if commitState.state == .success {
             return .value(.success)
         }
@@ -762,7 +763,7 @@ extension MergeService {
         }
 
         internal init(
-            state: Signal<State, NoError>,
+            state: Signal<State, Never>,
             statusChecksTimeout: TimeInterval,
             scheduler: DateScheduler
         ) {
@@ -773,7 +774,7 @@ extension MergeService {
                     .skipRepeats { lhs, rhs in
                         return lhs == rhs
                     }
-                    .flatMap(.latest) { _, current -> SignalProducer<Status, NoError> in
+                    .flatMap(.latest) { _, current -> SignalProducer<Status, Never> in
                         switch current.status {
                         case .starting, .idle:
                             return SignalProducer(value: .ok)

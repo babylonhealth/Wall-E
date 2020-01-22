@@ -20,7 +20,7 @@ extension Environment {
     }
 
     static func requiresAllGitHubStatusChecks() throws -> Bool {
-        guard let stringValue: String = try? Environment.get("REQUIRES_ALL_STATUS_CHECKS") else {
+        guard let stringValue: String = Environment.get("REQUIRES_ALL_STATUS_CHECKS") else {
             return false // defaults to only consider required checks
         }
         return ["yes", "1", "true"].contains(stringValue.lowercased())

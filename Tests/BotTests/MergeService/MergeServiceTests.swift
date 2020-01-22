@@ -1,7 +1,6 @@
 import XCTest
 import Nimble
 import ReactiveSwift
-import Result
 @testable import Bot
 
 struct MockLogger: LoggerProtocol {

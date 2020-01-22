@@ -1,6 +1,21 @@
 import XCTest
 import Nimble
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 @testable import Bot
+
+extension Result {
+
+    var value: Success? {
+        switch self {
+        case let .success(value):
+            return value
+        default:
+            return nil
+        }
+    }
+}
 
 class GitHubAPITests: XCTestCase {
 

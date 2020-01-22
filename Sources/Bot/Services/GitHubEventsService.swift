@@ -1,10 +1,9 @@
 import Foundation
 import ReactiveSwift
-import Result
 import CryptoSwift
 
 public protocol GitHubEventsServiceProtocol {
-    var events: Signal<Event, NoError> { get }
+    var events: Signal<Event, Never> { get }
 }
 
 public final class GitHubEventsService: GitHubEventsServiceProtocol {
@@ -24,8 +23,8 @@ public final class GitHubEventsService: GitHubEventsServiceProtocol {
 
     private let scheduler: Scheduler
     private let signatureVerifier: (RequestProtocol) -> Result<RequestProtocol, EventHandlingError>
-    private let eventsObserver: Signal<Event, NoError>.Observer
-    public let events: Signal<Event, NoError>
+    private let eventsObserver: Signal<Event, Never>.Observer
+    public let events: Signal<Event, Never>
 
     public init(signatureToken: Token, scheduler: Scheduler = QueueScheduler()) {
         self.signatureVerifier = GitHubEventsService.signatureVerifier(with: signatureToken)

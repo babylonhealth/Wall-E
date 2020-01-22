@@ -1,6 +1,5 @@
 import Foundation
 import ReactiveSwift
-import Result
 import Nimble
 @testable import Bot
 
@@ -26,7 +25,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         return stubCount.value == stubs.count
     }
 
-    func fetchPullRequests() -> SignalProducer<[PullRequest], AnyError> {
+    func fetchPullRequests() -> SignalProducer<[PullRequest], GitHubClient.Error> {
         switch nextStub() {
         case let .getPullRequests(handler):
             return SignalProducer(value: handler())
@@ -35,7 +34,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, AnyError> {
+    func fetchPullRequest(number: UInt) -> SignalProducer<PullRequestMetadata, GitHubClient.Error> {
         switch nextStub() {
         case let .getPullRequest(handler):
             return SignalProducer(value: handler(number))
@@ -44,7 +43,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, AnyError> {
+    func fetchCommitStatus(for pullRequest: PullRequest) -> SignalProducer<CommitState, GitHubClient.Error> {
         switch nextStub() {
         case let .getCommitStatus(handler):
             return SignalProducer(value: handler(pullRequest))
@@ -53,7 +52,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, AnyError> {
+    func fetchRequiredStatusChecks(for branch: PullRequest.Branch) -> SignalProducer<RequiredStatusChecks, GitHubClient.Error> {
         switch nextStub() {
         case let .getRequiredStatusChecks(handler):
             return SignalProducer(value: handler(branch))
@@ -62,7 +61,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], AnyError> {
+    func fetchAllStatusChecks(for pullRequest: PullRequest) -> SignalProducer<[PullRequest.StatusCheck], GitHubClient.Error> {
         switch nextStub() {
         case let .getAllStatusChecks(handler):
             return SignalProducer(value: handler(pullRequest))
@@ -71,7 +70,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, AnyError> {
+    func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> SignalProducer<MergeResult, GitHubClient.Error> {
         switch nextStub() {
         case let .mergeIntoBranch(handler):
             return SignalProducer(value: handler(base, head))
@@ -80,7 +79,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+    func mergePullRequest(_ pullRequest: PullRequest) -> SignalProducer<(), GitHubClient.Error> {
         switch nextStub() {
         case let .mergePullRequest(handler):
             return SignalProducer(value: handler(pullRequest))
@@ -89,7 +88,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), AnyError> {
+    func deleteBranch(named branch: PullRequest.Branch) -> SignalProducer<(), GitHubClient.Error> {
         switch nextStub() {
         case let .deleteBranch(handler):
             return SignalProducer(value: handler(branch))
@@ -98,7 +97,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+    func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<(), GitHubClient.Error> {
         switch nextStub() {
         case let .postComment(handler):
             return SignalProducer(value: handler(comment, pullRequest))
@@ -107,7 +106,7 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
-    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), AnyError> {
+    func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), GitHubClient.Error> {
         switch nextStub() {
         case let .removeLabel(handler):
             return SignalProducer(value: handler(label, pullRequest))

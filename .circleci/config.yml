@@ -19,15 +19,27 @@ references:
 jobs:
   test:
     docker:
-      - image: swift:4.2
+       - image: vapor/swift:5.1
     steps:
       - checkout
       - run:
           name: Compile code
-          command: swift build
+          command: swift build --jobs 1
       - run:
           name: Run unit tests
           command: swift test
+
+  build-image:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run:
+          name: Login in quay.io
+          command: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+      - run:
+          name: Deploy image
+          command: make build
 
   deploy:
     machine:
@@ -47,6 +59,9 @@ workflows:
   test-n-deploy:
     jobs:
       - test:
+          context: babylon
+          <<: *on_branches_and_tags
+      - build-image:
           context: babylon
           <<: *on_branches_and_tags
       - deploy:

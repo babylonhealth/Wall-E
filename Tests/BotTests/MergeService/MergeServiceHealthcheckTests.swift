@@ -1,7 +1,6 @@
 import XCTest
 import Nimble
 import ReactiveSwift
-import Result
 @testable import Bot
 
 class MergeServiceHealthcheckTests: XCTestCase {
@@ -82,10 +81,10 @@ class MergeServiceHealthcheckTests: XCTestCase {
     }
 
     private func perform(
-        when: (Signal<MergeService.State, NoError>.Observer, TestScheduler) -> Void,
+        when: (Signal<MergeService.State, Never>.Observer, TestScheduler) -> Void,
         assert: ([MergeService.Healthcheck.Status]) -> Void
     ) {
-        let state = Signal<MergeService.State, NoError>.pipe()
+        let state = Signal<MergeService.State, Never>.pipe()
         let scheduler = TestScheduler()
 
         var statuses: [MergeService.Healthcheck.Status] = []

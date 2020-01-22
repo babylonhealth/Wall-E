@@ -1,5 +1,4 @@
 import Foundation
-import Result
 
 extension JSONDecoder {
 
@@ -9,7 +8,7 @@ extension JSONDecoder {
         return decoder
     }
 
-    func decode<T: Decodable>(_ payload: Data) -> Result<T, DecodingError> {
+    func decode<T: Decodable>(_ payload: Data) -> Result<T, Error> {
         return Result(catching: { () -> T in
             try decode(T.self, from: payload)
         })

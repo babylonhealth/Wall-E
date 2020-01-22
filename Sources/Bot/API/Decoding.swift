@@ -1,5 +1,4 @@
 import Foundation
-import Result
 
 private let iso8601: DateFormatter = {
     let formatter = DateFormatter()
@@ -10,7 +9,7 @@ private let iso8601: DateFormatter = {
 }()
 
 func decode<T: Decodable>(_ response: Response) -> Result<T, GitHubClient.Error> {
-    return decode(response) {
+    return _decode(response) {
         JSONDecoder
             .with(dateDecodingStrategy: .formatted(iso8601))
             .decode($0.body)
@@ -18,12 +17,12 @@ func decode<T: Decodable>(_ response: Response) -> Result<T, GitHubClient.Error>
 }
 
 func decode(_ response: Response) -> Result<Void, GitHubClient.Error> {
-    return decode(response) { _ in .success(()) }
+    return _decode(response) { _ in .success(()) }
 }
 
-private func decode<T>(
+private func _decode<T>(
     _ response: Response,
-    with handler: (Response) -> Result<T, DecodingError>
+    with handler: (Response) -> Result<T, Error>
 ) -> Result<T, GitHubClient.Error> {
     switch response.statusCode {
     case 200...299:

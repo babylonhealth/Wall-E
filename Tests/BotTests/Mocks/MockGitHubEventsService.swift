@@ -1,10 +1,9 @@
 import ReactiveSwift
-import Result
 @testable import Bot
 
 struct MockGitHubEventsService: GitHubEventsServiceProtocol {
-    let eventsObserver: Signal<Event, NoError>.Observer
-    let events: Signal<Event, NoError>
+    let eventsObserver: Signal<Event, Never>.Observer
+    let events: Signal<Event, Never>
 
     init() {
         (events, eventsObserver) = Signal.pipe()

@@ -1,5 +1,4 @@
 import Foundation
-import Result
 
 internal struct Resource<T> {
     typealias Decoder = (Response) -> Result<T, GitHubClient.Error>
