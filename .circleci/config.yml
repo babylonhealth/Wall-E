@@ -24,7 +24,7 @@ jobs:
       - checkout
       - run:
           name: Compile code
-          command: swift build --jobs 1 --verbose
+          command: swift build --jobs 1
       - run:
           name: Run unit tests
           command: swift test
