@@ -18,8 +18,8 @@ references:
 
 jobs:
   test:
-    docker:
-      - image: vapor/swift:5.1
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
       # - run:
