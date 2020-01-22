@@ -31,10 +31,7 @@ class DispatchServiceTests: XCTestCase {
                 .deleteBranch { _ in },
             ],
             when: { service, scheduler in
-                scheduler.advance(by: mergeServiceStep)
-                scheduler.advance(by: mergeServiceStep)
-                scheduler.advance(by: mergeServiceStep)
-                scheduler.run()
+                scheduler.advance()
             },
             assert: { events in
                 let perBranchEvents = Dictionary(grouping: events) { $0.branch }
@@ -50,7 +47,6 @@ class DispatchServiceTests: XCTestCase {
                         .state(.stub(targetBranch: branch, status: .integrating(prForBranch))),
                         .state(.stub(targetBranch: branch, status: .ready)),
                         .state(.stub(targetBranch: branch, status: .idle)),
-                        .destroyed(branch: branch),
                     ]
                 }
             }
@@ -95,27 +91,24 @@ class DispatchServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked))
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: dev2)
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: rel3)
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendStatusEvent(state: .success)
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: mergeServiceStep)
-
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -183,27 +176,24 @@ class DispatchServiceTests: XCTestCase {
             ],
             when: { service, scheduler in
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: dev1.with(mergeState: .blocked))
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: dev2)
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendPullRequestEvent(action: .opened, pullRequestMetadata: rel3)
 
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 service.sendStatusEvent(state: .success)
 
                 scheduler.advance(by: .seconds(60))
 
-                scheduler.advance(by: mergeServiceStep)
-
-                scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -268,9 +258,9 @@ class DispatchServiceTests: XCTestCase {
             when: { service, scheduler in
 
                 // Start the state machine and integrate PR #1 (starting -> ready -> integrating -> ready -> idle)
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
                 service.sendPullRequestEvent(action: .synchronize, pullRequestMetadata: prs[0])
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 // Current state: idle
 
@@ -280,7 +270,7 @@ class DispatchServiceTests: XCTestCase {
                 // Start integrating PR #2 but keep it too long in status checks
                 // ( -> ready -> integrating -> runningStatusChecks -> 🕓 -> ❌ -> ready -> idle)
                 service.sendPullRequestEvent(action: .labeled, pullRequestMetadata: prs[1].with(mergeState: .blocked))
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 // Stay a bit in state .runningStatusChecks
                 scheduler.advance(by: almostCleanupDelay)
@@ -288,7 +278,7 @@ class DispatchServiceTests: XCTestCase {
 
                 // Then close it
                 service.sendPullRequestEvent(action: .closed, pullRequestMetadata: prs[1])
-                scheduler.advance(by: mergeServiceStep)
+                scheduler.advance()
 
                 // Current state: idle
 
@@ -385,11 +375,11 @@ class DispatchServiceTests: XCTestCase {
 
         expect(dispatchServiceContext.dispatchService.queueStates) == []
 
-        scheduler.advance(by: mergeServiceStep)
+        scheduler.advance()
         gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr2)
-        scheduler.advance(by: mergeServiceStep)
+        scheduler.advance()
         gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr3)
-        scheduler.advance(by: mergeServiceStep)
+        scheduler.advance()
 
         let jsonData = try JSONEncoder().encode(dispatchServiceContext.dispatchService.queueStates)
         XCTAssertEqualJSON(jsonData, DispatchServiceQueueStates)
@@ -397,8 +387,6 @@ class DispatchServiceTests: XCTestCase {
 }
 
 // MARK: - Helpers
-
-private let mergeServiceStep = DispatchTimeInterval.milliseconds(Int(1000*MergeService.delayToAvoidSimultaneousEventsInRAF))
 
 extension DispatchServiceTests {
     private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String, file: FileString = #file, line: UInt = #line) -> (String, PullRequest) -> Void {

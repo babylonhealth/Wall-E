@@ -306,11 +306,6 @@ extension MergeService {
             case failed(FailureReason)
         }
     }
-
-    // IOSP-443: Delay so that the RAF State machine doesn't receive 2 events at the exact same time on the same Signal
-    // Otherwise the order on which they are processed can behave differently depending on the platform (macOS vs Linux)
-    // And consequently make it non-deterministic (and non-testable either)
-    static let delayToAvoidSimultaneousEventsInRAF: TimeInterval = 0
 }
 
 // MARK: - Feedbacks
@@ -358,7 +353,7 @@ extension MergeService {
         return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, Never> in
             return SignalProducer
                 .value(Event.pullRequestsLoaded(initialPullRequests))
-                .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                .observe(on: scheduler)
         }
     }
 
@@ -367,7 +362,7 @@ extension MergeService {
             guard let next = state.pullRequests.first else {
                 return SignalProducer
                     .value(.noMorePullRequests)
-                    .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                    .observe(on: scheduler)
             }
 
             // Refresh pull request to ensure an up-to-date state
@@ -396,7 +391,7 @@ extension MergeService {
             guard metadata.isMerged == false else {
                 return SignalProducer
                     .value(.integrationDidChangeStatus(.done, metadata))
-                    .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                    .observe(on: scheduler)
             }
 
             switch metadata.mergeState {
@@ -409,7 +404,7 @@ extension MergeService {
                     }
                     .then(SignalProducer<Event, Never>.value(Event.integrationDidChangeStatus(.done, metadata)))
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.mergeFailed), metadata)) }
-                    .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                    .observe(on: scheduler)
             case .behind:
                 return github.merge(head: metadata.reference.target, into: metadata.reference.source)
                     .mapError(IntegrationError.mergeFailed)
@@ -437,7 +432,7 @@ extension MergeService {
                         }
                     }
                     .flatMapError { _ in .value(.integrationDidChangeStatus(.failed(.synchronizationFailed), metadata)) }
-                    .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                    .observe(on: scheduler)
             case .blocked,
                  .unstable:
                 let pullRequest = metadata.reference
@@ -472,10 +467,10 @@ extension MergeService {
                     }
                 }
                 .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.checkingCommitChecksFailed), metadata)) }
-                .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                .observe(on: scheduler)
             case .dirty:
                 return SignalProducer(value: Event.integrationDidChangeStatus(.failed(.conflicts), metadata))
-                    .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                    .observe(on: scheduler)
             case .unknown:
                 return SignalProducer<Event, IntegrationError> { observer, _ in
                     github.fetchPullRequest(number: metadata.reference.number)
@@ -496,7 +491,7 @@ extension MergeService {
                     }
                     .retry(upTo: 4, interval: 30.0, on: scheduler)
                     .flatMapError { _ in .value(Event.integrationDidChangeStatus(.failed(.unknown), metadata)) }
-                    .delay(MergeService.delayToAvoidSimultaneousEventsInRAF, on: scheduler)
+                    .observe(on: scheduler)
             }
         }
     }
