@@ -106,7 +106,7 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.sendStatusEvent(state: .success)
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
 
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
@@ -192,7 +192,7 @@ class DispatchServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
 
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
@@ -381,15 +381,14 @@ class DispatchServiceTests: XCTestCase {
         gitHubEvents.sendPullRequestEvent(action: .labeled, pullRequestMetadata: pr3)
         scheduler.advance()
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(dispatchServiceContext.dispatchService.queueStates)
-        let json = String(data: data, encoding: .utf8)
-        expect(json) == DispatchServiceQueueStates
+        let jsonData = try JSONEncoder().encode(dispatchServiceContext.dispatchService.queueStates)
+        XCTAssertEqualJSON(jsonData, DispatchServiceQueueStates)
     }
+}
 
-    // MARK: - Helpers
+// MARK: - Helpers
 
+extension DispatchServiceTests {
     private func checkComment(_ expectedPRNumber: UInt, _ expectedMessage: String, file: FileString = #file, line: UInt = #line) -> (String, PullRequest) -> Void {
         return { message, pullRequest in
             expect(pullRequest.number, file: file, line: line) == expectedPRNumber
@@ -440,5 +439,4 @@ class DispatchServiceTests: XCTestCase {
 
         expect(gitHubAPI.assert()) == true
     }
-    
 }

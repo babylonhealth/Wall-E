@@ -91,7 +91,6 @@ public final class MergeService {
     }
 
     static func reduce(state: State, event: Event) -> State {
-
         let reducedState: State? = {
             switch state.status {
             case .idle:
@@ -307,6 +306,12 @@ extension MergeService {
             case failed(FailureReason)
         }
     }
+
+    /// Checks can complete and lead to new checks which can be included posteriorly leading to a small time
+    /// window where all checks have passed but just until the next check is added and starts running. This
+    /// hopefully prevents those false positives by making sure we wait some time before checking if all
+    /// checks have passed
+    static let additionalStatusChecksGracePeriod: TimeInterval = 60.0
 }
 
 // MARK: - Feedbacks
@@ -358,9 +363,8 @@ extension MergeService {
         }
     }
 
-    fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: Scheduler) -> Feedback<State, Event> {
+    fileprivate static func whenReady(github: GitHubAPIProtocol, scheduler: DateScheduler) -> Feedback<State, Event> {
         return Feedback(predicate: { $0.status == .ready }) { state -> SignalProducer<Event, Never> in
-
             guard let next = state.pullRequests.first else {
                 return SignalProducer
                     .value(.noMorePullRequests)
@@ -390,8 +394,11 @@ extension MergeService {
 
         return Feedback(skippingRepeated: { $0.status.integrationMetadata }) { metadata -> SignalProducer<Event, Never> in
 
-            guard metadata.isMerged == false
-                else { return .value(.integrationDidChangeStatus(.done, metadata)) }
+            guard metadata.isMerged == false else {
+                return SignalProducer
+                    .value(.integrationDidChangeStatus(.done, metadata))
+                    .observe(on: scheduler)
+            }
 
             switch metadata.mergeState {
             case .clean,
@@ -439,7 +446,9 @@ extension MergeService {
                     return statusChecks.map({ $0.state }).contains(.pending)
                 }.flatMap(.latest) { pendingStatusChecks -> SignalProducer<Event, GitHubClient.Error> in
                     if pendingStatusChecks {
-                        return .value(.integrationDidChangeStatus(.updating, metadata))
+                        return SignalProducer
+                            .value(.integrationDidChangeStatus(.updating, metadata))
+                            .observe(on: scheduler)
                     } else {
                         return github.fetchCommitStatus(for: metadata.reference)
                             .flatMap(.latest) { commitStatus -> SignalProducer<Event, GitHubClient.Error> in
@@ -528,11 +537,7 @@ extension MergeService {
                 .on { change in
                     logger.log("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
                 }
-                // Checks can complete and lead to new checks which can be included posteriorly leading to a small time
-                // window where all checks have passed but just until the next check is added and starts running. This
-                // hopefully prevents those false positives by making sure we wait some time before checking if all
-                // checks have passed
-                .debounce(60.0, on: scheduler)
+                .debounce(additionalStatusChecksGracePeriod, on: scheduler)
                 .flatMap(.latest) { change in
                     github.fetchPullRequest(number: pullRequest.number)
                         .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
@@ -543,7 +548,7 @@ extension MergeService {
                             return requiredStateProducer.zip(with: .value(pullRequestMetadataRefreshed))
                         }
                         .flatMapError { _ in .empty }
-                        .filterMap { state, pullRequestMetadataRefreshed in
+                        .compactMap { state, pullRequestMetadataRefreshed in
                             switch state {
                             case .pending:
                                 return nil
@@ -607,7 +612,7 @@ extension MergeService {
         return Feedback { state in
             return pullRequestChanges
                 .observe(on: scheduler)
-                .filterMap { metadata, action in
+                .compactMap { metadata, action in
                     switch action {
                     case .opened where metadata.reference.isLabelled(with: state.integrationLabel):
                         return .include(metadata.reference)
@@ -784,6 +789,12 @@ extension MergeService {
 }
 
 // MARK: - Helpers
+
+extension MergeService: CustomStringConvertible {
+    public var description: String {
+        return "<MergeService for '\(state.value.targetBranch): \(state.value)>"
+    }
+}
 
 extension MergeService.State: CustomStringConvertible {
 
