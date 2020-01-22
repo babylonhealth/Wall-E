@@ -22,12 +22,12 @@ jobs:
       - image: vapor/swift:5.1
     steps:
       - checkout
-      - run:
-          name: Compile code
-          command: swift build --verbose
-      - run:
-          name: Run unit tests
-          command: swift test
+      # - run:
+      #     name: Compile code
+      #     command: swift build --verbose
+      # - run:
+      #     name: Run unit tests
+      #     command: swift test
       - run:
           name: Login in quay.io
           command: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
