@@ -37,6 +37,9 @@ jobs:
       - run:
           name: Login in quay.io
           command: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+      - run:
+          name: Deploy image
+          command: make build
 
   deploy:
     machine:
