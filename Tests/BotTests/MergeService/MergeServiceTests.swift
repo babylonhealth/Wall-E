@@ -194,7 +194,7 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(60)) // to go past the delay waiting for potential new CI checks to pop up
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
             },
             assert: {
                 expect($0) == [
@@ -266,7 +266,7 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
             },
             assert: {
                 expect($0) == [
@@ -358,7 +358,7 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
 
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
@@ -472,7 +472,7 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .failure)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
             },
             assert: {
                 expect($0) == [
@@ -518,7 +518,7 @@ class MergeServiceTests: XCTestCase {
 
                 for _ in 1...3 {
                     service.sendStatusEvent(state: .success)
-                    scheduler.advance(by: .seconds(60))
+                    scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
                 }
             },
             assert: {
@@ -569,14 +569,14 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance() // 1
 
-                scheduler.advance(by: .seconds(60)) // 2
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 2
                 service.sendStatusEvent(index: 0, state: .success)
                 // service.sendStatusEvent(index: 1, state: .success)
-                scheduler.advance(by: .seconds(60)) // 3
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 3
                 service.sendStatusEvent(index: 3, state: .success)
-                scheduler.advance(by: .seconds(60)) // 4
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 4
                 service.sendStatusEvent(index: 2, state: .failure)
-                scheduler.advance(by: .seconds(60)) // 5
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 5
             },
             assert: {
                 expect($0) == [
@@ -621,14 +621,14 @@ class MergeServiceTests: XCTestCase {
 
                 scheduler.advance() // 1
 
-                scheduler.advance(by: .seconds(60)) // 2
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 2
                 service.sendStatusEvent(index: 0, state: .success)
                 // service.sendStatusEvent(index: 1, state: .success)
-                scheduler.advance(by: .seconds(60)) // 3
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 3
                 service.sendStatusEvent(index: 3, state: .success)
-                scheduler.advance(by: .seconds(60)) // 4
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 4
                 service.sendStatusEvent(index: 2, state: .failure)
-                scheduler.advance(by: .seconds(60)) // 5
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // 5
         },
             assert: {
                 expect($0) == [
@@ -698,7 +698,7 @@ class MergeServiceTests: XCTestCase {
                 .deleteBranch { _ in }
             ],
             when: { service, scheduler in
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
             assert: {
@@ -780,7 +780,7 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .failure)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
 
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },
@@ -870,7 +870,7 @@ class MergeServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success, branches: [.init(name: pr2.reference.source.ref)])
 
-                scheduler.advance(by: .seconds(60)) // #4
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod) // #4
         },
             assert: {
                 let pr3_tp = pr3.with(labels: [LabelFixture.integrationLabel, LabelFixture.topPriorityLabels[1]])
@@ -994,7 +994,7 @@ class MergeServiceTests: XCTestCase {
                 expectedPullRequest = MergeServiceFixture.defaultTarget.with(mergeState: .clean)
                 expectedCommitStatus = CommitState.stub(states: [.success, .success])
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
             },
             assert: {
                 expect($0) == [

@@ -306,6 +306,12 @@ extension MergeService {
             case failed(FailureReason)
         }
     }
+
+    /// Checks can complete and lead to new checks which can be included posteriorly leading to a small time
+    /// window where all checks have passed but just until the next check is added and starts running. This
+    /// hopefully prevents those false positives by making sure we wait some time before checking if all
+    /// checks have passed
+    static let additionalStatusChecksGracePeriod: TimeInterval = 60.0
 }
 
 // MARK: - Feedbacks
@@ -531,11 +537,7 @@ extension MergeService {
                 .on { change in
                     logger.log("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
                 }
-                // Checks can complete and lead to new checks which can be included posteriorly leading to a small time
-                // window where all checks have passed but just until the next check is added and starts running. This
-                // hopefully prevents those false positives by making sure we wait some time before checking if all
-                // checks have passed
-                .debounce(60.0, on: scheduler)
+                .debounce(additionalStatusChecksGracePeriod, on: scheduler)
                 .flatMap(.latest) { change in
                     github.fetchPullRequest(number: pullRequest.number)
                         .flatMap(.latest) { github.fetchCommitStatus(for: $0.reference).zip(with: .value($0)) }
@@ -546,7 +548,7 @@ extension MergeService {
                             return requiredStateProducer.zip(with: .value(pullRequestMetadataRefreshed))
                         }
                         .flatMapError { _ in .empty }
-                        .filterMap { state, pullRequestMetadataRefreshed in
+                        .compactMap { state, pullRequestMetadataRefreshed in
                             switch state {
                             case .pending:
                                 return nil

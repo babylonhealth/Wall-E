@@ -106,7 +106,7 @@ class DispatchServiceTests: XCTestCase {
                 scheduler.advance()
 
                 service.sendStatusEvent(state: .success)
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
 
                 // Let the services stay .idle for the cleanup delay so they end up being destroyed
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
@@ -192,7 +192,7 @@ class DispatchServiceTests: XCTestCase {
 
                 service.sendStatusEvent(state: .success)
 
-                scheduler.advance(by: .seconds(60))
+                scheduler.advance(by: DispatchServiceContext.additionalStatusChecksGracePeriod)
 
                 scheduler.advance(by: DispatchServiceContext.idleCleanupDelay)
             },

@@ -54,4 +54,5 @@ class DispatchServiceContext {
     }
 
     static let idleCleanupDelay: DispatchTimeInterval = .seconds(Int(MergeServiceFixture.defaultIdleCleanupDelay))
+    static let additionalStatusChecksGracePeriod: DispatchTimeInterval = .seconds(Int(MergeService.additionalStatusChecksGracePeriod))
 }
