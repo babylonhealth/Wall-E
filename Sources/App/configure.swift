@@ -1,5 +1,8 @@
 import Bot
 import Vapor
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 enum ConfigurationError: Error {
     case missingConfiguration(message: String)

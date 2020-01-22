@@ -1,5 +1,8 @@
 import XCTest
 import Nimble
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 @testable import Bot
 
 extension Result {

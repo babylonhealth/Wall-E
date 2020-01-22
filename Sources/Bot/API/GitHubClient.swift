@@ -1,5 +1,8 @@
 import Foundation
 import ReactiveSwift
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public struct GitHubClient {
     private let session: URLSession
