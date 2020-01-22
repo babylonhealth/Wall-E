@@ -18,16 +18,13 @@ references:
 
 jobs:
   test:
-    machine:
-      image: ubuntu-1604:201903-01
+    docker:
+       - image: vapor/swift:5.1
     steps:
       - checkout
       - run:
-          name: Install Swift
-          command: eval "$(curl -sL https://swiftenv.fuller.li/install.sh)"
-      - run:
           name: Compile code
-          command: swift build --verbose
+          command: swift build --jobs 1 --verbose
       - run:
           name: Run unit tests
           command: swift test
