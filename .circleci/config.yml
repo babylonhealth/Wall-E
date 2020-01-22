@@ -22,18 +22,15 @@ jobs:
       image: ubuntu-1604:201903-01
     steps:
       - checkout
-      # - run:
-      #     name: Compile code
-      #     command: swift build --verbose
-      # - run:
-      #     name: Run unit tests
-      #     command: swift test
       - run:
-          name: Login in quay.io
-          command: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+          name: Install Swift
+          command: eval "$(curl -sL https://swiftenv.fuller.li/install.sh)"
       - run:
-          name: Build image
-          command: make build
+          name: Compile code
+          command: swift build --verbose
+      - run:
+          name: Run unit tests
+          command: swift test
 
   deploy:
     machine:
