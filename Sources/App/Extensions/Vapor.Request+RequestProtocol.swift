@@ -1,7 +1,6 @@
 import Foundation
 import Bot
 import Vapor
-import Result
 import ReactiveSwift
 
 extension Vapor.HTTPBody: HTTPBodyProtocol {}
@@ -19,7 +18,7 @@ extension Vapor.Request: RequestProtocol {
     public func decodeBody<T>(
         _ type: T.Type,
         using scheduler: Scheduler
-    ) -> SignalProducer<T, AnyError> where T: Decodable {
+    ) -> SignalProducer<T, Error> where T: Decodable {
         return SignalProducer { [content] observer, disposable in
             guard disposable.hasEnded == false else { return }
 
@@ -28,7 +27,7 @@ extension Vapor.Request: RequestProtocol {
                 observer.send(value: value)
                 observer.sendCompleted()
             } catch let error {
-                observer.send(error: AnyError(error))
+                observer.send(error: error)
             }
         }.start(on: scheduler)
     }
