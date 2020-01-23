@@ -46,8 +46,8 @@ private func makeDispatchService(with logger: LoggerProtocol, _ gitHubEventsServ
         integrationLabel: try Environment.mergeLabel(),
         topPriorityLabels: try Environment.topPriorityLabels(),
         requiresAllStatusChecks: try Environment.requiresAllGitHubStatusChecks(),
-        statusChecksTimeout: try Environment.statusChecksTimeout() ?? 90.minutes,
-        idleMergeServiceCleanupDelay: try Environment.idleMergeServiceCleanupDelay() ?? 5.minutes,
+        statusChecksTimeout: Environment.statusChecksTimeout() ?? 90.minutes,
+        idleMergeServiceCleanupDelay: Environment.idleMergeServiceCleanupDelay() ?? 5.minutes,
         logger: logger,
         gitHubAPI: gitHubAPI,
         gitHubEvents: gitHubEventsService
