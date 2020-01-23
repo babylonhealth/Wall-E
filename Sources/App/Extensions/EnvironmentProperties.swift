@@ -32,13 +32,14 @@ extension Environment {
         return ["yes", "1", "true"].contains(stringValue.lowercased())
     }
 
-    /// Maximum time to wait for a status check to finish running and report a red/green status
+    /// Maximum time (in seconds) to wait for a status check to finish running and report a red/green status
     static func statusChecksTimeout() throws -> TimeInterval? {
         let value: String = try Environment.get("STATUS_CHECKS_TIMEOUT")
         return TimeInterval(value)
     }
 
-    /// Delay to wait after a MergeService is back in idle state before killing it. Defaults to 5 minutes.
+    /// Delay (in seconds) to wait after a MergeService is back in idle state before killing it.
+    /// Defaults to 300 seconds (5 minutes)
     static func idleMergeServiceCleanupDelay() throws -> TimeInterval? {
         let value: String? = Environment.get("IDLE_BRANCH_QUEUE_CLEANUP_DELAY")
         return value.flatMap(TimeInterval.init)
