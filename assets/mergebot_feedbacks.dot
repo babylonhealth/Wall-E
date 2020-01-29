@@ -1,6 +1,7 @@
 # https://edotor.net/
 
 digraph MergeBot {
+    pack=true
 
     subgraph states {
         node [shape=oval][style=filled,fillcolor=lightgray]
