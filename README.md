@@ -85,7 +85,7 @@ Below are some diagrams to help you visualise the ReactiveFeedback state machine
 <details>
 <summary>▶️ Action/Feedbacks Diagrams</summary>
 
-![State Diagram](assets/mergebot_feedbacks.png)
+![Action/Feedbacks Diagrams](assets/mergebot_feedbacks.png)
 
 </details>
 
