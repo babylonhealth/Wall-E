@@ -23,13 +23,21 @@ Depending on the workflow of each team some of them may be disabled to suit thei
 👷‍♀️ **WIP, come back later** 👷‍♂️
 
 ![](https://media.giphy.com/media/26ybvJNaZZKpPONEc/giphy.gif)
+### Client app (Menu Icon)
 
-### Client app
+This repository also comes with a Client app that allows you to quickly check the state of the Merge Bot queue from the menu bar.
 
 To install the client app:
- - build `WallEView.xcodeproj` in Xcode and copy the app from build products directory to your applications directory or download the app attached to the [latest GitHub release](https://github.com/babylonhealth/Wall-E/releases)
- - run `defaults write com.babylonhealth.WallEView Host <application address>` to set the url to the app
- - launch the app and enjoy
+
+ - Build `WallEView/WallEView.xcodeproj` in Xcode and copy the app from build products directory to your applications directory, or download the app attached to the [latest GitHub release](https://github.com/babylonhealth/Wall-E/releases)
+ - Run `defaults write com.babylonhealth.WallEView Host <application address>` to set the url to the app
+ - Launch the app and enjoy.
+
+ Once the app has been launched, a new icon should appear on your menubar (next to clock, wifi, anc similar menubar icons).
+ 
+ When opening the menu item by clicking on its icon, you can select a branch to see its associated merge queue.
+ 
+ To kill the app and remove the menubar icon, right-click on the icon and select "Close".
 
 Iconography © https://dribbble.com/shots/2772860-WALL-E-Movie-Icons
 
