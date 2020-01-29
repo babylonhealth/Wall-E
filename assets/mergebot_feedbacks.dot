@@ -1,0 +1,113 @@
+# https://edotor.net/
+
+digraph MergeBot {
+
+    subgraph states {
+        node [shape=oval][style=filled,fillcolor=lightgray]
+        starting [penwidth=3]
+        # idle
+        ready
+        integrating
+        runningStatusChecks
+        integrationFailed
+        "*"
+    }
+
+    subgraph events {
+        node [shape=box][style=dotted]
+        ".pullRequestsLoaded"
+        ".pullRequestDidChange(.include)"
+        ".pullRequestDidChange(.exclude)"
+        ".noMorePullRequests"
+        ".integrationDidChangeStatus(.done)"
+        ".integrationDidChangeStatus(.failed)"
+        ".integrationDidChangeStatus(.updating)"
+        ".integrate"
+        ".statusChecksDidComplete(.passed)"
+        ".statusChecksDidComplete(.failed)"
+        ".statusChecksDidComplete(.timedOut)"
+        ".integrationFailureHandled"
+        ".retryIntegration"
+    }
+
+    subgraph actions {
+        node [shape=rect]
+        dequeuePR
+        fetchPullRequest1 [label=fetchPullRequest]
+        fetchPullRequest2 [label=fetchPullRequest]
+        fetchPullRequest3 [label=fetchPullRequest]
+        mergePullRequest
+        updatePR # merge target branch back in PR
+        fetchCommitStatus
+        fetchAllStatusChecks
+        includePR
+        excludePR
+        postComment
+        removeLabel
+    }
+
+    subgraph feedbacks {
+        color=blue
+
+        subgraph cluster_whenStarting {
+            label="whenStarting"
+            starting -> ".pullRequestsLoaded"
+        }
+
+        subgraph cluster_whenReady {
+            label="whenReady"
+            ready -> dequeuePR
+            dequeuePR -> ".noMorePullRequests" [label="nil"]
+            dequeuePR -> fetchPullRequest1 -> ".integrate"
+        }
+
+        subgraph cluster_whenIntegrating {
+            label="whenIntegrating"
+            integrating -> ".integrationDidChangeStatus(.done)" [label="pr.isMerged"]
+
+            # clean
+            integrating -> mergePullRequest [label="state=clean"]
+            mergePullRequest -> ".integrationDidChangeStatus(.done)" [label="ok"]
+            mergePullRequest -> ".integrationDidChangeStatus(.failed)" [label="error"]
+            
+            # behind
+            integrating -> updatePR [label="state=behind"]
+            updatePR -> ".integrationDidChangeStatus(.updating)" [label="success|upToDate"]
+            updatePR -> ".integrationDidChangeStatus(.failed)" [label="conflict"]
+
+            # blocked|unstable
+            integrating -> fetchAllStatusChecks [label="state=blocked|unstable"]
+            fetchAllStatusChecks -> ".integrationDidChangeStatus(.updating)" [label="pending"]
+            fetchAllStatusChecks -> ".integrationDidChangeStatus(.failed)" [label="failure"]
+            fetchAllStatusChecks -> ".retryIntegration" [label="success"]
+
+            # dirty
+            integrating -> ".integrationDidChangeStatus(.failed)" [label="state=dirty (conflicts)"]
+
+            # unknown
+            integrating -> fetchPullRequest2 -> ".retryIntegration" [label="state=unknown"]
+        }
+
+        subgraph cluster_whenRunningStatusChecks {
+            label="whenRunningStatusChecks"
+            runningStatusChecks -> fetchPullRequest3 [label="on statusCheckObserver change"]
+            fetchPullRequest3 -> fetchCommitStatus
+            fetchCommitStatus -> ".statusChecksDidComplete(.failed)" [label="failure"]
+            fetchCommitStatus -> ".statusChecksDidComplete(.passed)" [label="success"]
+            runningStatusChecks -> ".statusChecksDidComplete(.timedOut)" [label="timeout"]
+        }
+
+        subgraph cluster_whenIntegrationFailed {
+            label="whenIntegrationFailed"
+            integrationFailed -> postComment -> removeLabel -> ".integrationFailureHandled"
+        }
+    }
+
+    subgraph cluster_reduceDefault {
+        color=blue
+        label="reduceDefault()"
+        "*" -> ".pullRequestDidChange(.include)" -> includePR
+        "*" -> ".pullRequestDidChange(.exclude)" -> excludePR
+    }
+
+}

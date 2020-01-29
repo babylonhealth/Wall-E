@@ -1,0 +1,70 @@
+# https://edotor.net/
+
+digraph MergeBot {
+
+    subgraph states {
+        node [shape=oval][style=filled,fillcolor=lightgray]
+        starting [penwidth=3]
+        idle
+        ready
+        integrating
+        runningStatusChecks
+        integrationFailed
+    }
+
+    subgraph events {
+        node [shape=box][style=dotted]
+        ".pullRequestsLoaded(empty)"
+        ".pullRequestsLoaded(!empty)"
+        ".pullRequestDidChange(.include)"
+        ".pullRequestDidChange(.exclude)"
+        ".noMorePullRequests"
+        ".integrationDidChangeStatus(.done)"
+        ".integrationDidChangeStatus(.failed)"
+        ".integrationDidChangeStatus(.updating)"
+        ".integrate"
+        ".statusChecksDidComplete(.passed)"
+        ".statusChecksDidComplete(.failed)"
+        ".statusChecksDidComplete(.timedOut)"
+        ".integrationFailureHandled"
+        ".retryIntegration"
+    }
+
+    subgraph cluster_reduce {
+        color=blue
+        label="reduce()"
+
+        subgraph reduceStarting {
+            starting -> ".pullRequestsLoaded(empty)" -> idle
+            starting -> ".pullRequestsLoaded(!empty)" -> ready
+        }
+
+        subgraph reduceIdle {
+            idle -> ".pullRequestDidChange(.include)" -> ready
+        }
+
+        subgraph reduceReady {
+            ready -> ".noMorePullRequests" -> idle
+            ready -> ".integrate" -> integrating
+        }
+
+        subgraph reduceIntegrating {
+            integrating -> ".integrationDidChangeStatus(.done)" -> ready
+            integrating -> ".integrationDidChangeStatus(.failed)" -> integrationFailed
+            integrating -> ".integrationDidChangeStatus(.updating)" -> runningStatusChecks
+            integrating -> ".pullRequestDidChange(.exclude)" -> ready
+            integrating -> ".retryIntegration" -> integrating
+        }
+
+        subgraph reduceRunningStatusChecks {
+            runningStatusChecks -> ".statusChecksDidComplete(.passed)" -> integrating
+            runningStatusChecks -> ".statusChecksDidComplete(.failed)" -> integrationFailed
+            runningStatusChecks -> ".statusChecksDidComplete(.timedOut)" -> integrationFailed
+            runningStatusChecks -> ".pullRequestDidChange(.exclude)" -> ready
+        }
+
+        subgraph reduceIntegrationFailed {
+            integrationFailed -> ".integrationFailureHandled" -> ready
+        }
+    }
+}

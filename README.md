@@ -73,7 +73,21 @@ In you need to maintain/improve the code, here are some high-level implementatio
  - It handles the logic of the state machine for the various states and transitions to process each Pull Request in its queue in order
  - It is implemented using [ReactiveFeedback](https://github.com/babylonhealth/ReactiveFeedback)
 
-_(🚧 TODO: Add a diagram of the state machine 🚧)_
+Below are some diagrams to help you visualise the ReactiveFeedback state machine logic implemented in `MergeService`:
+
+<details>
+<summary>🔃 State Diagram</summary>
+
+![State Diagram](assets/mergebot_states.png)
+
+</details>
+
+<details>
+<summary>▶️ Action/Feedbacks Diagrams</summary>
+
+![State Diagram](assets/mergebot_feedbacks.png)
+
+</details>
 
 ### DispatchService
 
