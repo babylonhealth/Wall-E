@@ -13,12 +13,12 @@ extension Environment {
         return try Environment.get("GITHUB_TOKEN")
     }
 
-    /// GitHub Organisation name (as seen in the github.com/<orgname>/* urls)
+    /// GitHub Organisation name (`<orgname>` part of `github.com/<orgname>/<repo>` url)
     static func gitHubOrganization() throws -> String {
         return try Environment.get("GITHUB_ORGANIZATION")
     }
 
-    /// URL of GitHub Repository to run the MergeBot on
+    /// name of GitHub Repository to run the MergeBot on (`<repo>` part of `github.com/<orgname>/<repo>` url)
     static func gitHubRepository() throws -> String {
         return try Environment.get("GITHUB_REPOSITORY")
     }

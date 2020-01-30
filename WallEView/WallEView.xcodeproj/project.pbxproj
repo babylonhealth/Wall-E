@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		38291C5223E1D8C2005F572A /* CommitState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38291C5123E1D8C2005F572A /* CommitState.swift */; };
 		B5BCDAE5238D8E170010DE06 /* PullRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5BCDAE4238D8E170010DE06 /* PullRequest.swift */; };
 		B5CACCED238D8CFB000D3F14 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5CACCEC238D8CFB000D3F14 /* AppDelegate.swift */; };
 		B5CACCEF238D8CFB000D3F14 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5CACCEE238D8CFB000D3F14 /* ViewController.swift */; };
@@ -16,7 +17,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B5BCDAE4238D8E170010DE06 /* PullRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PullRequest.swift; path = ../Sources/Bot/Models/PullRequest.swift; sourceTree = "<group>"; };
+		38291C5123E1D8C2005F572A /* CommitState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommitState.swift; sourceTree = "<group>"; };
+		B5BCDAE4238D8E170010DE06 /* PullRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PullRequest.swift; sourceTree = "<group>"; };
 		B5CACCE9238D8CFB000D3F14 /* WallEView.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WallEView.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5CACCEC238D8CFB000D3F14 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B5CACCEE238D8CFB000D3F14 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -38,6 +40,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		38291C5323E1D8D0005F572A /* Bot.Models */ = {
+			isa = PBXGroup;
+			children = (
+				B5BCDAE4238D8E170010DE06 /* PullRequest.swift */,
+				38291C5123E1D8C2005F572A /* CommitState.swift */,
+			);
+			name = Bot.Models;
+			path = ../Sources/Bot/Models;
+			sourceTree = "<group>";
+		};
 		B5CACCE0238D8CFB000D3F14 = {
 			isa = PBXGroup;
 			children = (
@@ -60,13 +72,13 @@
 				B5CACCEC238D8CFB000D3F14 /* AppDelegate.swift */,
 				B5CACCEE238D8CFB000D3F14 /* ViewController.swift */,
 				B5CACCFC238D8DA8000D3F14 /* EventMonitor.swift */,
-				B5BCDAE4238D8E170010DE06 /* PullRequest.swift */,
+				38291C5323E1D8D0005F572A /* Bot.Models */,
 				B5CACCF0238D8CFB000D3F14 /* Assets.xcassets */,
 				B5CACCF2238D8CFB000D3F14 /* Main.storyboard */,
 				B5CACCF5238D8CFB000D3F14 /* Info.plist */,
 				B5CACCF6238D8CFB000D3F14 /* WallEView.entitlements */,
 			);
-			path = WallEView;
+			name = WallEView;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -142,6 +154,7 @@
 				B5CACCFD238D8DA8000D3F14 /* EventMonitor.swift in Sources */,
 				B5CACCEF238D8CFB000D3F14 /* ViewController.swift in Sources */,
 				B5BCDAE5238D8E170010DE06 /* PullRequest.swift in Sources */,
+				38291C5223E1D8C2005F572A /* CommitState.swift in Sources */,
 				B5CACCED238D8CFB000D3F14 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -277,12 +290,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = WallEView/WallEView.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WallEView.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = WallEView/Info.plist;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -298,12 +311,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = WallEView/WallEView.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WallEView.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = WallEView/Info.plist;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
