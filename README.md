@@ -60,11 +60,28 @@ When you add one of such "Top Priority" labels to your PR, the bot will ensure t
 
 For example, if your queue already contains PRs `A`,`B`,`C`,`D`,`E` with `A` and `B` already marked with one of the Top Priority label, then adding a Top Priority label to the PR `E` will make it jump in front of `C` and `D` but still after `A` and `B`, so the queue will become `A`,`B`,`E`,`C`,`D`.
 
+## Configuration
+
+The bot is mainly configured via environment variables. Here are the main ones that you are at least required or recommended to provide to be able to start using this bot:
+
+Env Var | Description
+---|---
+`GITHUB_ORGANIZATION`<br/>`GITHUB_REPOSITORY` | The GitHub organisation and repo name this bot will watch
+`GITHUB_TOKEN` | The OAuth token to use for calls to the GitHub API
+`GITHUB_WEBHOOK_SECRET` | The webhook secret to use to validate webhook payloads
+`MERGE_LABEL` | The name of the label to use to add a PR to the queue
+`TOP_PRIORITY_LABELS` | The name of the labels to use to mark as PR as top-priority – separate multiple label names by a comma
+`REQUIRES_ALL_STATUS_CHECKS` | Defines if the bot should require _all_ status checks to be green before allowing to merge a PR, or only the ones configured as _required_ in GitHub settings (the default)
+
+Some other environment variables allow further configuration of the bot, like values vor various timeouts; for the list of them all, see [`Sources/App/Extensions/EnvironmentProperties.swift`](https://github.com/babylonhealth/Wall-E/blob/master/Sources/App/Extensions/EnvironmentProperties.swift).
+
 ## Implementation details
 
-The whole codebase is implemented in Swift using Vapor.
+The whole codebase is implemented in Swift using [Vapor](https://vapor.codes/).
 
-In you need to maintain/improve the code, here are some high-level implementation details that might help you navigate the codebase
+In you need to maintain/improve the code, here are some high-level implementation details that might help you navigate the codebase.
+
+💡 _You can use the `vapor xcode` command to generate an `xcodeproj` project and edit the code from there._
 
 ### MergeService
 
