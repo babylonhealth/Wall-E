@@ -28,10 +28,10 @@ It works by listening to the GitHub webhook to know when labels are being added/
 
 When a specific label – configurable via the `MERGE_LABEL` environment variable – is added to your Pull Requests, Wall-E will:
 
- - Add that PR to a queue dedicated to the branch this PR is targetting
+ - Add that PR to a queue dedicated to the branch this PR is targeting
  - Post a comment in the PR to let you know that the PR has been queued and its position in the queue
 
-(†) Wall-E handles one merge queue per target branch to still allow PRs targetting different branches to be merged in parallel.
+(†) Wall-E handles one merge queue per target branch to allow PRs targeting different branches to be merged in parallel.
 
 
 ### Integration of a PR
@@ -44,7 +44,7 @@ When the bot dequeues the top PR from a queue, it will start its integration, wh
  - Once the PR is deemed ready (status checks pass, green on GitHub with the minimal number of approvals reached), it will merge the PR into the target branch (squash)
  - Then it will go to the next PR in the queue
 
-If there is a failure at some point doring the integration of the PR – e.g. one of the (required) status check fails:
+If there is a failure at some point during the integration of the PR – e.g. one of the (required) status check fails:
 
  - the bot will post a comment with the error on the PR
  - then it will remove the merge label
@@ -112,7 +112,7 @@ To install the client app:
  - Run `defaults write com.babylonhealth.WallEView Host <application address>` to set the url to the app
  - Launch the app and enjoy.
 
- Once the app has been launched, a new icon should appear on your menubar (next to clock, wifi, anc similar menubar icons).
+ Once the app has been launched, a new icon should appear in your menubar.
  
  When opening the menu item by clicking on its icon, you can select a branch to see its associated merge queue.
  
