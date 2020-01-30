@@ -26,12 +26,12 @@ It works by listening to the GitHub webhook to know when labels are being added/
 
 ### Detection of the Merge Label
 
-When a specific label – configurable via the `MERGE_LABEL` environment variable – is added to your Pull Requests, Wall-E will:
+When a specific label – configurable via the `MERGE_LABEL` environment variable – is added to your Pull Request, Wall-E will:
 
  - Add that PR to a queue dedicated to the branch this PR is targeting
  - Post a comment in the PR to let you know that the PR has been queued and its position in the queue
 
-(†) Wall-E handles one merge queue per target branch to allow PRs targeting different branches to be merged in parallel.
+(†) Wall-E handles one serial merge queue per target branch, to allow PRs targeting different branches to be merged in parallel. Which means that each PR targeting the same branch will be merged in order one after the other, but PRs targeting different branches can be merged independently in parallel.
 
 ### Integration of a PR
 
@@ -49,7 +49,7 @@ If there is a failure at some point during the integration of the PR – e.g. on
  - then it will remove the merge label
  - and go to the next PR in the queue
 
-If you remove the merge label from a PR that was in the queue, that PR gets removed from the queue.
+If you remove the merge label from a PR that was in the queue, that PR gets removed from the queue immediately and bot goes to the next PR.
 
 ### Top Priority PRs
 
@@ -72,7 +72,7 @@ Env Var | Description
 `TOP_PRIORITY_LABELS` | The name of the labels to use to mark as PR as top-priority – separate multiple label names by a comma
 `REQUIRES_ALL_STATUS_CHECKS` | Defines if the bot should require _all_ status checks to be green before allowing to merge a PR, or only the ones configured as _required_ in GitHub settings (the default)
 
-Some other environment variables allow further configuration of the bot, like values vor various timeouts; for the list of them all, see [`Sources/App/Extensions/EnvironmentProperties.swift`](https://github.com/babylonhealth/Wall-E/blob/master/Sources/App/Extensions/EnvironmentProperties.swift).
+Some other environment variables allow further configuration of the bot, like values for various timeouts; for the list of them all, see [`Sources/App/Extensions/EnvironmentProperties.swift`](https://github.com/babylonhealth/Wall-E/blob/master/Sources/App/Extensions/EnvironmentProperties.swift).
 
 ## Implementation details
 
