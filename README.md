@@ -33,7 +33,6 @@ When a specific label – configurable via the `MERGE_LABEL` environment variabl
 
 (†) Wall-E handles one merge queue per target branch to allow PRs targeting different branches to be merged in parallel.
 
-
 ### Integration of a PR
 
 When the bot dequeues the top PR from a queue, it will start its integration, which consists of the following steps:
@@ -56,7 +55,7 @@ If you remove the merge label from a PR that was in the queue, that PR gets remo
 
 The bot also supports "Top Priority Labels" (configurable via the `TOP_PRIORITY_LABELS` environment variable)
 
-When you add one of such "Top Priority" labels to your PR, the bot will ensure that PRs marked as Top Priority will be merged before other PRs in the same queue, by making those PR jump at the front of the other non-top-priority PRs in the queue.
+When you add one of those "Top Priority" labels to your PR, the bot will ensure that this PR will be merged before any non-TP PRs targeting the same branch, by making that PR jump at the front of all the other non-top-priority PRs in the queue.
 
 For example, if your queue already contains PRs `A`,`B`,`C`,`D`,`E` with `A` and `B` already marked with one of the Top Priority label, then adding a Top Priority label to the PR `E` will make it jump in front of `C` and `D` but still after `A` and `B`, so the queue will become `A`,`B`,`E`,`C`,`D`.
 
@@ -79,9 +78,9 @@ Some other environment variables allow further configuration of the bot, like va
 
 The whole codebase is implemented in Swift using [Vapor](https://vapor.codes/).
 
-In you need to maintain/improve the code, here are some high-level implementation details that might help you navigate the codebase.
-
 💡 _You can use the `vapor xcode` command to generate an `xcodeproj` project and edit the code from there._
+
+If you need to maintain/improve the code, here are some high-level implementation details that might help you navigate the codebase.
 
 ### MergeService
 
