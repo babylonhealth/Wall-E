@@ -22,25 +22,23 @@ class JSONLoggerTests: XCTestCase {
 
     // Check that we'd print anything above but nothing below the .info level
     func test_loglevel_compare_info_level() {
-        let minimumLevel = LogLevel.info
-        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: minimumLevel), false)
-        XCTAssertEqual(LogLevel.debug  .isAtLeast(minimumLevel: minimumLevel), false)
-        XCTAssertEqual(LogLevel.info   .isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.error  .isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.fatal  .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: .info), false)
+        XCTAssertEqual(LogLevel.debug.isAtLeast(minimumLevel: .info), false)
+        XCTAssertEqual(LogLevel.info.isAtLeast(minimumLevel: .info), true)
+        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: .info), true)
+        XCTAssertEqual(LogLevel.error.isAtLeast(minimumLevel: .info), true)
+        XCTAssertEqual(LogLevel.fatal.isAtLeast(minimumLevel: .info), true)
     }
 
     // Check that we'd print anything if minimum log level is .verbose
     func test_loglevel_compare_verbose_level() {
-        let minimumLevel = LogLevel.verbose
-        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.debug  .isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.info   .isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.error  .isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.fatal  .isAtLeast(minimumLevel: minimumLevel), true)
-        XCTAssertEqual(LogLevel.custom("CUSTOM").isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(LogLevel.debug.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(LogLevel.info.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(LogLevel.error.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(LogLevel.fatal.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(LogLevel.custom("CUSTOM").isAtLeast(minimumLevel: .verbose), true)
     }
 
     // Check that custom LogLevel is equivalent to .info when comparing
