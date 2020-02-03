@@ -29,7 +29,7 @@ final class JSONLogger: Logger, Service {
         } catch {
             formatted = "[\(Date())] [\(level.description)] \(string)"
         }
-        // We need to print to stdout for our Logz.io instance to pick up the JSON log message
+
         print(formatted)
     }
 }

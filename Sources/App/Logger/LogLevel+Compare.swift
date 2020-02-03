@@ -10,9 +10,9 @@ extension LogLevel: Equatable {
         .verbose, .debug, .info, .warning, .error, .fatal
     ]
 
-    // Note: Didn't implement it as Comparable and `<` operator because `.custom` case doesn't follow semantics
+    // Note: Didn't implement it as Comparable and `<` operator because `.custom` case doesn't follow semantics.
     public func isAtLeast(minimumLevel: LogLevel) -> Bool {
-        // If minimumLevel is .custom, only keep the ones that are exactly the same custom level
+        // If minimumLevel is .custom, only keep the ones that are exactly using the same custom level name
         if case .custom(let minValue) = minimumLevel, case .custom(let selfValue) = self {
             return selfValue == minValue
         }

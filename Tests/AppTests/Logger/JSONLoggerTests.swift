@@ -17,7 +17,6 @@ class JSONLoggerTests: XCTestCase {
         let serializer = JSONEncoder()
         let data = try serializer.encode(message)
 
-        print(message)
         XCTAssertEqualJSON(data, JSONLoggerTests.cannedLog)
     }
 
