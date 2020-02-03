@@ -3,6 +3,7 @@ import Vapor
 
 public final class LogzIOLogger: Logger, Service {
     let serializer = JSONEncoder()
+    
     public func log(_ string: String, at level: LogLevel,
                     file: String = #file, function: String = #function, line: UInt = #line, column: UInt = #column
     ) {
