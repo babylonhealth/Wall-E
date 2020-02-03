@@ -1,3 +1,4 @@
+import Foundation
 import Vapor
 
 public final class LogzIOLogger: Logger, Service {
@@ -25,8 +26,10 @@ public final class LogzIOLogger: Logger, Service {
     }
 }
 
+// MARK: Private structure of LogMessage
+
 extension LogzIOLogger {
-    private struct LogMessage: Encodable {
+    struct LogMessage: Encodable {
         let timestamp: Date
         let message: String
         let level: LogLevel
@@ -54,7 +57,7 @@ extension LogzIOLogger {
             try container.encode(LogMessage.dateFormatter.string(from: self.timestamp), forKey: .timestamp)
             try container.encode(self.message, forKey: .message)
             try container.encode(self.level.description, forKey: .level)
-            let context = "\(file):\(line):\(column) – \(function)"
+            let context = "\(file):\(line):\(column) - \(function)"
             try container.encode(context, forKey: .context)
         }
     }
