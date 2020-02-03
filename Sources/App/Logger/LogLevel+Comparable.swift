@@ -23,3 +23,11 @@ extension LogLevel: Equatable {
         return selfIndex >= minIndex
     }
 }
+
+extension LogLevel {
+    init(string: String) {
+        self = LogLevel.allLevels.first {
+            $0.description.caseInsensitiveCompare(string) == .orderedSame
+        } ?? .custom(string)
+    }
+}

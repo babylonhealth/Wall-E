@@ -59,6 +59,24 @@ extension Environment {
         }
     }
 
+    /// Name of the minimum log level to start logging
+    ///
+    /// Known levels are, in decreasing order of verbosity:
+    ///  - `verbose`
+    ///  - `debug`
+    ///  - `info`
+    ///  - `warning`
+    ///  - `error`
+    ///  - `fatal`
+    /// Any log that is higher that the `minimumLogLevel` in this list will be filtered out. e.g. a `minimumLogLevel` of `info`
+    /// will filter out `verbose` and `debug` logs and will only print `info`,`warning`,`error` and `fatal` logs
+    static func minimumLogLevel() -> LogLevel {
+        guard let value: String = Environment.get("MINIMUM_LOG_LEVEL") else {
+            return .verbose // If env var is not set, log everything and don't filter out any log
+        }
+        return LogLevel(string: value)
+    }
+
     static func get(_ key: String) throws -> String {
         guard let value = Environment.get(key) as String?
             else { throw ConfigurationError.missingConfiguration(message: "💥 key `\(key)` not found in environment") }

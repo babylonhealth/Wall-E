@@ -12,7 +12,7 @@ enum ConfigurationError: Error {
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
 
     // Our Logz.io instance parses JSON output to feed searchable logs to Kibana & ElasticSearch
-    let logger = JSONLogger()
+    let logger = JSONLogger(minimumLogLevel: Environment.minimumLogLevel())
     let gitHubEventsService = GitHubEventsService(signatureToken: try Environment.gitHubWebhookSecret())
 
     logger.info("👟 Starting up...")
