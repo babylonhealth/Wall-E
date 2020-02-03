@@ -16,10 +16,10 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     logger.info("👟 Starting up...")
 
-    let dispatchService = try makeDispatchService(with: logger, gitHubEventsService)
+    let dispatchService = try makeDispatchService(logger: logger, gitHubEventsService: gitHubEventsService)
 
     services.register(dispatchService)
-    services.register(logger, as: PrintLogger.self)
+    services.register(logger, as: Logger.self)
     services.register(RequestLoggerMiddleware.self)
 
     // Register routes to the router
@@ -37,7 +37,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     logger.info("🏁 Ready")
 }
 
-private func makeDispatchService(with logger: Logger, _ gitHubEventsService: GitHubEventsService) throws -> DispatchService {
+private func makeDispatchService(logger: Logger, gitHubEventsService: GitHubEventsService) throws -> DispatchService {
 
     let gitHubAPI = GitHubClient(session: URLSession(configuration: .default), token: try Environment.gitHubToken())
         .api(for: Repository(owner: try Environment.gitHubOrganization(), name: try Environment.gitHubRepository()))

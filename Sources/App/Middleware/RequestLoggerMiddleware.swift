@@ -18,6 +18,6 @@ final class RequestLoggerMiddleware: Middleware, ServiceType {
     }
 
     static func makeService(for container: Container) throws -> RequestLoggerMiddleware {
-        return RequestLoggerMiddleware(logger: try container.make(PrintLogger.self))
+        return RequestLoggerMiddleware(logger: try container.make(Logger.self))
     }
 }
