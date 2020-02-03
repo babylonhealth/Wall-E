@@ -28,6 +28,7 @@ class JSONLoggerTests: XCTestCase {
         XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: .info), true)
         XCTAssertEqual(LogLevel.error.isAtLeast(minimumLevel: .info), true)
         XCTAssertEqual(LogLevel.fatal.isAtLeast(minimumLevel: .info), true)
+        XCTAssertEqual(LogLevel.custom("CUSTOM").isAtLeast(minimumLevel: .info), true)
     }
 
     // Check that we'd print anything if minimum log level is .verbose
