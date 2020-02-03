@@ -14,7 +14,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     let logger = PrintLogger()
     let gitHubEventsService = GitHubEventsService(signatureToken: try Environment.gitHubWebhookSecret())
 
-    logger.log("👟 Starting up...")
+    logger.info("👟 Starting up...")
 
     let dispatchService = try makeDispatchService(with: logger, gitHubEventsService)
 
@@ -34,10 +34,10 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     middlewares.use(RequestLoggerMiddleware.self)
     services.register(middlewares)
 
-    logger.log("🏁 Ready")
+    logger.info("🏁 Ready")
 }
 
-private func makeDispatchService(with logger: LoggerProtocol, _ gitHubEventsService: GitHubEventsService) throws -> DispatchService {
+private func makeDispatchService(with logger: Logger, _ gitHubEventsService: GitHubEventsService) throws -> DispatchService {
 
     let gitHubAPI = GitHubClient(session: URLSession(configuration: .default), token: try Environment.gitHubToken())
         .api(for: Repository(owner: try Environment.gitHubOrganization(), name: try Environment.gitHubRepository()))

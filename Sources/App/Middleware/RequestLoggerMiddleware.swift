@@ -1,19 +1,19 @@
 import Vapor
-import Bot
 
 final class RequestLoggerMiddleware: Middleware, ServiceType {
-    private let logger: LoggerProtocol
+    private let logger: Logger
 
-    init(logger: LoggerProtocol) {
+    init(logger: Logger) {
         self.logger = logger
     }
 
     func respond(to request: Request, chainingTo next: Responder) throws -> Future<Vapor.Response> {
-        logger.log("""
-        📝 Request logger 📝
-        \(request)
-        ===========================
-        """)
+        logger.debug("""
+            📝 Request logger 📝
+            \(request)
+            ===========================
+            """
+        )
         return try next.respond(to: request)
     }
 

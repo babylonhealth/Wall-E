@@ -1,12 +1,13 @@
 import Foundation
 import ReactiveSwift
 import ReactiveFeedback
+import Logging
 
 public final class MergeService {
     public let state: Property<State>
     public let healthcheck: Healthcheck
 
-    private let logger: LoggerProtocol
+    private let logger: Logger
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
@@ -44,7 +45,7 @@ public final class MergeService {
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
         initialPullRequests: [PullRequest] = [],
-        logger: LoggerProtocol,
+        logger: Logger,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
@@ -85,8 +86,8 @@ public final class MergeService {
 
         state.producer
             .combinePrevious()
-            .startWithValues { old, new in
-                logger.log("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
+            .startWithValues { (old, new) in
+                logger.info("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
     }
 
@@ -504,7 +505,7 @@ extension MergeService {
 
     fileprivate static func whenRunningStatusChecks(
         github: GitHubAPIProtocol,
-        logger: LoggerProtocol,
+        logger: Logger,
         requiresAllStatusChecks: Bool,
         statusChecksCompletion: Signal<StatusEvent, Never>,
         scheduler: DateScheduler
@@ -535,7 +536,7 @@ extension MergeService {
                 .observe(on: scheduler)
                 .filter { change in change.state != .pending && change.isRelative(toBranch: pullRequest.source.ref) }
                 .on { change in
-                    logger.log("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
+                    logger.info("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
                 }
                 .debounce(additionalStatusChecksGracePeriod, on: scheduler)
                 .flatMap(.latest) { change in
@@ -570,7 +571,7 @@ extension MergeService {
 
     fileprivate static func whenIntegrationFailed(
         github: GitHubAPIProtocol,
-        logger: LoggerProtocol,
+        logger: Logger,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
 
@@ -595,9 +596,13 @@ extension MergeService {
         return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, Never> in
             return SignalProducer.merge(
                 github.postComment(handler.failureMessage, in: handler.pullRequest)
-                    .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)") }),
+                    .on(failed: { error in
+                        logger.error("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)")
+                    }),
                 github.removeLabel(handler.integrationLabel, from: handler.pullRequest)
-                    .on(failed: { error in logger.log("🚨 Failed to remove integration label from PR #\(handler.pullRequest.number) with error: \(error)") })
+                    .on(failed: { error in
+                        logger.error("🚨 Failed to remove integration label from PR #\(handler.pullRequest.number) with error: \(error)")
+                    })
                 )
                 .flatMapError { _ in .empty }
                 .then(SignalProducer(value: Event.integrationFailureHandled))

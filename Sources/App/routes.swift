@@ -3,7 +3,7 @@ import Vapor
 
 public func routes(
     _ router: Router,
-    logger: LoggerProtocol,
+    logger: Logger,
     dispatchService: DispatchService,
     gitHubEventsService: GitHubEventsService
 ) throws {

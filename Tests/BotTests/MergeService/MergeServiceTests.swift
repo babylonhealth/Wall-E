@@ -2,10 +2,11 @@ import XCTest
 import Nimble
 import ReactiveSwift
 @testable import Bot
+import Logging
 
-struct MockLogger: LoggerProtocol {
-    func log(_ message: String) {
-        print(message)
+struct MockLogger: Logger {
+    func log(_ string: String, at level: LogLevel, file: String, function: String, line: UInt, column: UInt) {
+        print("[\(level)] \(string)")
     }
 }
 
