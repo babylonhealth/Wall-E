@@ -2,8 +2,8 @@ import XCTest
 @testable import App
 
 class LogsTests: XCTestCase {
-    func test_logzio_json_formatting() throws {
-        let message = LogzIOLogger.LogMessage(
+    func test_json_logs_formatting() throws {
+        let message = JSONLogger.LogMessage(
             timestamp: LogsTests.fixedDate,
             message: LogsTests.message,
             level: .debug,

@@ -1,7 +1,7 @@
 import Foundation
 import Vapor
 
-public final class LogzIOLogger: Logger, Service {
+public final class JSONLogger: Logger, Service {
     let serializer = JSONEncoder()
     
     public func log(_ string: String, at level: LogLevel,
@@ -30,7 +30,7 @@ public final class LogzIOLogger: Logger, Service {
 
 // MARK: Private structure of LogMessage
 
-extension LogzIOLogger {
+extension JSONLogger {
     struct LogMessage: Encodable {
         let timestamp: Date
         let message: String

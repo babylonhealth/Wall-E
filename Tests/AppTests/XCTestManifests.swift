@@ -6,7 +6,7 @@ extension LogsTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__LogsTests = [
-        ("test_logzio_json_formatting", test_logzio_json_formatting),
+        ("test_json_logs_formatting", test_json_logs_formatting),
     ]
 }
 

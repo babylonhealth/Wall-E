@@ -11,7 +11,8 @@ enum ConfigurationError: Error {
 /// Called before your application initializes.
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
 
-    let logger = LogzIOLogger()
+    // Our Logz.io instance parses JSON output to feed searchable logs to Kibana & ElasticSearch
+    let logger = JSONLogger()
     let gitHubEventsService = GitHubEventsService(signatureToken: try Environment.gitHubWebhookSecret())
 
     logger.info("👟 Starting up...")
@@ -20,7 +21,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     services.register(dispatchService)
     services.register(logger, as: Logger.self)
-    config.prefer(LogzIOLogger.self, for: Logger.self)
+    config.prefer(JSONLogger.self, for: Logger.self)
     services.register(RequestLoggerMiddleware.self)
 
     // Register routes to the router
