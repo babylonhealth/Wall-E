@@ -1,5 +1,6 @@
 import XCTest
 @testable import App
+import Logging
 
 class JSONLoggerTests: XCTestCase {
     func test_json_logs_formatting() throws {
@@ -20,6 +21,41 @@ class JSONLoggerTests: XCTestCase {
         XCTAssertEqualJSON(data, JSONLoggerTests.cannedLog)
     }
 
+    // Check that we'd print anything above but nothing below the .info level
+    func test_loglevel_compare_info_level() {
+        let minimumLevel = LogLevel.info
+        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: minimumLevel), false)
+        XCTAssertEqual(LogLevel.debug  .isAtLeast(minimumLevel: minimumLevel), false)
+        XCTAssertEqual(LogLevel.info   .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.error  .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.fatal  .isAtLeast(minimumLevel: minimumLevel), true)
+    }
+
+    // Check that we'd print anything if minimum log level is .verbose
+    func test_loglevel_compare_verbose_level() {
+        let minimumLevel = LogLevel.verbose
+        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.debug  .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.info   .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.error  .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.fatal  .isAtLeast(minimumLevel: minimumLevel), true)
+        XCTAssertEqual(LogLevel.custom("CUSTOM").isAtLeast(minimumLevel: minimumLevel), true)
+    }
+
+    // Check that custom LogLevel is equivalent to .info when comparing
+    func test_loglevel_compare_custom_level() {
+        let customLevel = LogLevel.custom("CUSTOM")
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .verbose), true)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .debug),   true)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .info),    true)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .warning), false)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .error),   false)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .fatal),   false)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .custom("CUSTOM")), true)
+        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .custom("OTHER")), false)
+    }
     // MARK: Canned data
 
     private static let fixedDate: Date = {

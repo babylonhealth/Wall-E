@@ -3,10 +3,12 @@ import Vapor
 
 public final class JSONLogger: Logger, Service {
     let serializer = JSONEncoder()
+    let minimumLogLevel: LogLevel = .verbose
     
     public func log(_ string: String, at level: LogLevel,
                     file: String = #file, function: String = #function, line: UInt = #line, column: UInt = #column
     ) {
+        guard level.isAtLeast(minimumLevel: minimumLogLevel) else { return }
         let formatted: String
         do {
             let message = LogMessage(
