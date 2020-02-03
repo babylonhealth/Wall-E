@@ -1,11 +1,11 @@
 import XCTest
 @testable import App
 
-class LogsTests: XCTestCase {
+class JSONLoggerTests: XCTestCase {
     func test_json_logs_formatting() throws {
         let message = JSONLogger.LogMessage(
-            timestamp: LogsTests.fixedDate,
-            message: LogsTests.message,
+            timestamp: JSONLoggerTests.fixedDate,
+            message: JSONLoggerTests.message,
             level: .debug,
             file: "somefile.swift",
             function: "somefunction",
@@ -17,7 +17,7 @@ class LogsTests: XCTestCase {
         let data = try serializer.encode(message)
 
         print(message)
-        XCTAssertEqualJSON(data, LogsTests.cannedLog)
+        XCTAssertEqualJSON(data, JSONLoggerTests.cannedLog)
     }
 
     // MARK: Canned data
