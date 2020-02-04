@@ -59,7 +59,7 @@ extension Environment {
         }
     }
 
-    /// Name of the minimum log level to start logging
+    /// Name of the minimum log level to start logging. Defaults to "info" level
     ///
     /// Known levels are, in decreasing order of verbosity:
     ///  - `verbose`
@@ -72,7 +72,7 @@ extension Environment {
     /// will filter out `verbose` and `debug` logs and will only print `info`,`warning`,`error` and `fatal` logs
     static func minimumLogLevel() -> LogLevel {
         guard let value: String = Environment.get("MINIMUM_LOG_LEVEL") else {
-            return .verbose // If env var is not set, log everything and don't filter out any log
+            return .info // If env var is not set, defaults to .info level
         }
         return LogLevel(string: value)
     }
