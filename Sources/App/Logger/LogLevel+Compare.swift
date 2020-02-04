@@ -6,7 +6,7 @@ extension LogLevel: Equatable {
     }
 
     /// From more verbose to less verbose (i.e. from less important to more important)
-    private static let allLevels: [LogLevel] = [
+    private static let allPredefinedLevels: [LogLevel] = [
         .verbose, .debug, .info, .warning, .error, .fatal
     ]
 
@@ -17,16 +17,16 @@ extension LogLevel: Equatable {
             return selfValue == minValue
         }
         // Otherwise, consider custom levels have the same "importance" as .info
-        let defaultIndex = LogLevel.allLevels.firstIndex(of: .info)!
-        let minIndex = LogLevel.allLevels.firstIndex(of: minimumLevel) ?? defaultIndex
-        let selfIndex = LogLevel.allLevels.firstIndex(of: self) ?? defaultIndex
+        let defaultIndex = LogLevel.allPredefinedLevels.firstIndex(of: .info)!
+        let minIndex = LogLevel.allPredefinedLevels.firstIndex(of: minimumLevel) ?? defaultIndex
+        let selfIndex = LogLevel.allPredefinedLevels.firstIndex(of: self) ?? defaultIndex
         return selfIndex >= minIndex
     }
 }
 
 extension LogLevel {
     init(string: String) {
-        self = LogLevel.allLevels.first {
+        self = LogLevel.allPredefinedLevels.first {
             $0.description.caseInsensitiveCompare(string) == .orderedSame
         } ?? .custom(string)
     }
