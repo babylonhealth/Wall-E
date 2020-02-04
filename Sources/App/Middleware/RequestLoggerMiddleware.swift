@@ -1,9 +1,10 @@
 import Vapor
+import Bot
 
 final class RequestLoggerMiddleware: Middleware, ServiceType {
-    private let logger: Logger
+    private let logger: LoggerProtocol
 
-    init(logger: Logger) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
     }
 
@@ -18,6 +19,6 @@ final class RequestLoggerMiddleware: Middleware, ServiceType {
     }
 
     static func makeService(for container: Container) throws -> RequestLoggerMiddleware {
-        return RequestLoggerMiddleware(logger: try container.make(Logger.self))
+        return RequestLoggerMiddleware(logger: try container.make(LoggerProtocol.self))
     }
 }

@@ -1,7 +1,6 @@
 import Foundation
 import ReactiveSwift
 import ReactiveFeedback
-import Logging
 
 /// Orchestrates multiple merge services, one per each target branch of PRs enqueued for integration
 public final class DispatchService {
@@ -11,7 +10,7 @@ public final class DispatchService {
     private let statusChecksTimeout: TimeInterval
     private let idleMergeServiceCleanupDelay: TimeInterval
 
-    private let logger: Logger
+    private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
@@ -26,7 +25,7 @@ public final class DispatchService {
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
         idleMergeServiceCleanupDelay: TimeInterval,
-        logger: Logger,
+        logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         gitHubEvents: GitHubEventsServiceProtocol,
         scheduler: DateScheduler = QueueScheduler()

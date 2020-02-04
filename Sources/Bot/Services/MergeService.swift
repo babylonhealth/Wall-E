@@ -1,13 +1,12 @@
 import Foundation
 import ReactiveSwift
 import ReactiveFeedback
-import Logging
 
 public final class MergeService {
     public let state: Property<State>
     public let healthcheck: Healthcheck
 
-    private let logger: Logger
+    private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
 
@@ -45,7 +44,7 @@ public final class MergeService {
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
         initialPullRequests: [PullRequest] = [],
-        logger: Logger,
+        logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
     ) {
@@ -505,7 +504,7 @@ extension MergeService {
 
     fileprivate static func whenRunningStatusChecks(
         github: GitHubAPIProtocol,
-        logger: Logger,
+        logger: LoggerProtocol,
         requiresAllStatusChecks: Bool,
         statusChecksCompletion: Signal<StatusEvent, Never>,
         scheduler: DateScheduler
@@ -571,7 +570,7 @@ extension MergeService {
 
     fileprivate static func whenIntegrationFailed(
         github: GitHubAPIProtocol,
-        logger: Logger,
+        logger: LoggerProtocol,
         scheduler: Scheduler
     ) -> Feedback<State, Event> {
 

@@ -1,6 +1,6 @@
 import XCTest
 @testable import App
-import Logging
+import Bot
 
 class JSONLoggerTests: XCTestCase {
     func test_json_logs_formatting() throws {
@@ -20,40 +20,27 @@ class JSONLoggerTests: XCTestCase {
         XCTAssertEqualJSON(data, JSONLoggerTests.cannedLog)
     }
 
-    // Check that we'd print anything above but nothing below the .info level
+    // Check that we print everything if minimum log level is .debug
+    func test_loglevel_compare_debug_level() {
+        XCTAssertEqual(LogLevel.debug >= .debug, true)
+        XCTAssertEqual(LogLevel.info  >= .debug, true)
+        XCTAssertEqual(LogLevel.error >= .debug, true)
+    }
+
+    // Check that we print anything above but nothing below the .info level
     func test_loglevel_compare_info_level() {
-        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: .info), false)
-        XCTAssertEqual(LogLevel.debug.isAtLeast(minimumLevel: .info), false)
-        XCTAssertEqual(LogLevel.info.isAtLeast(minimumLevel: .info), true)
-        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: .info), true)
-        XCTAssertEqual(LogLevel.error.isAtLeast(minimumLevel: .info), true)
-        XCTAssertEqual(LogLevel.fatal.isAtLeast(minimumLevel: .info), true)
-        XCTAssertEqual(LogLevel.custom("CUSTOM").isAtLeast(minimumLevel: .info), true)
+        XCTAssertEqual(LogLevel.debug >= .info, false)
+        XCTAssertEqual(LogLevel.info  >= .info, true)
+        XCTAssertEqual(LogLevel.error >= .info, true)
     }
 
-    // Check that we'd print anything if minimum log level is .verbose
-    func test_loglevel_compare_verbose_level() {
-        XCTAssertEqual(LogLevel.verbose.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(LogLevel.debug.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(LogLevel.info.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(LogLevel.warning.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(LogLevel.error.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(LogLevel.fatal.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(LogLevel.custom("CUSTOM").isAtLeast(minimumLevel: .verbose), true)
+    // Check that we print anything above but nothing below the .info level
+    func test_loglevel_compare_error_level() {
+        XCTAssertEqual(LogLevel.debug >= .error, false)
+        XCTAssertEqual(LogLevel.info  >= .error, false)
+        XCTAssertEqual(LogLevel.error >= .error, true)
     }
 
-    // Check that custom LogLevel is equivalent to .info when comparing
-    func test_loglevel_compare_custom_level() {
-        let customLevel = LogLevel.custom("CUSTOM")
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .verbose), true)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .debug),   true)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .info),    true)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .warning), false)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .error),   false)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .fatal),   false)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .custom("CUSTOM")), true)
-        XCTAssertEqual(customLevel.isAtLeast(minimumLevel: .custom("OTHER")), false)
-    }
     // MARK: Canned data
 
     private static let fixedDate: Date = {

@@ -1,18 +1,18 @@
-import Foundation
 import Vapor
+import Bot
 
-final class JSONLogger: Logger, Service {
+final class JSONLogger: LoggerProtocol, Service {
     private let serializer = JSONEncoder()
-    let minimumLogLevel: LogLevel
+    let minimumLogLevel: Bot.LogLevel
 
-    init(minimumLogLevel: LogLevel = .verbose) {
+    init(minimumLogLevel: Bot.LogLevel = .info) {
         self.minimumLogLevel = minimumLogLevel
     }
 
-    public func log(_ string: String, at level: LogLevel,
+    public func log(_ string: String, at level: Bot.LogLevel,
                     file: String = #file, function: String = #function, line: UInt = #line, column: UInt = #column
     ) {
-        guard level.isAtLeast(minimumLevel: minimumLogLevel) else { return }
+        guard level >= minimumLogLevel else { return }
         let formatted: String
         do {
             let message = LogMessage(
@@ -27,10 +27,18 @@ final class JSONLogger: Logger, Service {
             let data = try serializer.encode(message)
             formatted = String(data: data, encoding: .utf8)!
         } catch {
-            formatted = "[\(Date())] [\(level.description)] \(string)"
+            formatted = "[\(Date())] [\(JSONLogger.string(for: level))] \(string)"
         }
 
         print(formatted)
+    }
+
+    static func string(for level: Bot.LogLevel) -> String {
+        switch level {
+        case .debug: return "DEBUG"
+        case .info: return "INFO"
+        case .error: return "ERROR"
+        }
     }
 }
 
@@ -40,7 +48,7 @@ extension JSONLogger {
     struct LogMessage: Encodable {
         let timestamp: Date
         let message: String
-        let level: LogLevel
+        let level: Bot.LogLevel
         let file: String
         let function: String
         let line: UInt
@@ -64,7 +72,7 @@ extension JSONLogger {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(LogMessage.dateFormatter.string(from: self.timestamp), forKey: .timestamp)
             try container.encode(self.message, forKey: .message)
-            try container.encode(self.level.description, forKey: .level)
+            try container.encode(JSONLogger.string(for: self.level), forKey: .level)
             let context = "\(file):\(line):\(column) - \(function)"
             try container.encode(context, forKey: .context)
         }
