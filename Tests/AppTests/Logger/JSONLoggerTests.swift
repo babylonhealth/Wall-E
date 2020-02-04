@@ -8,7 +8,7 @@ class JSONLoggerTests: XCTestCase {
             timestamp: JSONLoggerTests.fixedDate,
             message: JSONLoggerTests.message,
             level: .debug,
-            file: "somefile.swift",
+            file: #file,
             function: "somefunction",
             line: 1337,
             column: 42
@@ -69,7 +69,7 @@ class JSONLoggerTests: XCTestCase {
             "@timestamp": "2020-02-01T10:20:30.456+0000",
             "message": "\(escapedMessage)",
             "level": "DEBUG",
-            "context": "somefile.swift:1337:42 - somefunction"
+            "context": "Tests/AppTests/Logger/JSONLoggerTests.swift:1337:42 - somefunction"
         }
         """.data(using: .utf8)!
 }

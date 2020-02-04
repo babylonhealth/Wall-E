@@ -1,6 +1,8 @@
 import Vapor
 import Bot
 
+private let basePath = #file.components(separatedBy: "/").dropLast(4).joined(separator: "/") + "/"
+
 final class JSONLogger: LoggerProtocol, Service {
     private let serializer = JSONEncoder()
     let minimumLogLevel: Bot.LogLevel
@@ -65,7 +67,8 @@ extension JSONLogger {
             try container.encode(LogMessage.dateFormatter.string(from: self.timestamp), forKey: .timestamp)
             try container.encode(self.message, forKey: .message)
             try container.encode(self.level.rawValue, forKey: .level)
-            let context = "\(file):\(line):\(column) - \(function)"
+            let relativePathIndex = file.index(file.startIndex, offsetBy: file.hasPrefix(basePath) ? basePath.count : 0)
+            let context = "\(file[relativePathIndex...]):\(line):\(column) - \(function)"
             try container.encode(context, forKey: .context)
         }
     }
