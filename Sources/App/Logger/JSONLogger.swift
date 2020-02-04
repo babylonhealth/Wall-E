@@ -27,18 +27,10 @@ final class JSONLogger: LoggerProtocol, Service {
             let data = try serializer.encode(message)
             formatted = String(data: data, encoding: .utf8)!
         } catch {
-            formatted = "[\(Date())] [\(JSONLogger.string(for: level))] \(string)"
+            formatted = "[\(Date())] [\(level.rawValue)] \(string)"
         }
 
         print(formatted)
-    }
-
-    static func string(for level: Bot.LogLevel) -> String {
-        switch level {
-        case .debug: return "DEBUG"
-        case .info: return "INFO"
-        case .error: return "ERROR"
-        }
     }
 }
 
@@ -72,7 +64,7 @@ extension JSONLogger {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(LogMessage.dateFormatter.string(from: self.timestamp), forKey: .timestamp)
             try container.encode(self.message, forKey: .message)
-            try container.encode(JSONLogger.string(for: self.level), forKey: .level)
+            try container.encode(self.level.rawValue, forKey: .level)
             let context = "\(file):\(line):\(column) - \(function)"
             try container.encode(context, forKey: .context)
         }
