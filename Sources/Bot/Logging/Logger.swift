@@ -1,3 +1,5 @@
+import Foundation
+
 // MARK: LogLevel
 
 /// Different log levels
