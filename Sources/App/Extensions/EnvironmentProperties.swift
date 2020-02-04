@@ -65,12 +65,14 @@ extension Environment {
     ///  - `DEBUG`
     ///  - `INFO`
     ///  - `ERROR`
-    ///  
+    ///
     /// Any log that is higher that the `minimumLogLevel` in this list will be filtered out.
     /// e.g. a `minimumLogLevel` of `INFO` will filter out `DEBUG` logs and will only print `INFO` and `ERROR` logs
     static func minimumLogLevel() -> Bot.LogLevel {
         let value: String? = Environment.get("MINIMUM_LOG_LEVEL")
-        return value.flatMap(Bot.LogLevel.init(rawValue:)) ?? .info
+        return value
+            .map { $0.uppercased() }
+            .flatMap(Bot.LogLevel.init(rawValue:)) ?? .info
     }
 
     static func get(_ key: String) throws -> String {
