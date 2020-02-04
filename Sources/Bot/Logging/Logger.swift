@@ -5,11 +5,11 @@ import Foundation
 /// Different log levels
 public enum LogLevel: String, Equatable, CaseIterable {
     /// For more verbose logs used when debugging in depth. Usually provides a lot of details
-    case debug
+    case debug = "DEBUG"
     /// For informative logs, like state changes
-    case info
+    case info = "INFO"
     /// For reporting errors and failures
-    case error
+    case error = "ERROR"
 }
 
 extension LogLevel: Comparable {
