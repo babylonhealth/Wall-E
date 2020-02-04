@@ -7,9 +7,9 @@ extension JSONLoggerTests {
     // to regenerate.
     static let __allTests__JSONLoggerTests = [
         ("test_json_logs_formatting", test_json_logs_formatting),
-        ("test_loglevel_compare_custom_level", test_loglevel_compare_custom_level),
+        ("test_loglevel_compare_debug_level", test_loglevel_compare_debug_level),
+        ("test_loglevel_compare_error_level", test_loglevel_compare_error_level),
         ("test_loglevel_compare_info_level", test_loglevel_compare_info_level),
-        ("test_loglevel_compare_verbose_level", test_loglevel_compare_verbose_level),
     ]
 }
 
