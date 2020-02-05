@@ -34,7 +34,7 @@ class JSONLoggerTests: XCTestCase {
         XCTAssertEqual(LogLevel.error >= .info, true)
     }
 
-    // Check that we print anything above but nothing below the .info level
+    // Check that we print only error logs when minimum level is .error
     func test_loglevel_compare_error_level() {
         XCTAssertEqual(LogLevel.debug >= .error, false)
         XCTAssertEqual(LogLevel.info  >= .error, false)
