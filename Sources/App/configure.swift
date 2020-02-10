@@ -11,15 +11,16 @@ enum ConfigurationError: Error {
 /// Called before your application initializes.
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
 
-    let logger = PrintLogger()
+    // Our Logz.io instance parses JSON output to feed searchable logs to Kibana & ElasticSearch
+    let logger = JSONLogger(minimumLogLevel: Environment.minimumLogLevel())
     let gitHubEventsService = GitHubEventsService(signatureToken: try Environment.gitHubWebhookSecret())
 
-    logger.log("👟 Starting up...")
+    logger.info("👟 Starting up...")
 
-    let dispatchService = try makeDispatchService(with: logger, gitHubEventsService)
+    let dispatchService = try makeDispatchService(logger: logger, gitHubEventsService: gitHubEventsService)
 
     services.register(dispatchService)
-    services.register(logger, as: PrintLogger.self)
+    services.register(logger, as: LoggerProtocol.self)
     services.register(RequestLoggerMiddleware.self)
 
     // Register routes to the router
@@ -31,13 +32,13 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     var middlewares = MiddlewareConfig() // Create _empty_ middleware config
     // middlewares.use(FileMiddleware.self) // Serves files from `Public/` directory
     middlewares.use(ErrorMiddleware.self) // Catches errors and converts to HTTP response
-    middlewares.use(RequestLoggerMiddleware.self)
+    middlewares.use(RequestLoggerMiddleware(logger: logger))
     services.register(middlewares)
 
-    logger.log("🏁 Ready")
+    logger.info("🏁 Ready")
 }
 
-private func makeDispatchService(with logger: LoggerProtocol, _ gitHubEventsService: GitHubEventsService) throws -> DispatchService {
+private func makeDispatchService(logger: LoggerProtocol, gitHubEventsService: GitHubEventsService) throws -> DispatchService {
 
     let gitHubAPI = GitHubClient(session: URLSession(configuration: .default), token: try Environment.gitHubToken())
         .api(for: Repository(owner: try Environment.gitHubOrganization(), name: try Environment.gitHubRepository()))

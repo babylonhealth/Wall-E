@@ -4,8 +4,8 @@ import ReactiveSwift
 @testable import Bot
 
 struct MockLogger: LoggerProtocol {
-    func log(_ message: String) {
-        print(message)
+    func log(_ string: String, at level: LogLevel, file: String, function: String, line: UInt, column: UInt) {
+        print("[\(level)] \(string)")
     }
 }
 

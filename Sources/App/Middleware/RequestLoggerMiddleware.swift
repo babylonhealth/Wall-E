@@ -9,15 +9,16 @@ final class RequestLoggerMiddleware: Middleware, ServiceType {
     }
 
     func respond(to request: Request, chainingTo next: Responder) throws -> Future<Vapor.Response> {
-        logger.log("""
-        📝 Request logger 📝
-        \(request)
-        ===========================
-        """)
+        logger.debug("""
+            📝 Request logger 📝
+            \(request)
+            ===========================
+            """
+        )
         return try next.respond(to: request)
     }
 
     static func makeService(for container: Container) throws -> RequestLoggerMiddleware {
-        return RequestLoggerMiddleware(logger: try container.make(PrintLogger.self))
+        return RequestLoggerMiddleware(logger: try container.make(LoggerProtocol.self))
     }
 }

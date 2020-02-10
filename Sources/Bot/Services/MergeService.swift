@@ -85,8 +85,8 @@ public final class MergeService {
 
         state.producer
             .combinePrevious()
-            .startWithValues { old, new in
-                logger.log("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
+            .startWithValues { (old, new) in
+                logger.info("♻️ [\(new.targetBranch) queue] Did change state\n - 📜 \(old) \n - 📄 \(new)")
             }
     }
 
@@ -535,7 +535,7 @@ extension MergeService {
                 .observe(on: scheduler)
                 .filter { change in change.state != .pending && change.isRelative(toBranch: pullRequest.source.ref) }
                 .on { change in
-                    logger.log("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
+                    logger.info("📣 Status check `\(change.context)` finished with result: `\(change.state)` (SHA: `\(change.sha)`)")
                 }
                 .debounce(additionalStatusChecksGracePeriod, on: scheduler)
                 .flatMap(.latest) { change in
@@ -595,9 +595,13 @@ extension MergeService {
         return Feedback(skippingRepeated: IntegrationHandler.init) { handler -> SignalProducer<Event, Never> in
             return SignalProducer.merge(
                 github.postComment(handler.failureMessage, in: handler.pullRequest)
-                    .on(failed: { error in logger.log("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)") }),
+                    .on(failed: { error in
+                        logger.error("🚨 Failed to post failure message in PR #\(handler.pullRequest.number) with error: \(error)")
+                    }),
                 github.removeLabel(handler.integrationLabel, from: handler.pullRequest)
-                    .on(failed: { error in logger.log("🚨 Failed to remove integration label from PR #\(handler.pullRequest.number) with error: \(error)") })
+                    .on(failed: { error in
+                        logger.error("🚨 Failed to remove integration label from PR #\(handler.pullRequest.number) with error: \(error)")
+                    })
                 )
                 .flatMapError { _ in .empty }
                 .then(SignalProducer(value: Event.integrationFailureHandled))

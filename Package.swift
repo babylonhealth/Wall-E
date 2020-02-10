@@ -14,7 +14,7 @@ let package = Package(
         .target(name: "Bot", dependencies: ["ReactiveSwift", "ReactiveFeedback", "CryptoSwift"]),
         .target(name: "App", dependencies: ["Bot", "Vapor"]),
         .target(name: "Run", dependencies: ["App"]),
-        .testTarget(name: "BotTests", dependencies: ["Bot", "Nimble"])
+        .testTarget(name: "BotTests", dependencies: ["Bot", "Nimble"]),
+        .testTarget(name: "AppTests", dependencies: ["App"])
     ]
 )
-

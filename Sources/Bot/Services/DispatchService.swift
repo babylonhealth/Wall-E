@@ -78,7 +78,7 @@ public final class DispatchService {
     }
 
     private func pullRequestDidChange(event: PullRequestEvent) {
-        logger.log("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
+        logger.info("📣 Pull Request did change \(event.pullRequestMetadata) with action `\(event.action)`")
 
         let targetBranch = event.pullRequestMetadata.reference.target.ref
         let mergeService = mergeServices.modify { (dict: inout [String: MergeService]) -> MergeService in
@@ -109,7 +109,7 @@ public final class DispatchService {
         scheduler: DateScheduler,
         initialPullRequests: [PullRequest] = []
     ) -> MergeService {
-        logger.log("🆕 New MergeService created for target branch `\(targetBranch)`")
+        logger.info("🆕 New MergeService created for target branch `\(targetBranch)`")
         let mergeService = MergeService(
             targetBranch: targetBranch,
             integrationLabel: integrationLabel,
@@ -137,7 +137,7 @@ public final class DispatchService {
             .startWithValues { [weak self, service = mergeService, logger = logger] state in
                 guard let self = self else { return }
 
-                logger.log("👋 MergeService for target branch `\(targetBranch)` has been idle for \(self.idleMergeServiceCleanupDelay)s, destroying")
+                logger.info("👋 MergeService for target branch `\(targetBranch)` has been idle for \(self.idleMergeServiceCleanupDelay)s, destroying")
                 self.mergeServices.modify { dict in
                     dict[targetBranch] = nil
                 }

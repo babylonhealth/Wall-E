@@ -59,6 +59,22 @@ extension Environment {
         }
     }
 
+    /// Name of the minimum log level to start logging. Defaults to "INFO" level
+    ///
+    /// Valid values are, in decreasing order of verbosity:
+    ///  - `DEBUG`
+    ///  - `INFO`
+    ///  - `ERROR`
+    ///
+    /// Any log that is higher that the `minimumLogLevel` in this list will be filtered out.
+    /// e.g. a `minimumLogLevel` of `INFO` will filter out `DEBUG` logs and will only print `INFO` and `ERROR` logs
+    static func minimumLogLevel() -> Bot.LogLevel {
+        let value: String? = Environment.get("MINIMUM_LOG_LEVEL")
+        return value
+            .map { $0.uppercased() }
+            .flatMap(Bot.LogLevel.init(rawValue:)) ?? .info
+    }
+
     static func get(_ key: String) throws -> String {
         guard let value = Environment.get(key) as String?
             else { throw ConfigurationError.missingConfiguration(message: "💥 key `\(key)` not found in environment") }
