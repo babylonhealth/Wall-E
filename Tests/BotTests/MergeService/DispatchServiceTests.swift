@@ -345,7 +345,7 @@ class DispatchServiceTests: XCTestCase {
         )
     }
 
-    func test_json_queue_description() throws {
+    func test_queue_description() throws {
         let (branch1, branch2) = ("branch1", "branch2")
         let pr1 = PullRequestMetadata.stub(number: 1, headRef: MergeServiceFixture.defaultBranch, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .behind)
         let pr2 = PullRequestMetadata.stub(number: 2, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .clean)
@@ -382,7 +382,8 @@ class DispatchServiceTests: XCTestCase {
         scheduler.advance()
 
         let jsonData = try JSONEncoder().encode(dispatchServiceContext.dispatchService.queueStates)
-        XCTAssertEqualJSON(jsonData, DispatchServiceQueueStates)
+        XCTAssertEqualJSON(jsonData, DispatchServiceQueueStatesJSON)
+        XCTAssertEqual(dispatchServiceContext.dispatchService.queuesDescription, DispatchServiceQueueStatesString)
     }
 }
 

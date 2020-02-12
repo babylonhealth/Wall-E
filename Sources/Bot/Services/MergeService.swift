@@ -803,21 +803,40 @@ extension MergeService: CustomStringConvertible {
 
 extension MergeService.State: CustomStringConvertible {
 
+    private func shortPRDescription(_ pullRequest: PullRequest) -> String {
+        return "PR #\(pullRequest.number) (\(pullRequest.source.ref))"
+    }
+    private var shortStatusDescription: String {
+        switch status {
+        case .starting:
+            return "starting"
+        case .idle:
+            return "idle"
+        case .ready:
+            return "ready"
+        case .integrating(let pr):
+            return "integrating \(shortPRDescription(pr.reference))"
+        case .runningStatusChecks(let pr):
+            return "running status checks on \(shortPRDescription(pr.reference))"
+        case .integrationFailed(let pr, let failure):
+            return "integration failed on \(shortPRDescription(pr.reference)): \(failure))"
+        }
+    }
     private var queueDescription: String {
         guard pullRequests.isEmpty == false else { return "[]" }
 
-        let pullRequestsSeparator = "\n\t\t"
+        let pullRequestsSeparator = "\n      "
 
         let pullRequestsRepresentation = pullRequests.enumerated().map { index, pullRequest in
             let isTP = pullRequest.isLabelled(withOneOf: self.topPriorityLabels)
-            return "#\(index + 1): \(pullRequest) \(isTP ? "[TP]" : "")"
+            return "\(index + 1). \(shortPRDescription(pullRequest))\(isTP ? " [TP]" : "")"
         }.joined(separator: pullRequestsSeparator)
 
         return "\(pullRequestsSeparator)\(pullRequestsRepresentation)"
     }
 
     public var description: String {
-        return "State(\n - status: \(status),\n - queue: \(queueDescription)\n)"
+        return "State(\n - status: \(shortStatusDescription),\n - queue: \(queueDescription)\n)"
     }
 }
 
