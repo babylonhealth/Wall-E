@@ -71,7 +71,7 @@ class DispatchServiceTests: XCTestCase {
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
                 .getPullRequest(checkReturnPR(rel3)),
                 .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
                 .mergePullRequest(checkPRNumber(3)),
@@ -158,7 +158,7 @@ class DispatchServiceTests: XCTestCase {
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
 
                 // Note that here we shouldn't have any API call for PR#3 since it doesn't have the integration label
                 
@@ -356,7 +356,7 @@ class DispatchServiceTests: XCTestCase {
             .getPullRequest(checkReturnPR(pr1)),
             .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
             .mergeIntoBranch { _, _ in .success },
-            .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `branch1` queue, hold tight ⏳")),
+            .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `branch1` queue, hold tight ⏳")),
             .getPullRequest(checkReturnPR(pr3)),
             .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
             .mergeIntoBranch { _, _ in .success },
