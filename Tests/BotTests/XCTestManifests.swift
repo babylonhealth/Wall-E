@@ -8,11 +8,11 @@ extension DispatchServiceTests {
     static let __allTests__DispatchServiceTests = [
         ("test_adding_new_pull_requests_during_integration", test_adding_new_pull_requests_during_integration),
         ("test_creating_new_pull_requests_to_new_target_branch_without_label", test_creating_new_pull_requests_to_new_target_branch_without_label),
-        ("test_json_queue_description", test_json_queue_description),
         ("test_mergeservice_destroyed_if_idle_long_enough", test_mergeservice_destroyed_if_idle_long_enough),
         ("test_mergeservice_destroyed_when_idle_after_boot", test_mergeservice_destroyed_when_idle_after_boot),
         ("test_mergeservice_not_destroyed_if_not_idle_long_enough", test_mergeservice_not_destroyed_if_not_idle_long_enough),
         ("test_multiple_pull_requests_with_different_target_branches", test_multiple_pull_requests_with_different_target_branches),
+        ("test_queue_description", test_queue_description),
     ]
 }
 

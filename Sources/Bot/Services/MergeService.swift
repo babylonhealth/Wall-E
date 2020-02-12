@@ -342,8 +342,9 @@ extension MergeService {
                             )
                             .flatMapError { _ in .empty }
                         } else {
+                            let zws = "\u{200B}" // Zero-width space character. Used so that GitHub doesn't transform `#n` into a link to Pull Request n
                             return github.postComment(
-                                "Your pull request was accepted and it's currently `#\(index + 1)` in the `\(current.targetBranch)` queue, hold tight ⏳",
+                                "Your pull request was accepted and it's currently #\(zws)\(index + 1) in the `\(current.targetBranch)` queue, hold tight ⏳",
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
@@ -798,21 +799,40 @@ extension MergeService: CustomStringConvertible {
 
 extension MergeService.State: CustomStringConvertible {
 
+    private func shortPRDescription(_ pullRequest: PullRequest) -> String {
+        return "PR #\(pullRequest.number) (\(pullRequest.source.ref))"
+    }
+    private var shortStatusDescription: String {
+        switch status {
+        case .starting:
+            return "starting"
+        case .idle:
+            return "idle"
+        case .ready:
+            return "ready"
+        case .integrating(let pr):
+            return "integrating \(shortPRDescription(pr.reference))"
+        case .runningStatusChecks(let pr):
+            return "running status checks on \(shortPRDescription(pr.reference))"
+        case .integrationFailed(let pr, let failure):
+            return "integration failed on \(shortPRDescription(pr.reference)): \(failure))"
+        }
+    }
     private var queueDescription: String {
         guard pullRequests.isEmpty == false else { return "[]" }
 
-        let pullRequestsSeparator = "\n\t\t"
+        let pullRequestsSeparator = "\n      "
 
         let pullRequestsRepresentation = pullRequests.enumerated().map { index, pullRequest in
             let isTP = pullRequest.isLabelled(withOneOf: self.topPriorityLabels)
-            return "#\(index + 1): \(pullRequest) \(isTP ? "[TP]" : "")"
+            return "\(index + 1). \(shortPRDescription(pullRequest))\(isTP ? " [TP]" : "")"
         }.joined(separator: pullRequestsSeparator)
 
         return "\(pullRequestsSeparator)\(pullRequestsRepresentation)"
     }
 
     public var description: String {
-        return "State(\n - status: \(status),\n - queue: \(queueDescription)\n)"
+        return "State(\n - status: \(shortStatusDescription),\n - queue: \(queueDescription)\n)"
     }
 }
 
