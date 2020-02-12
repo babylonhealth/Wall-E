@@ -52,6 +52,7 @@ extension JSONLogger {
             let df = DateFormatter()
             df.dateFormat = "yyyy-MM-dd'T'hh:mm:ss.SSSZ"
             df.locale = Locale(identifier: "en_US_POSIX")
+            df.timeZone = TimeZone(secondsFromGMT: 0)
             return df
         }()
 

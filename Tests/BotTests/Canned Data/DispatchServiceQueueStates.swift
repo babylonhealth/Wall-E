@@ -1,6 +1,6 @@
 import Foundation
 
-let DispatchServiceQueueStates: Data = """
+let DispatchServiceQueueStatesJSON: Data = """
 [
   {
     "targetBranch" : "branch1",
@@ -89,3 +89,21 @@ let DispatchServiceQueueStates: Data = """
   }
 ]
 """.data(using: .utf8)!
+
+
+let DispatchServiceQueueStatesString = """
+## Merge Queue for target branch: branch1 ##
+
+State(
+ - status: integrating PR #1 (some-branch),
+ - queue:\(" ")
+      1. PR #2 (abcdef)
+)
+
+## Merge Queue for target branch: branch2 ##
+
+State(
+ - status: integrating PR #3 (abcdef),
+ - queue: []
+)
+"""

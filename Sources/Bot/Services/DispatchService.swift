@@ -162,13 +162,16 @@ extension DispatchService {
         guard !currentMergeServices.isEmpty else {
             return "No PR pending, all queues empty."
         }
-        return currentMergeServices.map { (entry: (key: String, value: MergeService)) -> String in
-            """
-            ## Merge Queue for target branch: \(entry.key) ##
+        return currentMergeServices
+            .sorted { $0.key < $1.key }
+            .map { (entry: (key: String, value: MergeService)) -> String in
+                """
+                ## Merge Queue for target branch: \(entry.key) ##
 
-            \(entry.value.state.value)
-            """
-        }.joined(separator: "\n\n")
+                \(entry.value.state.value)
+                """
+            }
+            .joined(separator: "\n\n")
     }
 
     public var queueStates: [MergeService.State] {

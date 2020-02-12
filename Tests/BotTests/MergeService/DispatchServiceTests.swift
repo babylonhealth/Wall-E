@@ -71,7 +71,7 @@ class DispatchServiceTests: XCTestCase {
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
                 .getPullRequest(checkReturnPR(rel3)),
                 .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
                 .mergePullRequest(checkPRNumber(3)),
@@ -158,7 +158,7 @@ class DispatchServiceTests: XCTestCase {
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
 
                 // Note that here we shouldn't have any API call for PR#3 since it doesn't have the integration label
                 
@@ -345,7 +345,7 @@ class DispatchServiceTests: XCTestCase {
         )
     }
 
-    func test_json_queue_description() throws {
+    func test_queue_description() throws {
         let (branch1, branch2) = ("branch1", "branch2")
         let pr1 = PullRequestMetadata.stub(number: 1, headRef: MergeServiceFixture.defaultBranch, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .behind)
         let pr2 = PullRequestMetadata.stub(number: 2, baseRef: branch1, labels: [LabelFixture.integrationLabel], mergeState: .clean)
@@ -356,7 +356,7 @@ class DispatchServiceTests: XCTestCase {
             .getPullRequest(checkReturnPR(pr1)),
             .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
             .mergeIntoBranch { _, _ in .success },
-            .postComment(checkComment(2, "Your pull request was accepted and it's currently `#1` in the `branch1` queue, hold tight ⏳")),
+            .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `branch1` queue, hold tight ⏳")),
             .getPullRequest(checkReturnPR(pr3)),
             .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
             .mergeIntoBranch { _, _ in .success },
@@ -382,7 +382,8 @@ class DispatchServiceTests: XCTestCase {
         scheduler.advance()
 
         let jsonData = try JSONEncoder().encode(dispatchServiceContext.dispatchService.queueStates)
-        XCTAssertEqualJSON(jsonData, DispatchServiceQueueStates)
+        XCTAssertEqualJSON(jsonData, DispatchServiceQueueStatesJSON)
+        XCTAssertEqual(dispatchServiceContext.dispatchService.queuesDescription, DispatchServiceQueueStatesString)
     }
 }
 
