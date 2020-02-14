@@ -1,6 +1,7 @@
 import Vapor
 import Bot
 
+#if LOG_FULL_NETWORK_REQUESTS
 final class RequestLoggerMiddleware: Middleware, ServiceType {
     private let logger: LoggerProtocol
 
@@ -21,3 +22,4 @@ final class RequestLoggerMiddleware: Middleware, ServiceType {
         return RequestLoggerMiddleware(logger: try container.make(PrintLogger.self))
     }
 }
+#endif

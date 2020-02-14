@@ -20,7 +20,9 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     services.register(dispatchService)
     services.register(logger, as: PrintLogger.self)
+    #if LOG_FULL_NETWORK_REQUESTS
     services.register(RequestLoggerMiddleware.self)
+    #endif
 
     // Register routes to the router
     let router = EngineRouter.default()
@@ -29,9 +31,10 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     // Register middleware
     var middlewares = MiddlewareConfig() // Create _empty_ middleware config
-    // middlewares.use(FileMiddleware.self) // Serves files from `Public/` directory
     middlewares.use(ErrorMiddleware.self) // Catches errors and converts to HTTP response
+    #if LOG_FULL_NETWORK_REQUESTS
     middlewares.use(RequestLoggerMiddleware.self)
+    #endif
     services.register(middlewares)
 
     logger.log("🏁 Ready")
