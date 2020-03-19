@@ -3,4 +3,4 @@
 #  - When a new PR arrives, GitHub auto reviewer assignment feature will be triggered, which will then pick 
 #    members from the `iOS-Devs` team
 
-* @babylonhealth/ios-devs @babylonhealth/ios-bot-owners
+* @babylonhealth/ios-devs @babylonhealth/ios-bot-owners @dmcrodrigues
