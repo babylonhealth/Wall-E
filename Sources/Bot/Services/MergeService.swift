@@ -44,6 +44,7 @@ public final class MergeService {
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
         initialPullRequests: [PullRequest] = [],
+        botUser: GitHubUser?,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -71,7 +72,7 @@ public final class MergeService {
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
+                Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, gitHubAPI: gitHubAPI, botUser: botUser, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -316,9 +317,23 @@ extension MergeService {
 
 // MARK: - Feedbacks
 
+fileprivate let acceptedCommentTextIntro = "Your pull request was accepted"
+
 extension MergeService {
     fileprivate typealias Feedbacks = MergeService
 
+    static func acceptedCommentText(index: Int?, queue: String, isBooting: Bool = false) -> String {
+        let rebootInfo = isBooting ? "WallE just started after a reboot.\n" : ""
+        let prefix = "\(rebootInfo)\(acceptedCommentTextIntro)"
+        if let index = index {
+            // use Zero-width-space character so that GitHub doesn't transform `#N` into a link to Pull Request N
+            let zws = "\u{200B}"
+            return "\(prefix) and it's currently #\(zws)\(index + 1) in the `\(queue)` queue, hold tight ⏳"
+        } else {
+            return "\(prefix) and is going to be handled right away 🏎 (nothing in queue for `\(queue)`!)"
+        }
+    }
+    
     fileprivate static func whenAddingPullRequests(
         github: GitHubAPIProtocol,
         scheduler: Scheduler
@@ -332,19 +347,20 @@ extension MergeService {
                     .enumerated()
                     .map { index, pullRequest -> SignalProducer<(), Never> in
 
-                        guard previous.pullRequests.firstIndex(of: pullRequest) == nil
+                        guard previous.pullRequests.contains(pullRequest) == false
                             else { return .empty }
+
+                        let isBooting = previous.status == .starting
 
                         if index == 0 && current.isIntegrationOngoing == false {
                             return github.postComment(
-                                "Your pull request was accepted and is going to be handled right away 🏎",
+                                acceptedCommentText(index: nil, queue: current.targetBranch, isBooting: isBooting),
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
                         } else {
-                            let zws = "\u{200B}" // Zero-width space character. Used so that GitHub doesn't transform `#n` into a link to Pull Request n
                             return github.postComment(
-                                "Your pull request was accepted and it's currently #\(zws)\(index + 1) in the `\(current.targetBranch)` queue, hold tight ⏳",
+                                acceptedCommentText(index: index, queue: current.targetBranch, isBooting: isBooting),
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
@@ -356,11 +372,43 @@ extension MergeService {
         })
     }
 
-    fileprivate static func whenStarting(initialPullRequests: [PullRequest], scheduler: DateScheduler) -> Feedback<State, Event> {
+    fileprivate static func whenStarting(
+        initialPullRequests: [PullRequest],
+        gitHubAPI: GitHubAPIProtocol,
+        botUser: GitHubUser?,
+        scheduler: DateScheduler
+    ) -> Feedback<State, Event> {
+        typealias DatedPullRequest = (pr: PullRequest, date: Date)
+
+        func isBotMergeComment(_ comment: IssueComment) -> Bool {
+            return (botUser.map({ comment.user.id == $0.id }) ?? true) // If botUser nil, default to true
+                && comment.body.contains(acceptedCommentTextIntro)
+        }
+
+        func datedPullRequest(for pullRequest: PullRequest) -> SignalProducer<DatedPullRequest, Never> {
+            return gitHubAPI.fetchIssueComments(in: pullRequest)
+                .flatMapError { _ in .value([]) }
+                .map { comments in
+                    let lastBotCommentDate = comments
+                        .filter(isBotMergeComment)
+                        .map { $0.creationDate }
+                        .max()
+                    return (pullRequest, lastBotCommentDate ?? .distantFuture)
+                }
+        }
+
+        func orderByBotCommentDate(_ datedPRs: [DatedPullRequest]) -> [PullRequest] {
+            return datedPRs.sorted(by: { $0.date < $1.date }).map { $0.pr }
+        }
+
         return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, Never> in
-            return SignalProducer
-                .value(Event.pullRequestsLoaded(initialPullRequests))
-                .observe(on: scheduler)
+            return SignalProducer.merge(
+                initialPullRequests.map(datedPullRequest(for:))
+            )
+            .collect()
+            .map(orderByBotCommentDate)
+            .map(Event.pullRequestsLoaded)
+            .observe(on: scheduler)
         }
     }
 

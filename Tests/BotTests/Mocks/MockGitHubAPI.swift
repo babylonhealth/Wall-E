@@ -14,7 +14,9 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         case mergeIntoBranch((PullRequest.Branch, PullRequest.Branch) -> MergeResult)
         case deleteBranch((PullRequest.Branch) -> Void)
         case postComment((String, PullRequest) -> Void)
+        case getIssueComments((PullRequest) -> [IssueComment])
         case removeLabel((PullRequest.Label, PullRequest) -> Void)
+        case getCurrentUser(() -> GitHubUser?)
     }
 
     let stubs: [Stubs]
@@ -106,6 +108,15 @@ struct MockGitHubAPI: GitHubAPIProtocol {
         }
     }
 
+    func fetchIssueComments(in pullRequest: PullRequest) -> SignalProducer<[IssueComment], GitHubClient.Error> {
+        switch nextStub() {
+        case let .getIssueComments(handler):
+            return SignalProducer(value: handler(pullRequest))
+        default:
+            fatalError("Stub not found")
+        }
+    }
+
     func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<(), GitHubClient.Error> {
         switch nextStub() {
         case let .removeLabel(handler):
@@ -114,6 +125,22 @@ struct MockGitHubAPI: GitHubAPIProtocol {
             fatalError("Stub not found")
         }
     }
+
+    func fetchCurrentUser() -> SignalProducer<GitHubUser, GitHubClient.Error> {
+        switch nextStub() {
+        case let .getCurrentUser(handler):
+            if let user = handler() {
+                return SignalProducer(value: user)
+            } else {
+                let error = GitHubClient.Error.api(Response(statusCode: 500, headers: [:], body: Data()))
+                return SignalProducer(error: error)
+            }
+        default:
+            fatalError("Stub not found")
+        }
+    }
+
+
 
     private func nextStub() -> Stubs {
         return stubCount.modify { stubCount -> Stubs in

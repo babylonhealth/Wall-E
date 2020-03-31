@@ -16,7 +16,11 @@ class DispatchServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { pullRequests.map { $0.reference } },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
                 .getPullRequest(returnPR()),
                 .postComment { _, _ in },
                 .getPullRequest(returnPR()),
@@ -62,18 +66,20 @@ class DispatchServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [dev1.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest(checkReturnPR(dev1)),
-                .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .postComment(checkComment(1, MergeService.acceptedCommentText(index: nil, queue: "develop", isBooting: true))),
                 .mergeIntoBranch { head, base in
                     expect(head) == dev1.reference.source
                     expect(base) == dev1.reference.target
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, MergeService.acceptedCommentText(index: 0, queue: "develop"))),
                 .getPullRequest(checkReturnPR(rel3)),
-                .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .postComment(checkComment(3, MergeService.acceptedCommentText(index: nil, queue: "release/app/1.2.3"))),
                 .mergePullRequest(checkPRNumber(3)),
                 .deleteBranch(checkBranch(rel3.reference.source)),
 
@@ -149,16 +155,18 @@ class DispatchServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [dev1.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest(checkReturnPR(dev1)),
-                .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .postComment(checkComment(1, MergeService.acceptedCommentText(index: nil, queue: "develop", isBooting: true))),
                 .mergeIntoBranch { head, base in
                     expect(head.ref) == MergeServiceFixture.defaultBranch
                     expect(base.ref) == developBranch
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, MergeService.acceptedCommentText(index: 0, queue: "develop"))),
 
                 // Note that here we shouldn't have any API call for PR#3 since it doesn't have the integration label
                 
@@ -239,8 +247,9 @@ class DispatchServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [prs[0].reference] },
-
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in prs[0] },
                 .postComment { _, _ in },
                 .mergePullRequest { _ in },
@@ -325,11 +334,12 @@ class DispatchServiceTests: XCTestCase {
     }
 
     func test_mergeservice_destroyed_when_idle_after_boot() {
-        let pr = PullRequestMetadata.stub(number: 1)
+        let pr = PullRequestMetadata.stub(number: 1) // No Merge label, so should get filtered out
         let branch = pr.reference.target.ref
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [pr.reference] },
             ],
             when: { service, scheduler in
@@ -352,13 +362,15 @@ class DispatchServiceTests: XCTestCase {
         let pr3 = PullRequestMetadata.stub(number: 3, baseRef: branch2, labels: [LabelFixture.integrationLabel], mergeState: .behind)
 
         let stubs: [MockGitHubAPI.Stubs] = [
+            .getCurrentUser { nil },
             .getPullRequests { [pr1.reference] },
+            .getIssueComments { _ in [] },
             .getPullRequest(checkReturnPR(pr1)),
-            .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+            .postComment(checkComment(1, MergeService.acceptedCommentText(index: nil, queue: "branch1", isBooting: true))),
             .mergeIntoBranch { _, _ in .success },
-            .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `branch1` queue, hold tight ⏳")),
+            .postComment(checkComment(2, MergeService.acceptedCommentText(index: 0, queue: "branch1"))),
             .getPullRequest(checkReturnPR(pr3)),
-            .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
+            .postComment(checkComment(3, MergeService.acceptedCommentText(index: nil, queue: "branch2"))),
             .mergeIntoBranch { _, _ in .success },
         ]
 

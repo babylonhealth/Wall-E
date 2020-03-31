@@ -49,8 +49,16 @@ public struct RepositoryAPI: GitHubAPIProtocol {
         return client.request(repository.publish(comment: comment, in: pullRequest))
     }
 
+    public func fetchIssueComments(in pullRequest: PullRequest) -> SignalProducer<[IssueComment], GitHubClient.Error> {
+        return client.request(repository.issueComments(in: pullRequest))
+    }
+
     public func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<Void, GitHubClient.Error> {
         return client.request(repository.removeLabel(label: label, from: pullRequest))
+    }
+
+    public func fetchCurrentUser() -> SignalProducer<GitHubUser, GitHubClient.Error> {
+        return client.request(repository.currentUser)
     }
 }
 
