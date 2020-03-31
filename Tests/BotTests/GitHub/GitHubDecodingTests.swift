@@ -60,5 +60,15 @@ class GitHubDecodingTests: XCTestCase {
             fail("Could not parse a pull request with error: \(error)")
         }
     }
+
+    func test_parsing_issue_comment() throws {
+        let response = Bot.Response(statusCode: 200, headers: [:], body: GitHubIssueComment.data(using: .utf8)!)
+        let commentResult: Result<IssueComment, GitHubClient.Error> = Bot.decode(response)
+        let comment = try commentResult.get()
+        expect(comment.user.id) == 216089
+        expect(comment.user.login) == "AliSoftware"
+        expect(comment.body) == "Oh forgot about that one, good point.\r\nAnd just saw that there's actually already code for that in `Decoding.swift` so all that shouldn't even be needed at all indeed. "
+        expect(comment.creationDate.timeIntervalSince1970) == 1585666468
+    }
 }
 
