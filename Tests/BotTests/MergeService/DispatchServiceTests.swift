@@ -70,16 +70,16 @@ class DispatchServiceTests: XCTestCase {
                 .getPullRequests { [dev1.reference] },
                 .getIssueComments { _ in [] },
                 .getPullRequest(checkReturnPR(dev1)),
-                .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .postComment(checkComment(1, MergeService.acceptedCommentText(index: nil, queue: "develop", isBooting: true))),
                 .mergeIntoBranch { head, base in
                     expect(head) == dev1.reference.source
                     expect(base) == dev1.reference.target
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, MergeService.acceptedCommentText(index: 0, queue: "develop"))),
                 .getPullRequest(checkReturnPR(rel3)),
-                .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .postComment(checkComment(3, MergeService.acceptedCommentText(index: nil, queue: "release/app/1.2.3"))),
                 .mergePullRequest(checkPRNumber(3)),
                 .deleteBranch(checkBranch(rel3.reference.source)),
 
@@ -159,14 +159,14 @@ class DispatchServiceTests: XCTestCase {
                 .getPullRequests { [dev1.reference] },
                 .getIssueComments { _ in [] },
                 .getPullRequest(checkReturnPR(dev1)),
-                .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+                .postComment(checkComment(1, MergeService.acceptedCommentText(index: nil, queue: "develop", isBooting: true))),
                 .mergeIntoBranch { head, base in
                     expect(head.ref) == MergeServiceFixture.defaultBranch
                     expect(base.ref) == developBranch
                     return .success
                 },
 
-                .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `develop` queue, hold tight ⏳")),
+                .postComment(checkComment(2, MergeService.acceptedCommentText(index: 0, queue: "develop"))),
 
                 // Note that here we shouldn't have any API call for PR#3 since it doesn't have the integration label
                 
@@ -366,11 +366,11 @@ class DispatchServiceTests: XCTestCase {
             .getPullRequests { [pr1.reference] },
             .getIssueComments { _ in [] },
             .getPullRequest(checkReturnPR(pr1)),
-            .postComment(checkComment(1, "Your pull request was accepted and is going to be handled right away 🏎")),
+            .postComment(checkComment(1, MergeService.acceptedCommentText(index: nil, queue: "branch1", isBooting: true))),
             .mergeIntoBranch { _, _ in .success },
-            .postComment(checkComment(2, "Your pull request was accepted and it's currently #\u{200B}1 in the `branch1` queue, hold tight ⏳")),
+            .postComment(checkComment(2, MergeService.acceptedCommentText(index: 0, queue: "branch1"))),
             .getPullRequest(checkReturnPR(pr3)),
-            .postComment(checkComment(3, "Your pull request was accepted and is going to be handled right away 🏎")),
+            .postComment(checkComment(3, MergeService.acceptedCommentText(index: nil, queue: "branch2"))),
             .mergeIntoBranch { _, _ in .success },
         ]
 

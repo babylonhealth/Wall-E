@@ -82,7 +82,7 @@ class MergeServiceTests: XCTestCase {
             func makeBotComment(year: Int = 2020, month: Int, day: Int) -> IssueComment {
                 return IssueComment(
                     user: botUser,
-                    body: "\(MergeService.acceptedCommentIntro) and blah",
+                    body: MergeService.acceptedCommentText(index: 2, queue: "somequeue", isBooting: true),
                     creationDate: makeDate(year: year, month: month, day: day)
                 )
             }
@@ -125,9 +125,9 @@ class MergeServiceTests: XCTestCase {
             }
         }
 
-        func expectComment(_ expectedMessageSuffix: String, _ expectedPRNum: UInt) -> (String, PullRequest) -> Void {
+        func expectComment(_ expectedIndex: Int?, _ expectedPRNum: UInt) -> (String, PullRequest) -> Void {
             return { postedMessage, pullRequest in
-                expect(postedMessage) == "Your pull request was accepted and \(expectedMessageSuffix)"
+                expect(postedMessage) == MergeService.acceptedCommentText(index: expectedIndex, queue: "master", isBooting: true)
                 expect(pullRequest.number) == expectedPRNum
             }
         }
@@ -140,9 +140,9 @@ class MergeServiceTests: XCTestCase {
                 .getIssueComments(mockComments),
                 .getIssueComments(mockComments),
                 .getPullRequest(expectPR(12)),
-                .postComment(expectComment("is going to be handled right away 🏎", 12)),
-                .postComment(expectComment("it's currently #​2 in the `master` queue, hold tight ⏳", 10)),
-                .postComment(expectComment("it's currently #​3 in the `master` queue, hold tight ⏳", 11)),
+                .postComment(expectComment(nil, 12)),
+                .postComment(expectComment(1, 10)),
+                .postComment(expectComment(2, 11)),
                 .mergePullRequest { _ in },
                 .deleteBranch { _ in },
                 .getPullRequest(expectPR(10)),
@@ -475,7 +475,7 @@ class MergeServiceTests: XCTestCase {
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and it's currently #\u{200B}1 in the `master` queue, hold tight ⏳"
+                    expect(message) == MergeService.acceptedCommentText(index: 0, queue: "master")
                     expect(pullRequest.number) == 2
                 },
                 .getPullRequest { _ in first.with(mergeState: .clean) },
@@ -1082,15 +1082,15 @@ class MergeServiceTests: XCTestCase {
                 .getIssueComments { _ in [] },
                 .getPullRequest { _ in pullRequests[0] },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and is going to be handled right away 🏎"
+                    expect(message) == MergeService.acceptedCommentText(index: nil, queue: "master", isBooting: true)
                     expect(pullRequest.number) == 144
                 },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and it's currently #\u{200B}2 in the `master` queue, hold tight ⏳"
+                    expect(message) == MergeService.acceptedCommentText(index: 1, queue: "master", isBooting: true)
                     expect(pullRequest.number) == 233
                 },
                 .postComment { message, pullRequest in
-                    expect(message) == "Your pull request was accepted and it's currently #\u{200B}3 in the `master` queue, hold tight ⏳"
+                    expect(message) == MergeService.acceptedCommentText(index: 2, queue: "master", isBooting: true)
                     expect(pullRequest.number) == 377
                 },
                 .mergePullRequest { _ in },

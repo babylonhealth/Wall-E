@@ -317,10 +317,22 @@ extension MergeService {
 
 // MARK: - Feedbacks
 
+fileprivate let acceptedCommentTextIntro = "Your pull request was accepted"
+
 extension MergeService {
     fileprivate typealias Feedbacks = MergeService
 
-    static let acceptedCommentIntro = "Your pull request was accepted"
+    static func acceptedCommentText(index: Int?, queue: String, isBooting: Bool = false) -> String {
+        let rebootInfo = isBooting ? "WallE just started after a reboot.\n" : ""
+        let prefix = "\(rebootInfo)\(acceptedCommentTextIntro)"
+        if let index = index {
+            // use Zero-width-space character so that GitHub doesn't transform `#N` into a link to Pull Request N
+            let zws = "\u{200B}"
+            return "\(prefix) and it's currently #\(zws)\(index + 1) in the `\(queue)` queue, hold tight ⏳"
+        } else {
+            return "\(prefix) and is going to be handled right away 🏎 (nothing in queue for `\(queue)`!)"
+        }
+    }
     
     fileprivate static func whenAddingPullRequests(
         github: GitHubAPIProtocol,
@@ -335,19 +347,20 @@ extension MergeService {
                     .enumerated()
                     .map { index, pullRequest -> SignalProducer<(), Never> in
 
-                        guard previous.pullRequests.firstIndex(of: pullRequest) == nil
+                        guard previous.pullRequests.contains(pullRequest) == false
                             else { return .empty }
+
+                        let isBooting = previous.status == .starting
 
                         if index == 0 && current.isIntegrationOngoing == false {
                             return github.postComment(
-                                "\(MergeService.acceptedCommentIntro) and is going to be handled right away 🏎",
+                                acceptedCommentText(index: nil, queue: current.targetBranch, isBooting: isBooting),
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
                         } else {
-                            let zws = "\u{200B}" // Zero-width space character. Used so that GitHub doesn't transform `#n` into a link to Pull Request n
                             return github.postComment(
-                                "\(MergeService.acceptedCommentIntro) and it's currently #\(zws)\(index + 1) in the `\(current.targetBranch)` queue, hold tight ⏳",
+                                acceptedCommentText(index: index, queue: current.targetBranch, isBooting: isBooting),
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
@@ -369,7 +382,7 @@ extension MergeService {
 
         func isBotMergeComment(_ comment: IssueComment) -> Bool {
             return (botUser.map({ comment.user.id == $0.id }) ?? true) // If botUser nil, default to true
-                && comment.body.hasPrefix(MergeService.acceptedCommentIntro)
+                && comment.body.contains(acceptedCommentTextIntro)
         }
 
         func datedPullRequest(for pullRequest: PullRequest) -> SignalProducer<DatedPullRequest, Never> {
