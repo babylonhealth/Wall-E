@@ -389,11 +389,11 @@ extension MergeService {
             return gitHubAPI.fetchIssueComments(in: pullRequest)
                 .flatMapError { _ in .value([]) }
                 .map { comments in
-                    let lastBotComment = comments
+                    let lastBotCommentDate = comments
                         .filter(isBotMergeComment)
                         .map { $0.creationDate }
                         .max()
-                    return (pullRequest, lastBotComment ?? .distantFuture)
+                    return (pullRequest, lastBotCommentDate ?? .distantFuture)
                 }
         }
 
