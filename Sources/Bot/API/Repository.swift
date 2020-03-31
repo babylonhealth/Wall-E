@@ -92,6 +92,14 @@ extension Repository {
         )
     }
 
+    func issueComments(in pullRequest: PullRequest) -> Resource<[IssueComment]> {
+        return Resource(
+            method: .GET,
+            path: path(for: "issues/\(pullRequest.number)/comments"),
+            decoder: decode
+        )
+    }
+
     func merge(head: PullRequest.Branch, into base: PullRequest.Branch) -> Resource<MergeResult> {
         return Resource(
             method: .POST,
@@ -114,6 +122,14 @@ extension Repository {
             method: .PUT,
             path: path(for: "pulls/\(pullRequest.number)/merge"),
             body: encode(MergePullRequestRequest(with: pullRequest)),
+            decoder: decode
+        )
+    }
+
+    var currentUser: Resource<GitHubUser> {
+        Resource(
+            method: .GET,
+            path: "user",
             decoder: decode
         )
     }

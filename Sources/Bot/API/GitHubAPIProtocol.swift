@@ -29,5 +29,10 @@ public protocol GitHubAPIProtocol {
 
     func postComment(_ comment: String, in pullRequest: PullRequest) -> SignalProducer<Void, GitHubClient.Error>
 
+    /// Note: only fetches issue comments, not Pull Request review comments
+    func fetchIssueComments(in pullRequest: PullRequest) -> SignalProducer<[IssueComment], GitHubClient.Error>
+
     func removeLabel(_ label: PullRequest.Label, from pullRequest: PullRequest) -> SignalProducer<Void, GitHubClient.Error>
+
+    func fetchCurrentUser() -> SignalProducer<GitHubUser, GitHubClient.Error>
 }

@@ -6,3 +6,6 @@ xcuserdata
 !WallEView.xcodeproj
 Config/secrets
 .DS_Store
+
+# Local files we don't want to commit, like scripts containing secrets
+_local

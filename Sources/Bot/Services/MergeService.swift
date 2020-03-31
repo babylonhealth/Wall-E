@@ -44,6 +44,7 @@ public final class MergeService {
         requiresAllStatusChecks: Bool,
         statusChecksTimeout: TimeInterval,
         initialPullRequests: [PullRequest] = [],
+        botUser: GitHubUser?,
         logger: LoggerProtocol,
         gitHubAPI: GitHubAPIProtocol,
         scheduler: DateScheduler = QueueScheduler()
@@ -71,7 +72,7 @@ public final class MergeService {
             scheduler: scheduler,
             reduce: MergeService.reduce,
             feedbacks: [
-                Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, scheduler: scheduler),
+                Feedbacks.whenStarting(initialPullRequests: pullRequestsReadyToInclude, gitHubAPI: gitHubAPI, botUser: botUser, scheduler: scheduler),
                 Feedbacks.whenReady(github: self.gitHubAPI, scheduler: scheduler),
                 Feedbacks.whenIntegrating(github: self.gitHubAPI, requiresAllStatusChecks: requiresAllStatusChecks, pullRequestChanges: pullRequestChanges, scheduler: scheduler),
                 Feedbacks.whenRunningStatusChecks(github: self.gitHubAPI, logger: logger, requiresAllStatusChecks: requiresAllStatusChecks, statusChecksCompletion: statusChecksCompletion, scheduler: scheduler),
@@ -319,6 +320,8 @@ extension MergeService {
 extension MergeService {
     fileprivate typealias Feedbacks = MergeService
 
+    static let acceptedCommentIntro = "Your pull request was accepted"
+    
     fileprivate static func whenAddingPullRequests(
         github: GitHubAPIProtocol,
         scheduler: Scheduler
@@ -337,14 +340,14 @@ extension MergeService {
 
                         if index == 0 && current.isIntegrationOngoing == false {
                             return github.postComment(
-                                "Your pull request was accepted and is going to be handled right away 🏎",
+                                "\(MergeService.acceptedCommentIntro) and is going to be handled right away 🏎",
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
                         } else {
                             let zws = "\u{200B}" // Zero-width space character. Used so that GitHub doesn't transform `#n` into a link to Pull Request n
                             return github.postComment(
-                                "Your pull request was accepted and it's currently #\(zws)\(index + 1) in the `\(current.targetBranch)` queue, hold tight ⏳",
+                                "\(MergeService.acceptedCommentIntro) and it's currently #\(zws)\(index + 1) in the `\(current.targetBranch)` queue, hold tight ⏳",
                                 in: pullRequest
                             )
                             .flatMapError { _ in .empty }
@@ -356,11 +359,42 @@ extension MergeService {
         })
     }
 
-    fileprivate static func whenStarting(initialPullRequests: [PullRequest], scheduler: DateScheduler) -> Feedback<State, Event> {
+    fileprivate static func whenStarting(
+        initialPullRequests: [PullRequest],
+        gitHubAPI: GitHubAPIProtocol,
+        botUser: GitHubUser?,
+        scheduler: DateScheduler
+    ) -> Feedback<State, Event> {
+        typealias DatedPullRequest = (pr: PullRequest, date: Date)
+
+        func isBotMergeComment(_ comment: IssueComment) -> Bool {
+            return (botUser.map({ comment.user.id == $0.id }) ?? true) // If botUser nil, default to true
+                && comment.body.hasPrefix(MergeService.acceptedCommentIntro)
+        }
+
+        func datedPullRequest(for pullRequest: PullRequest) -> SignalProducer<DatedPullRequest, Never> {
+            return gitHubAPI.fetchIssueComments(in: pullRequest)
+                .flatMapError { _ in .value([]) }
+                .map { comments in
+                    let lastBotComment = comments
+                        .filter(isBotMergeComment)
+                        .max { $0.creationDate < $1.creationDate }
+                    return (pullRequest, lastBotComment?.creationDate ?? .distantFuture)
+                }
+        }
+
+        func orderByBotCommentDate(_ datedPRs: [DatedPullRequest]) -> [PullRequest] {
+            return datedPRs.sorted(by: { $0.date < $1.date }).map { $0.pr }
+        }
+
         return Feedback(predicate: { $0.status == .starting }) { state -> SignalProducer<Event, Never> in
-            return SignalProducer
-                .value(Event.pullRequestsLoaded(initialPullRequests))
-                .observe(on: scheduler)
+            return SignalProducer.merge(
+                initialPullRequests.map(datedPullRequest(for:))
+            )
+            .collect()
+            .map(orderByBotCommentDate)
+            .map(Event.pullRequestsLoaded)
+            .observe(on: scheduler)
         }
     }
 

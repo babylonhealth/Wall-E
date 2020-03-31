@@ -13,6 +13,7 @@ public final class DispatchService {
     private let logger: LoggerProtocol
     private let gitHubAPI: GitHubAPIProtocol
     private let scheduler: DateScheduler
+    private var botUser: GitHubUser? = nil
 
     /// Merge services per target branch
     private var mergeServices: Atomic<[String: MergeService]>
@@ -43,10 +44,18 @@ public final class DispatchService {
         self.mergeServices = Atomic([:])
         (mergeServiceLifecycle, mergeServiceLifecycleObserver) = Signal<DispatchService.MergeServiceLifecycleEvent, Never>.pipe()
 
-        gitHubAPI.fetchPullRequests()
-            .flatMapError { _ in .value([]) }
+        gitHubAPI
+            .fetchCurrentUser()
+            .map(Optional<GitHubUser>.some)
+            .flatMapError { _ in .value(nil) }
+            .flatMap(.latest) { botUser in
+                gitHubAPI.fetchPullRequests()
+                    .flatMapError { _ in .value([]) }
+                    .map { (botUser, $0) }
+            }
             .observe(on: scheduler)
-            .startWithValues { pullRequests in
+            .startWithValues { (botUser, pullRequests) in
+                self.botUser = botUser
                 self.dispatchInitial(pullRequests: pullRequests)
             }
 
@@ -117,6 +126,7 @@ public final class DispatchService {
             requiresAllStatusChecks: requiresAllStatusChecks,
             statusChecksTimeout: statusChecksTimeout,
             initialPullRequests: initialPullRequests,
+            botUser: botUser,
             logger: logger,
             gitHubAPI: gitHubAPI,
             scheduler: scheduler

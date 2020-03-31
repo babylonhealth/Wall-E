@@ -14,6 +14,7 @@ class MergeServiceTests: XCTestCase {
     func test_empty_list_of_pull_requests_should_do_nothing() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [] }
             ],
             when: { _, scheduler in
@@ -28,6 +29,7 @@ class MergeServiceTests: XCTestCase {
     func test_no_pull_requests_with_integration_label() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [
                     PullRequestMetadata.stub(number: 1).reference,
                     PullRequestMetadata.stub(number: 2).reference
@@ -52,6 +54,7 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_not_included_on_close() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [] },
             ],
             when: { service, scheduler in
@@ -77,7 +80,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_with_integration_label_and_ready_to_merge() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .clean) },
                 .postComment { _, _ in },
                 .mergePullRequest { _ in },
@@ -109,7 +114,11 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { pullRequests.map { $0.reference } },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in pullRequests[0] },
                 .postComment { _, _ in },
                 .postComment { _, _ in },
@@ -149,7 +158,9 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [target.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in target },
                 .postComment { _, _ in },
                 .postComment { _, _ in },
@@ -175,7 +186,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_with_integration_label_and_behind_target_branch() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -214,7 +227,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_blocked_with_successful_status_no_pending_checks() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
                 .postComment { _, _ in },
                 .getAllStatusChecks { _ in [.init(state: .success, context: "", description: "")]},
@@ -247,7 +262,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_blocked_with_successful_status_pending_checks() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .blocked) },
                 .postComment { _, _ in },
                 .getAllStatusChecks { _ in
@@ -290,7 +307,9 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [target.reference] },
+                // target.reference is not labelled with Merge label, so we're not fetching issue comments on whenStarting :)
                 .getPullRequest { _ in targetLabeled },
                 .postComment { _, _ in },
                 .mergePullRequest { _ in },
@@ -328,7 +347,9 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [first.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in first },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -384,7 +405,9 @@ class MergeServiceTests: XCTestCase {
     func test_closing_pull_request_during_integration() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success }
@@ -420,7 +443,9 @@ class MergeServiceTests: XCTestCase {
     func test_removing_the_integration_label_during_integration() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success }
@@ -453,7 +478,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_with_status_checks_failing() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -494,7 +521,9 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -542,7 +571,9 @@ class MergeServiceTests: XCTestCase {
         perform(
             requiresAllStatusChecks: false,
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -597,7 +628,9 @@ class MergeServiceTests: XCTestCase {
         perform(
             requiresAllStatusChecks: true,
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -649,7 +682,9 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _ in },
                 .mergeIntoBranch { _, _ in .success },
@@ -688,7 +723,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_with_an_initial_unknown_state_with_recover() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .unknown) },
                 .postComment { _, _ in },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .unknown) },
@@ -719,7 +756,9 @@ class MergeServiceTests: XCTestCase {
     func test_pull_request_with_an_initial_unknown_state_without_recover() {
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .unknown) },
                 .postComment { _, _ in },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget.with(mergeState: .unknown) },
@@ -756,7 +795,10 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [first, second].map { $0.reference} },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in first },
                 .postComment { _, _ in },
                 .postComment { _, _ in },
@@ -827,7 +869,12 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { Array(allPRs).map { $0.reference} },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
                 // advance() #1
                 .getPullRequest { (num: UInt) -> PullRequestMetadata in
                     expect(num) == 2
@@ -907,7 +954,11 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { pullRequests.map { $0.reference } },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in pullRequests[0] },
                 .postComment { message, pullRequest in
                     expect(message) == "Your pull request was accepted and is going to be handled right away 🏎"
@@ -958,7 +1009,9 @@ class MergeServiceTests: XCTestCase {
 
         perform(
             stubs: [
+                .getCurrentUser { nil },
                 .getPullRequests { [MergeServiceFixture.defaultTarget.reference] },
+                .getIssueComments { _ in [] },
                 .getPullRequest { _ in MergeServiceFixture.defaultTarget },
                 .postComment { _, _  in },
                 .mergeIntoBranch { _, _ in .success },
