@@ -89,10 +89,10 @@ class MergeServiceTests: XCTestCase {
 
             switch pullRequest.number {
             case 10:
-                // With a bot comment in March --> ordered second
+                // With last bot comment in March --> ordered second
                 return [
-                    makeDevComment(month: 3, day: 1),
-                    makeDevComment(month: 3, day: 2),
+                    makeDevComment(month: 1, day: 1),
+                    makeDevComment(month: 1, day: 2),
                     makeBotComment(month: 3, day: 3),
                     makeDevComment(month: 3, day: 4)
                 ]
@@ -103,12 +103,12 @@ class MergeServiceTests: XCTestCase {
                     makeDevComment(month: 2, day: 2)
                 ]
             case 12:
-                // With a bot comment in Jan --> ordered first
+                // With last bot comment in Jan --> ordered first
                 return [
-                    makeDevComment(month: 1, day: 1),
-                    makeDevComment(month: 1, day: 2),
-                    makeBotComment(month: 1, day: 3),
-                    makeDevComment(month: 1, day: 4)
+                    makeDevComment(month: 1, day: 10),
+                    makeDevComment(month: 1, day: 11),
+                    makeBotComment(month: 1, day: 12),
+                    makeDevComment(month: 1, day: 13)
                 ]
             default:
                 fatalError("Unexpected PullRequest number")

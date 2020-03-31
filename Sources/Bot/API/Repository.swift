@@ -113,7 +113,7 @@ extension Repository {
                 default:
                     return .failure(.api(response))
                 }
-        }
+            }
         )
     }
 

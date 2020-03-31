@@ -391,8 +391,9 @@ extension MergeService {
                 .map { comments in
                     let lastBotComment = comments
                         .filter(isBotMergeComment)
-                        .max { $0.creationDate < $1.creationDate }
-                    return (pullRequest, lastBotComment?.creationDate ?? .distantFuture)
+                        .map { $0.creationDate }
+                        .max()
+                    return (pullRequest, lastBotComment ?? .distantFuture)
                 }
         }
 
