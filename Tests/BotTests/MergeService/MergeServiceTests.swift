@@ -51,6 +51,127 @@ class MergeServiceTests: XCTestCase {
 
     }
 
+    func test_order_pull_requests_on_boot() {
+        let botUser = GitHubUser(id: 123, login: "our-bot", name: "WallEBot")
+        let devUser = GitHubUser(id: 456, login: "bnl-dev", name: "BuyNLarge")
+
+        let pullRequests = (0...2).map {
+            PullRequestMetadata.stub(number: $0+10, labels: [LabelFixture.integrationLabel])
+                .with(mergeState: .clean)
+        }
+        let orderedPRs = [pullRequests[2], pullRequests[0], pullRequests[1]]
+
+        func mockComments(pullRequest: PullRequest) -> [IssueComment] {
+            func makeDate(year: Int, month: Int, day: Int) -> Date {
+                return DateComponents(
+                    calendar: Calendar(identifier: .gregorian),
+                    timeZone: TimeZone(secondsFromGMT: 0),
+                    year: year, month: month, day: day,
+                    hour: 12, minute: 30, second: 0
+                ).date!
+            }
+
+            func makeDevComment(year: Int = 2020, month: Int, day: Int) -> IssueComment {
+                return IssueComment(
+                    user: devUser,
+                    body: "The year is \(year). I'm commenting on day \(day) of month \(month).",
+                    creationDate: makeDate(year: year, month: month, day: day)
+                )
+            }
+
+            func makeBotComment(year: Int = 2020, month: Int, day: Int) -> IssueComment {
+                return IssueComment(
+                    user: botUser,
+                    body: "\(MergeService.acceptedCommentIntro) and blah",
+                    creationDate: makeDate(year: year, month: month, day: day)
+                )
+            }
+
+            switch pullRequest.number {
+            case 10:
+                // With a bot comment in March --> ordered second
+                return [
+                    makeDevComment(month: 3, day: 1),
+                    makeDevComment(month: 3, day: 2),
+                    makeBotComment(month: 3, day: 3),
+                    makeDevComment(month: 3, day: 4)
+                ]
+            case 11:
+                // Without any bot comment --> ordered last
+                return [
+                    makeDevComment(month: 2, day: 1),
+                    makeDevComment(month: 2, day: 2)
+                ]
+            case 12:
+                // With a bot comment in Jan --> ordered first
+                return [
+                    makeDevComment(month: 1, day: 1),
+                    makeDevComment(month: 1, day: 2),
+                    makeBotComment(month: 1, day: 3),
+                    makeDevComment(month: 1, day: 4)
+                ]
+            default:
+                fatalError("Unexpected PullRequest number")
+            }
+        }
+
+        func expectPR(_ expectedNum: UInt) -> (UInt) -> PullRequestMetadata {
+            return { requestedNum in
+                expect(requestedNum) == expectedNum
+                guard let pr = pullRequests.first(where: { $0.reference.number == requestedNum }) else {
+                    fatalError("Requested PR #\(requestedNum) which doesn't exist in this test")
+                }
+                return pr
+            }
+        }
+
+        func expectComment(_ expectedMessageSuffix: String, _ expectedPRNum: UInt) -> (String, PullRequest) -> Void {
+            return { postedMessage, pullRequest in
+                expect(postedMessage) == "Your pull request was accepted and \(expectedMessageSuffix)"
+                expect(pullRequest.number) == expectedPRNum
+            }
+        }
+
+        perform(
+            stubs: [
+                .getCurrentUser { botUser },
+                .getPullRequests { pullRequests.map { $0.reference } },
+                .getIssueComments(mockComments),
+                .getIssueComments(mockComments),
+                .getIssueComments(mockComments),
+                .getPullRequest(expectPR(12)),
+                .postComment(expectComment("is going to be handled right away 🏎", 12)),
+                .postComment(expectComment("it's currently #​2 in the `master` queue, hold tight ⏳", 10)),
+                .postComment(expectComment("it's currently #​3 in the `master` queue, hold tight ⏳", 11)),
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in },
+                .getPullRequest(expectPR(10)),
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in },
+                .getPullRequest(expectPR(11)),
+                .mergePullRequest { _ in },
+                .deleteBranch { _ in }
+            ],
+            when: { service, scheduler in
+                scheduler.advance()
+            },
+            assert: {
+                expect($0) == [
+                    .created(branch: MergeServiceFixture.defaultTargetBranch),
+                    .state(.stub(status: .starting)),
+                    .state(.stub(status: .ready, pullRequests: orderedPRs.map { $0.reference })),
+                    .state(.stub(status: .integrating(orderedPRs[0]), pullRequests: orderedPRs.map { $0.reference  }.suffix(2).asArray)),
+                    .state(.stub(status: .ready, pullRequests: orderedPRs.map { $0.reference }.suffix(2).asArray)),
+                    .state(.stub(status: .integrating(orderedPRs[1]), pullRequests: orderedPRs.map { $0.reference  }.suffix(1).asArray)),
+                    .state(.stub(status: .ready, pullRequests: orderedPRs.map { $0.reference }.suffix(1).asArray)),
+                    .state(.stub(status: .integrating(orderedPRs[2]))),
+                    .state(.stub(status: .ready)),
+                    .state(.stub(status: .idle))
+                ]
+            }
+       )
+    }
+
     func test_pull_request_not_included_on_close() {
         perform(
             stubs: [
