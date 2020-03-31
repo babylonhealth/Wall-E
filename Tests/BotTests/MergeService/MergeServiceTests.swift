@@ -91,24 +91,24 @@ class MergeServiceTests: XCTestCase {
             case 10:
                 // With last bot comment in March --> ordered second
                 return [
-                    makeDevComment(month: 1, day: 1),
-                    makeDevComment(month: 1, day: 2),
-                    makeBotComment(month: 3, day: 3),
-                    makeDevComment(month: 3, day: 4)
+                    makeBotComment(month: 1, day: 1), // 🤖 -- it's a trap, comment in 1 Jan but not the last
+                    makeDevComment(month: 1, day: 2), // 👨‍💻
+                    makeBotComment(month: 3, day: 3), // 🤖 -- last bot comment = 3 Mar
+                    makeDevComment(month: 3, day: 4)  // 👩‍💻
                 ]
             case 11:
                 // Without any bot comment --> ordered last
                 return [
-                    makeDevComment(month: 2, day: 1),
-                    makeDevComment(month: 2, day: 2)
+                    makeDevComment(month: 2, day: 1), // 👨‍💻
+                    makeDevComment(month: 2, day: 2)  // 👩‍💻
                 ]
             case 12:
                 // With last bot comment in Jan --> ordered first
                 return [
-                    makeDevComment(month: 1, day: 10),
-                    makeDevComment(month: 1, day: 11),
-                    makeBotComment(month: 1, day: 12),
-                    makeDevComment(month: 1, day: 13)
+                    makeBotComment(month: 1, day: 10), // 🤖 -- it's a trap, comment after the first one for PR#10 but not the last
+                    makeDevComment(month: 1, day: 11), // 👩‍💻
+                    makeBotComment(month: 1, day: 12), // 🤖 -- last bot comment = 12 Jan
+                    makeDevComment(month: 1, day: 13)  // 👨‍💻
                 ]
             default:
                 fatalError("Unexpected PullRequest number")
